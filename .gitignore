@@ -1,3 +1,9 @@
+# Segredos: o .env guarda o HF_TOKEN. Nunca versionar.
+# O .env.example fica versionado como referência.
+.env
+.env.*
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -21,5 +27,11 @@ Thumbs.db
 # Generated outputs
 results/
 
-# Raw datasets
-data/
+# Datasets e pesos: grandes e reproduzíveis pelos scripts de setup.
+# Os manifestos ficam versionados, para que a proveniência dos dados esteja no git.
+data/*
+!data/manifest_datasets.json
+!data/splits/
+data/splits/*
+!data/splits/manifest_splits.json
+models/

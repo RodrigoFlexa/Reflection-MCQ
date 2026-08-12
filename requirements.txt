@@ -1,0 +1,42 @@
+# Instale o torch PRIMEIRO, com o índice da sua versão de CUDA:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+# Depois:
+#   pip install -r requirements.txt
+
+# ---- Núcleo: dados ----
+datasets>=2.19.0
+huggingface_hub[hf_transfer]>=0.26.0
+pandas>=2.2.0
+pyarrow>=16.0.0
+numpy>=1.26.0
+
+# ---- Modelos ----
+torch>=2.4.0
+transformers>=4.51.0          # >=4.51 é o mínimo para Qwen3
+accelerate>=0.34.0
+tokenizers>=0.21.0
+safetensors>=0.4.5
+
+# ---- Backend de geração rápido ----
+# vLLM é o que torna a grade completa viável: ~22 h em vez de ~220 h.
+# Se a instalação falhar, o framework cai automaticamente para transformers
+# (defina RMCQ_BACKEND=hf no .env para deixar explícito).
+vllm>=0.6.0
+
+# ---- Recuperação por similaridade ----
+sentence-transformers>=3.0.0  # BAAI/bge-large-en-v1.5
+
+# ---- Análise ----
+scikit-learn>=1.5.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# ---- Notebooks ----
+jupyter>=1.1.0
+ipykernel>=6.29.0
+ipywidgets>=8.1.0
+tqdm>=4.66.0
+
+# ---- Opcionais ----
+# bitsandbytes>=0.43.0        # quantização 4-bit p/ GPU de 16-24 GB (RMCQ_LOAD_IN_4BIT=1)
+# hf_xet>=1.0.0               # acelera download de repos com Xet Storage
