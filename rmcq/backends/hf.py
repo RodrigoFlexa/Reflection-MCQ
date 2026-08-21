@@ -61,6 +61,10 @@ class HFBackend(Backend):
             self.tokenizer.pad_token = self.tokenizer.eos_token
         # Ver docstring do módulo: obrigatório para geração em lote.
         self.tokenizer.padding_side = "left"
+        # O padrão do HF é truncar à direita, o que comeria justamente o fim do
+        # prompt (a questão e as instruções de formato). O backend vLLM trunca à
+        # esquerda; sem isto os dois cortariam lados opostos do mesmo prompt.
+        self.tokenizer.truncation_side = "left"
 
         load_kwargs: dict[str, Any] = {
             "cache_dir": str(HF_HOME),
@@ -124,12 +128,19 @@ class HFBackend(Backend):
         rendered = [self.render(self.tokenizer, p, system) for p in prompts]
         lengths = [len(self.tokenizer(r, add_special_tokens=False)["input_ids"]) for r in rendered]
 
-        if self.max_len:
-            over = [i for i, n in enumerate(lengths) if n + params.max_new_tokens > self.max_len]
+        budget = (self.max_len - params.max_new_tokens) if self.max_len else None
+        if budget is not None:
+            if budget <= 0:
+                raise ValueError(
+                    f"{self.key}: max_new_tokens={params.max_new_tokens} não deixa espaço "
+                    f"para o prompt em um contexto de {self.max_len} tokens. Baixe "
+                    f"RMCQ_MAX_NEW_TOKENS ou suba RMCQ_MAX_MODEL_LEN."
+                )
+            over = [i for i, n in enumerate(lengths) if n > budget]
             if over:
                 log.warning(
-                    "%d prompts excedem o contexto (%s); serão truncados à esquerda",
-                    len(over), self.max_len,
+                    "%d prompts excedem o orçamento (%d tokens); serão truncados à esquerda",
+                    len(over), budget,
                 )
 
         # Decrescente por tamanho: o primeiro lote é o mais caro, então um OOM
@@ -145,8 +156,8 @@ class HFBackend(Backend):
                 texts,
                 return_tensors="pt",
                 padding=True,
-                truncation=bool(self.max_len),
-                max_length=(self.max_len - params.max_new_tokens) if self.max_len else None,
+                truncation=budget is not None,
+                max_length=budget,
             ).to(self.model.device)
 
             n_prompt = int(enc["input_ids"].shape[-1])

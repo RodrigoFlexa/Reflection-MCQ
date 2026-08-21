@@ -105,24 +105,41 @@ class VLLMBackend(Backend):
         if not prompts:
             return []
 
+        from vllm import TokensPrompt
+
         rendered = [self.render(self.tokenizer, p, system) for p in prompts]
+        # Tokenizamos aqui e entregamos ids ao engine, em vez de texto. Cortar em
+        # tokens, decodificar e deixar o vLLM re-tokenizar não preserva a
+        # contagem: o corte cai no meio de um caractere multibyte ou de um token
+        # especial e o texto volta com mais tokens do que o orçamento. Passando
+        # TokensPrompt, o que cortamos é exatamente o que o engine recebe.
+        token_ids = [self.tokenizer(r, add_special_tokens=False)["input_ids"] for r in rendered]
 
         if self.max_len:
             budget = self.max_len - params.max_new_tokens
+            if budget <= 0:
+                raise ValueError(
+                    f"{self.key}: max_new_tokens={params.max_new_tokens} não deixa espaço "
+                    f"para o prompt em um contexto de {self.max_len} tokens. Baixe "
+                    f"RMCQ_MAX_NEW_TOKENS ou suba RMCQ_MAX_MODEL_LEN."
+                )
             long_ones = 0
-            for i, text in enumerate(rendered):
-                ids = self.tokenizer(text, add_special_tokens=False)["input_ids"]
+            for i, ids in enumerate(token_ids):
                 if len(ids) > budget:
                     # Truncamento à esquerda: o final do prompt (a questão e as
                     # instruções de formato) é o que não pode ser perdido.
-                    rendered[i] = self.tokenizer.decode(ids[-budget:], skip_special_tokens=False)
+                    token_ids[i] = ids[-budget:]
                     long_ones += 1
             if long_ones:
                 log.warning("%d prompts truncados à esquerda para caber em %d tokens",
-                            long_ones, self.max_len)
+                            long_ones, budget)
 
         started = time.perf_counter()
-        outputs = self.llm.generate(rendered, self._sampling(params), use_tqdm=True)
+        outputs = self.llm.generate(
+            [TokensPrompt(prompt_token_ids=ids) for ids in token_ids],
+            self._sampling(params),
+            use_tqdm=True,
+        )
         total_latency = time.perf_counter() - started
 
         # O vLLM devolve na ordem dos prompts, mas confirmamos por request_id

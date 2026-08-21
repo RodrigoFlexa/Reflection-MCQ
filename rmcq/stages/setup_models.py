@@ -33,12 +33,12 @@ from rmcq.store import get_logger
 
 log = get_logger(__name__)
 
-os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
 
 TOKENIZER_PATTERNS = [
     "config.json", "generation_config.json", "tokenizer*", "special_tokens_map.json",
     "vocab.json", "merges.txt", "added_tokens.json",
-    "*.py",  # necessário para trust_remote_code (Phi-4 mini)
+    "*.py",  # código remoto, para os specs com trust_remote_code
 ]
 
 
@@ -200,6 +200,23 @@ def run(
     ensure_dirs()
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     keys = _keys(models)
+
+    # Professores de API não têm pesos no Hub: o repo_id deles é um pseudo-URI
+    # ("azure://gpt-5") e model_info explodiria. Nada a baixar, nada a checar —
+    # a validação deles é `python -m rmcq smoke --models gpt5`, que exercita a
+    # credencial de verdade.
+    api_keys = tuple(k for k in keys if MODELS[k].is_api)
+    if api_keys:
+        log.info(
+            "pulando modelo(s) de API (sem download): %s — valide com "
+            "`python -m rmcq smoke --models %s`",
+            ", ".join(api_keys), ",".join(api_keys),
+        )
+        keys = tuple(k for k in keys if not MODELS[k].is_api)
+    if not keys:
+        log.info("nada a baixar.")
+        return 0
+
     report_environment()
 
     try:

@@ -82,6 +82,13 @@ RETRY_DIR = RESULTS_DIR / "retry"
 SELFCONS_DIR = RESULTS_DIR / "selfcons"
 ANALYSIS_DIR = RESULTS_DIR / "analysis"
 LOGS_DIR = RESULTS_DIR / "logs"
+CACHE_DIR = RESULTS_DIR / "cache"
+
+# Pacote de troca entre esta máquina e o ambiente onde vivem os professores de
+# API (Azure OpenAI). Fica FORA de results/ porque, ao contrário de todo o resto
+# de results/, precisa ser versionado: é o git que transporta os dados entre os
+# dois ambientes. Ver rmcq/stages/exchange.py e ROTEIRO-AZURE.md.
+EXCHANGE_DIR = ROOT / "exchange"
 
 DATASET_MANIFEST = DATA_DIR / "manifest_datasets.json"
 MODEL_MANIFEST = MODELS_DIR / "manifest_models.json"
@@ -91,7 +98,7 @@ HF_HOME = Path(os.environ.get("HF_HOME") or (MODELS_DIR / "hf_cache"))
 _ALL_DIRS = (
     RAW_DIR, PROCESSED_DIR, SPLITS_DIR, MODELS_DIR, RESULTS_DIR, HF_HOME,
     BASELINE_DIR, REFLECTIONS_DIR, INDEX_DIR, EVAL_DIR, RETRY_DIR,
-    SELFCONS_DIR, ANALYSIS_DIR, LOGS_DIR,
+    SELFCONS_DIR, ANALYSIS_DIR, LOGS_DIR, CACHE_DIR, EXCHANGE_DIR,
 )
 
 
@@ -202,6 +209,16 @@ class ModelSpec:
     )
     notes: str = ""
     extra_kwargs: dict = field(default_factory=dict)
+    # De onde saem os pesos e por onde se gera. "hf" são os modelos locais, que
+    # obedecem a RMCQ_BACKEND (vllm/hf/stub). "azure" são os professores de API:
+    # não têm pesos para baixar, e o backend deles é fixo, não configurável —
+    # ver get_backend em rmcq/backends/__init__.py.
+    provider: str = "hf"
+
+    @property
+    def is_api(self) -> bool:
+        """Modelo de API: sem download, sem VRAM, sem setup-models."""
+        return self.provider != "hf"
 
 
 MODELS: dict[str, ModelSpec] = {
@@ -210,8 +227,12 @@ MODELS: dict[str, ModelSpec] = {
         repo_id="microsoft/Phi-4-mini-instruct",
         params="3.8B",
         roles=("student", "teacher"),
-        trust_remote_code=True,
-        notes="MIT. Precisa de trust_remote_code (modeling_phi3.py customizado).",
+        notes=(
+            "MIT. O repo traz modeling_phi3.py customizado, escrito para "
+            "transformers 4.4x: ele importa LossKwargs, que sumiu da 5.x. "
+            "Mantemos trust_remote_code=False e usamos o Phi3ForCausalLM nativo, "
+            "que já cobre partial_rotary_factor e longrope."
+        ),
     ),
     "qwen3-8b": ModelSpec(
         key="qwen3-8b",
@@ -242,6 +263,49 @@ MODELS: dict[str, ModelSpec] = {
         params="7B",
         roles=("student", "teacher"),
         notes="Apache 2.0. O repo traz consolidated.safetensors (14 GB), ignorado.",
+    ),
+    # --- Professores grandes, via Azure OpenAI -----------------------------
+    # Só PROFESSOR: roles não inclui "student", então STUDENTS os exclui
+    # automaticamente e nenhuma etapa vai pedir baseline ou eval deles.
+    #
+    # repo_id é um pseudo-URI: não existe repositório no Hub para baixar. O que
+    # importa é o nome do DEPLOYMENT no Azure, que vem da env var indicada em
+    # extra_kwargs["deployment_env"] e nunca fica fixo no código (guia, seção
+    # "Configuração"). Rodam apenas no ambiente que tem as credenciais; aqui
+    # existem no registro para que `eval` e `analyze` saibam ler as reflexões
+    # que voltaram por git sem precisar de credencial nenhuma.
+    "gpt5": ModelSpec(
+        key="gpt5",
+        repo_id="azure://gpt-5",
+        params="n/d",
+        roles=("teacher",),
+        provider="azure",
+        extra_kwargs={
+            "deployment_env": "RMCQ_AZURE_DEPLOYMENT_GPT5",
+            "default_deployment": "gpt-5",
+        },
+        notes=(
+            "Modelo de reasoning: usa max_completion_tokens, rejeita temperature "
+            "e seed, e gasta parte do orçamento pensando antes de responder. "
+            "Resposta vazia com finish_reason='length' quer dizer orçamento "
+            "curto — suba RMCQ_AZURE_REASONING_MIN_TOKENS."
+        ),
+    ),
+    "gpt4": ModelSpec(
+        key="gpt4",
+        repo_id="azure://gpt-4",
+        params="n/d",
+        roles=("teacher",),
+        provider="azure",
+        extra_kwargs={
+            "deployment_env": "RMCQ_AZURE_DEPLOYMENT_GPT4",
+            "default_deployment": "gpt-4o",
+        },
+        notes=(
+            "Modelo de chat clássico: max_tokens, temperature e seed normais. "
+            "O deployment real (gpt-4o, gpt-4-turbo, gpt-4.1...) é escolhido "
+            "por RMCQ_AZURE_DEPLOYMENT_GPT4, não aqui."
+        ),
     ),
 }
 
@@ -280,9 +344,47 @@ def _parse_active() -> tuple[str, ...]:
 
 ACTIVE_MODELS = _parse_active()
 
-STUDENTS = tuple(k for k in ACTIVE_MODELS if "student" in MODELS[k].roles)
-TEACHERS = tuple(k for k in ACTIVE_MODELS if "teacher" in MODELS[k].roles)
+
+def _parse_role(var: str, role: str) -> tuple[str, ...]:
+    """
+    Restringe um dos papéis, sem mexer no outro.
+
+    Existe para a máquina que só roda uma parte do pipeline. No ambiente dos
+    professores de API, `RMCQ_TEACHERS=gpt5` faz `python -m rmcq reflect` sem
+    argumento nenhum já significar "gpt5", em vez de "todos os professores
+    ativos" — que ali incluiria os modelos locais e tentaria carregar pesos que
+    não existem naquela máquina.
+    """
+    default = tuple(k for k in ACTIVE_MODELS if role in MODELS[k].roles)
+    raw = os.environ.get(var, "").strip()
+    if not raw or raw.lower() in ("all", "todos", "*"):
+        return default
+
+    keys = tuple(k.strip() for k in raw.split(",") if k.strip())
+    unknown = [k for k in keys if k not in MODELS]
+    if unknown:
+        raise ValueError(f"{var} contém modelo(s) desconhecido(s): {unknown}. Válidos: {list(ALL_MODELS)}")
+    wrong_role = [k for k in keys if role not in MODELS[k].roles]
+    if wrong_role:
+        raise ValueError(f"{var}: {wrong_role} não tem o papel {role!r} em MODELS.")
+    inactive = [k for k in keys if k not in ACTIVE_MODELS]
+    if inactive:
+        raise ValueError(
+            f"{var}: {inactive} não está em RMCQ_ACTIVE_MODELS "
+            f"(ativos: {list(ACTIVE_MODELS)}). Acrescente lá primeiro."
+        )
+    return tuple(k for k in ACTIVE_MODELS if k in set(keys))
+
+
+STUDENTS = _parse_role("RMCQ_STUDENTS", "student")
+TEACHERS = _parse_role("RMCQ_TEACHERS", "teacher")
 INACTIVE_MODELS = tuple(k for k in ALL_MODELS if k not in ACTIVE_MODELS)
+
+# Máquina que só sabe falar com API: sem GPU, sem pesos baixados. Com isto
+# ligado, pedir um modelo local falha com uma mensagem que explica o que houve,
+# em vez de estourar lá dentro do transformers depois de minutos procurando
+# checkpoint. É o modo do ambiente onde só a etapa `reflect` roda.
+API_ONLY = _env_str("RMCQ_API_ONLY", "0") in ("1", "true", "True")
 
 
 # ---------------------------------------------------------------------------
@@ -397,6 +499,46 @@ LOG_LEVEL = _env_str("RMCQ_LOG_LEVEL", "INFO").upper()
 CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES")
 
 
+# ---------------------------------------------------------------------------
+# Azure OpenAI (professores de API)
+# ---------------------------------------------------------------------------
+# Credenciais NÃO moram aqui: só os nomes das variáveis. O backend lê o
+# ambiente na hora de instanciar o cliente, para que nada de secreto possa
+# vazar num log de config ou num runtime_summary(). Ver guia-azure-openai-fgl.md.
+
+AZURE_ENDPOINT_VAR = "AZURE_OPENAI_ENDPOINT"
+AZURE_API_KEY_VAR = "AZURE_OPENAI_API_KEY"
+AZURE_API_VERSION = _env_str("AZURE_OPENAI_API_VERSION", "2024-10-21")
+
+# Quantas chamadas simultâneas. A etapa reflect manda lotes de até ~380 prompts;
+# sequencial isso levaria horas por lote. 4 é conservador o bastante para não
+# provocar 429 num deployment corporativo compartilhado.
+AZURE_CONCURRENCY = _env_int("RMCQ_AZURE_CONCURRENCY", 4)
+
+# Teto de tokens de RESPOSTA nos professores de API. Separado de MAX_NEW_TOKENS
+# porque lá 4096 é grátis (GPU local) e aqui é dinheiro.
+AZURE_MAX_TOKENS = _env_int("RMCQ_AZURE_MAX_TOKENS", 1024)
+
+# Piso de orçamento para modelos de reasoning: eles consomem tokens pensando
+# ANTES de escrever. Orçamento curto devolve content="" com
+# finish_reason="length". 0 desliga o cap por completo.
+AZURE_REASONING_MIN_TOKENS = _env_int("RMCQ_AZURE_REASONING_MIN_TOKENS", 4000)
+AZURE_REASONING_EFFORT = _env_str("RMCQ_AZURE_REASONING_EFFORT", "low")
+
+# Resposta vazia é falha de configuração, nunca abstenção do modelo.
+AZURE_FAIL_ON_EMPTY = _env_str("RMCQ_AZURE_FAIL_ON_EMPTY", "1") in ("1", "true", "True")
+AZURE_HEALTH_CHECK_CALLS = _env_int("RMCQ_AZURE_HEALTH_CHECK_CALLS", 5)
+AZURE_MAX_EMPTY_RATE = _env_float("RMCQ_AZURE_MAX_EMPTY_RATE", 0.2)
+
+AZURE_MAX_RETRIES = _env_int("RMCQ_AZURE_MAX_RETRIES", 6)
+AZURE_BACKOFF_BASE = _env_float("RMCQ_AZURE_BACKOFF_BASE", 2.0)
+AZURE_BACKOFF_MAX = _env_float("RMCQ_AZURE_BACKOFF_MAX", 60.0)
+
+# Cache em disco de cada chamada. Torna rerun após queda gratuito, o que importa
+# porque reflect só grava o JSONL depois que o lote inteiro volta.
+AZURE_CACHE = _env_str("RMCQ_AZURE_CACHE", "1") in ("1", "true", "True")
+
+
 def n_visible_gpus() -> int:
     """Quantas GPUs o .env expôs, sem importar torch."""
     val = CUDA_VISIBLE_DEVICES
@@ -436,6 +578,22 @@ def hf_token() -> str | None:
         if val:
             return val.strip()
     return None
+
+
+def azure_deployment(model_key: str) -> str:
+    """
+    Nome do deployment Azure de um modelo de API.
+
+    A env var indicada pelo próprio ModelSpec ganha; o default do spec é só um
+    palpite razoável. O nome nunca é fixo no código porque deployments
+    corporativos costumam ter prefixo/sufixo próprio ("fgl-gpt-5-prod").
+    """
+    spec = MODELS[model_key]
+    if not spec.is_api:
+        raise ValueError(f"{model_key!r} não é modelo de API (provider={spec.provider!r})")
+    var = spec.extra_kwargs.get("deployment_env", "")
+    default = spec.extra_kwargs.get("default_deployment", model_key)
+    return _env_str(var, default) if var else default
 
 
 def runtime_summary() -> dict[str, object]:

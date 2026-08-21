@@ -26,11 +26,11 @@ from rmcq.config import (
     INACTIVE_MODELS,
     K_CANDIDATES,
     K_VALUES,
-    SELFCONS_N,
     STUDENTS,
     TEACHERS,
     ensure_dirs,
 )
+from rmcq.data import EXCHANGE_DIRECTIONS
 from rmcq.store import get_logger, log_to_file
 
 log = get_logger(__name__)
@@ -44,7 +44,6 @@ EST_TOKENS = {
     "eval": {"in_base": 200, "in_per_reflection": {"simple": 130, "out": 260},
              "in_per_reflection_complex": 340},
     "retry": {"in": 210, "out": 260},
-    "selfcons": {"in": 180, "out": 260},
 }
 
 
@@ -87,6 +86,88 @@ def _print_plan(rows: Sequence[dict[str, Any]], est_out: float, est_in: float) -
             print(f"  {' '.join(bits):<70} {r['pending']:>7,} pendentes")
 
 
+def _print_totals(per_stage: list[tuple[str, int, float, float]]) -> None:
+    """Tabela agregada de custo do pipeline, uma linha por etapa."""
+    print(f"\n{'etapa':<12}{'pendentes':>12}{'tok. entrada':>15}{'tok. saída':>14}"
+          f"{'vLLM (h)':>11}{'hf (h)':>10}")
+    print("-" * 74)
+    t_pend = t_in = t_out = 0.0
+    for name, pending, est_out, est_in in per_stage:
+        t_pend += pending
+        t_in += est_in
+        t_out += est_out
+        if pending == 0 and est_out == 0:
+            print(f"{name:<12}{'—':>12}{'—':>15}{'—':>14}{'—':>11}{'—':>10}")
+            continue
+        print(f"{name:<12}{pending:>12,}{est_in:>15,.0f}{est_out:>14,.0f}"
+              f"{est_out / 1500 / 3600:>11.1f}{est_out / 150 / 3600:>10.1f}")
+    print("-" * 74)
+    print(f"{'TOTAL':<12}{t_pend:>12,.0f}{t_in:>15,.0f}{t_out:>14,.0f}"
+          f"{t_out / 1500 / 3600:>11.1f}{t_out / 150 / 3600:>10.1f}")
+    print("\nEstimativas de tokens são ordens de grandeza, para dimensionar a execução.")
+    print("Vazão: ~1500 tok/s é vLLM num 8B em bfloat16; ~150 tok/s é o backend hf.")
+
+
+# --- estimadores por etapa, compartilhados entre os subcomandos e o run-all ---
+
+
+def _est_baseline(args) -> tuple[list[dict[str, Any]], float, float]:
+    from rmcq.stages import baseline
+
+    rows = baseline.plan(args.students, args.datasets, getattr(args, "splits", None))
+    p = sum(r.get("pending", 0) for r in rows)
+    return rows, p * EST_TOKENS["baseline"]["out"], p * EST_TOKENS["baseline"]["in"]
+
+
+def _est_reflect(args) -> tuple[list[dict[str, Any]], float, float]:
+    from rmcq.stages import reflect
+
+    rows = reflect.plan(args.students, args.teachers, args.depths, args.datasets)
+    est = EST_TOKENS["reflect"]
+    out = sum(r.get("pending", 0) * est[r["depth"]]["out"] for r in rows)
+    inn = sum(r.get("pending", 0) * est[r["depth"]]["in"] for r in rows)
+    return rows, out, inn
+
+
+def _est_eval(args) -> tuple[list[dict[str, Any]], float, float]:
+    from rmcq.stages import evaluate
+
+    rows = evaluate.plan(args.students, args.teachers, args.depths, args.k, args.datasets)
+    est = EST_TOKENS["eval"]
+    out = sum(r.get("pending", 0) * est["in_per_reflection"]["out"] for r in rows)
+    inn = sum(
+        r.get("pending", 0) * (
+            est["in_base"] + r["k"] * (
+                est["in_per_reflection"]["simple"] if r["depth"] == "simple"
+                else est["in_per_reflection_complex"]
+            )
+        )
+        for r in rows
+    )
+    return rows, out, inn
+
+
+def _est_retry(args) -> tuple[list[dict[str, Any]], float, float]:
+    from rmcq.stages import conditions
+
+    rows = conditions.plan_retry(args.students, args.datasets)
+    p = sum(r.get("pending", 0) for r in rows)
+    return rows, p * EST_TOKENS["retry"]["out"], p * EST_TOKENS["retry"]["in"]
+
+
+# `index` e `analyze` não geram nada com modelo: custo de GPU zero.
+ESTIMATORS = {
+    "baseline": _est_baseline,
+    "reflect": _est_reflect,
+    "eval": _est_eval,
+    "retry": _est_retry,
+}
+
+# `selfcons` foi retirado da grade: ver rmcq/stages/conditions.py. O código
+# continua no repositório, mas não há caminho de execução para ele.
+RUN_ALL_STAGES = ("baseline", "index", "reflect", "eval", "retry", "analyze")
+
+
 def _pos_int(value: str) -> int:
     n = int(value)
     if n <= 0:
@@ -96,8 +177,10 @@ def _pos_int(value: str) -> int:
 
 def _add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--dry-run", action="store_true", help="estimar sem executar")
-    p.add_argument("--backend", choices=("vllm", "hf", "stub"), default=None,
-                   help="sobrepõe RMCQ_BACKEND do .env")
+    p.add_argument("--backend", choices=("vllm", "hf", "stub", "azure"), default=None,
+                   help=("sobrepõe RMCQ_BACKEND do .env. Professores de API "
+                         "(gpt5, gpt4) vão para o Azure de qualquer forma, "
+                         "exceto sob --backend stub"))
     p.add_argument("--limit", type=_pos_int, default=None,
                    help="só os N primeiros itens de cada arquivo (piloto)")
     p.add_argument("--log-file", action="store_true", help="espelhar o log em results/logs/")
@@ -123,7 +206,9 @@ def _add_grid(p: argparse.ArgumentParser, *, students=True, teachers=False,
                        help=f"padrão: todos ({', '.join(ALL_DATASETS)})")
     if splits:
         p.add_argument("--splits", nargs="+", default=None, metavar="SPLIT",
-                       help="padrão: todos os splits disponíveis")
+                       help=("padrão: train e test, os únicos que o laço consome. "
+                             "'all' inclui validation, reservada para escolher "
+                             "hiperparâmetros sem tocar no teste"))
 
 
 # ---------------------------------------------------------------------------
@@ -153,11 +238,8 @@ def cmd_smoke(args) -> int:
 def cmd_baseline(args) -> int:
     from rmcq.stages import baseline
 
-    rows = baseline.plan(args.students, args.datasets, args.splits)
     if args.dry_run:
-        pending = sum(r["pending"] for r in rows)
-        _print_plan(rows, pending * EST_TOKENS["baseline"]["out"],
-                    pending * EST_TOKENS["baseline"]["in"])
+        _print_plan(*_est_baseline(args))
         return 0
     baseline.run(args.students, args.datasets, args.splits, args.backend, args.limit)
     return 0
@@ -166,12 +248,8 @@ def cmd_baseline(args) -> int:
 def cmd_reflect(args) -> int:
     from rmcq.stages import reflect
 
-    rows = reflect.plan(args.students, args.teachers, args.depths, args.datasets)
     if args.dry_run:
-        est = EST_TOKENS["reflect"]
-        out = sum(r["pending"] * est[r["depth"]]["out"] for r in rows)
-        inn = sum(r["pending"] * est[r["depth"]]["in"] for r in rows)
-        _print_plan(rows, out, inn)
+        _print_plan(*_est_reflect(args))
         return 0
     reflect.run(args.students, args.teachers, args.depths, args.datasets,
                 args.backend, args.limit)
@@ -193,20 +271,8 @@ def cmd_eval(args) -> int:
     from rmcq.config import EMBEDDER
     from rmcq.stages import evaluate
 
-    rows = evaluate.plan(args.students, args.teachers, args.depths, args.k, args.datasets)
     if args.dry_run:
-        est = EST_TOKENS["eval"]
-        out = sum(r["pending"] * est["in_per_reflection"]["out"] for r in rows)
-        inn = sum(
-            r["pending"] * (
-                est["in_base"] + r["k"] * (
-                    est["in_per_reflection"]["simple"] if r["depth"] == "simple"
-                    else est["in_per_reflection_complex"]
-                )
-            )
-            for r in rows
-        )
-        _print_plan(rows, out, inn)
+        _print_plan(*_est_eval(args))
         return 0
     evaluate.run(args.students, args.teachers, args.depths, args.k, args.datasets,
                  args.backend, args.embedder or EMBEDDER, args.limit)
@@ -216,26 +282,40 @@ def cmd_eval(args) -> int:
 def cmd_retry(args) -> int:
     from rmcq.stages import conditions
 
-    rows = conditions.plan_retry(args.students, args.datasets)
     if args.dry_run:
-        pending = sum(r["pending"] for r in rows)
-        _print_plan(rows, pending * EST_TOKENS["retry"]["out"],
-                    pending * EST_TOKENS["retry"]["in"])
+        _print_plan(*_est_retry(args))
         return 0
     conditions.run_retry(args.students, args.datasets, args.backend, args.limit)
     return 0
 
 
-def cmd_selfcons(args) -> int:
-    from rmcq.stages import conditions
+def cmd_export_bundle(args) -> int:
+    from rmcq.stages import exchange
 
-    rows = conditions.plan_selfcons(args.students, args.datasets, args.n)
-    if args.dry_run:
-        gens = sum(r["generations"] for r in rows)
-        _print_plan(rows, gens * EST_TOKENS["selfcons"]["out"],
-                    sum(r["pending"] for r in rows) * EST_TOKENS["selfcons"]["in"])
-        return 0
-    conditions.run_selfcons(args.students, args.datasets, args.n, args.backend, args.limit)
+    result = exchange.export(
+        args.direction,
+        students=args.students, teachers=getattr(args, "teachers", None),
+        depths=getattr(args, "depths", None), datasets=args.datasets,
+    )
+    print(
+        f"\npacote {result['direction']}: {result['n_files']} arquivos, "
+        f"{result['rows']} linhas em {result['root']}"
+    )
+    print("\nAgora versione e envie:")
+    print(f"  git add {result['root'].relative_to(rmcq.ROOT)}")
+    print(f"  git commit -m 'exchange: pacote {result['direction']}'")
+    print("  git push origin azure-exchange")
+    return 0
+
+
+def cmd_import_bundle(args) -> int:
+    from rmcq.stages import exchange
+
+    result = exchange.load(args.direction, overwrite=args.overwrite)
+    print(
+        f"\n{result['files']} arquivos importados: {result['added']} linhas novas, "
+        f"{result['kept']} já existentes"
+    )
     return 0
 
 
@@ -243,7 +323,7 @@ def cmd_analyze(args) -> int:
     from rmcq.stages import analyze
 
     result = analyze.run(args.students, args.teachers, args.depths, args.k,
-                         args.datasets, args.n)
+                         args.datasets)
     print(f"\n{result['summary_path']}")
     print((result["summary_path"]).read_text(encoding="utf-8"))
     return 0
@@ -290,7 +370,6 @@ def cmd_status(args) -> int:
         ("reflect", lambda: reflect.plan()),
         ("eval", lambda: evaluate.plan()),
         ("retry", lambda: conditions.plan_retry()),
-        ("selfcons", lambda: conditions.plan_selfcons()),
     ):
         try:
             rows = fn()
@@ -330,41 +409,74 @@ def cmd_status(args) -> int:
     return 0
 
 
+def _selected_stages(args) -> list[str]:
+    """Etapas a executar, respeitando --stages e --skip e preservando a ordem."""
+    chosen = list(args.stages) if getattr(args, "stages", None) else list(RUN_ALL_STAGES)
+    skip = set(getattr(args, "skip", None) or ())
+    stages = [s for s in RUN_ALL_STAGES if s in set(chosen) and s not in skip]
+
+    # `eval` depende de `index`; rodar sem índice quebra com erro claro, mas é
+    # melhor avisar aqui do que depois de carregar um modelo de 8B.
+    if "eval" in stages and "index" not in stages:
+        from rmcq.config import EMBEDDER, INDEX_DIR
+
+        slug = (getattr(args, "embedder", None) or EMBEDDER).replace("/", "_")
+        if not any((INDEX_DIR / slug).rglob("neighbors.npz")):
+            log.warning(
+                "eval selecionado sem index, e não há índice em results/index/%s. "
+                "Rode `python -m rmcq index` antes, ou inclua 'index' em --stages.", slug,
+            )
+    return stages
+
+
 def cmd_run_all(args) -> int:
-    """Executa o pipeline inteiro na ordem correta, respeitando as dependências."""
+    """Executa o pipeline na ordem correta, respeitando as dependências."""
     from rmcq.config import EMBEDDER
     from rmcq.retrieval import build
     from rmcq.stages import analyze, baseline, conditions, evaluate, reflect
 
-    steps = [
-        ("baseline", lambda: baseline.run(args.students, args.datasets, None,
-                                          args.backend, args.limit)),
-        ("index", lambda: build(args.datasets, embedder=args.embedder or EMBEDDER)),
-        ("reflect", lambda: reflect.run(args.students, args.teachers, args.depths,
-                                        args.datasets, args.backend, args.limit)),
-        ("eval", lambda: evaluate.run(args.students, args.teachers, args.depths, args.k,
-                                      args.datasets, args.backend,
-                                      args.embedder or EMBEDDER, args.limit)),
-        ("retry", lambda: conditions.run_retry(args.students, args.datasets,
-                                               args.backend, args.limit)),
-        ("selfcons", lambda: conditions.run_selfcons(args.students, args.datasets,
-                                                     args.n, args.backend, args.limit)),
-        ("analyze", lambda: analyze.run(args.students, args.teachers, args.depths,
-                                        args.k, args.datasets, args.n)),
-    ]
+    runners = {
+        "baseline": lambda: baseline.run(args.students, args.datasets, None,
+                                         args.backend, args.limit),
+        "index": lambda: build(args.datasets, embedder=args.embedder or EMBEDDER),
+        "reflect": lambda: reflect.run(args.students, args.teachers, args.depths,
+                                       args.datasets, args.backend, args.limit),
+        "eval": lambda: evaluate.run(args.students, args.teachers, args.depths, args.k,
+                                     args.datasets, args.backend,
+                                     args.embedder or EMBEDDER, args.limit),
+        "retry": lambda: conditions.run_retry(args.students, args.datasets,
+                                              args.backend, args.limit),
+        "analyze": lambda: analyze.run(args.students, args.teachers, args.depths,
+                                       args.k, args.datasets),
+    }
+
+    stages = _selected_stages(args)
+    skipped = [s for s in RUN_ALL_STAGES if s not in stages]
 
     if args.dry_run:
-        print("run-all executaria, nesta ordem:")
-        for name, _ in steps:
-            print(f"  {name}")
-        print("\nUse --dry-run em cada subcomando para estimar o custo individual.")
+        print(f"etapas: {' -> '.join(stages)}")
+        if skipped:
+            print(f"puladas: {', '.join(skipped)}")
+        per_stage = []
+        for name in stages:
+            if name in ESTIMATORS:
+                rows, out, inn = ESTIMATORS[name](args)
+                per_stage.append((name, sum(r.get("pending", 0) for r in rows), out, inn))
+            else:
+                # index e analyze não chamam modelo.
+                per_stage.append((name, 0, 0.0, 0.0))
+        _print_totals(per_stage)
         return 0
 
-    for name, fn in steps:
+    log.info("run-all: %s", " -> ".join(stages))
+    if skipped:
+        log.info("puladas: %s", ", ".join(skipped))
+
+    for name in stages:
         log.info("=" * 72)
         log.info("run-all: %s", name)
         log.info("=" * 72)
-        fn()
+        runners[name]()
     return 0
 
 
@@ -379,7 +491,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Framework experimental da extensão do paper de Reflection.\n"
             "Ordem do pipeline: setup-data -> notebook 01 -> setup-models -> "
-            "baseline -> index -> reflect -> eval -> retry/selfcons -> analyze"
+            "baseline -> index -> reflect -> eval -> retry -> analyze"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
@@ -434,17 +546,27 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common(p)
     p.set_defaults(func=cmd_retry)
 
-    p = sub.add_parser("selfcons", help="controle: self-consistency com voto majoritário")
-    _add_grid(p)
-    _add_common(p)
-    p.add_argument("-n", type=_pos_int, default=SELFCONS_N,
-                   help=f"amostras por questão (padrão {SELFCONS_N})")
-    p.set_defaults(func=cmd_selfcons)
+    p = sub.add_parser(
+        "export-bundle",
+        help="empacotar dados para trocar com o ambiente Azure (via git)",
+    )
+    p.add_argument("--direction", required=True, choices=list(EXCHANGE_DIRECTIONS),
+                   help=("to-azure: perguntas + respostas dos alunos. "
+                         "from-azure: reflexões geradas pelos professores de API"))
+    _add_grid(p, teachers=True, depths=True)
+    p.set_defaults(func=cmd_export_bundle)
+
+    p = sub.add_parser(
+        "import-bundle",
+        help="conferir e materializar um pacote de troca recebido por git",
+    )
+    p.add_argument("--direction", required=True, choices=list(EXCHANGE_DIRECTIONS))
+    p.add_argument("--overwrite", action="store_true",
+                   help="substituir os arquivos locais em vez de juntar por uid")
+    p.set_defaults(func=cmd_import_bundle)
 
     p = sub.add_parser("analyze", help="etapa 5: métricas da seção 5 do Caderno")
     _add_grid(p, teachers=True, depths=True, ks=True)
-    p.add_argument("-n", type=_pos_int, default=SELFCONS_N,
-                   help="N de self-consistency a considerar")
     p.set_defaults(func=cmd_analyze)
 
     p = sub.add_parser("status", help="o que já foi feito e o que falta")
@@ -454,7 +576,11 @@ def build_parser() -> argparse.ArgumentParser:
     _add_grid(p, teachers=True, depths=True, ks=True)
     _add_common(p)
     p.add_argument("--embedder", default=None)
-    p.add_argument("-n", type=_pos_int, default=SELFCONS_N)
+    p.add_argument("--stages", nargs="+", default=None, choices=list(RUN_ALL_STAGES),
+                   metavar="ETAPA",
+                   help=f"quais rodar (padrão: todas — {', '.join(RUN_ALL_STAGES)})")
+    p.add_argument("--skip", nargs="+", default=None, choices=list(RUN_ALL_STAGES),
+                   metavar="ETAPA", help="quais pular, ex: --skip retry")
     p.set_defaults(func=cmd_run_all)
 
     return parser

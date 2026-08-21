@@ -24,8 +24,12 @@ dar. A acurácia da condição é reportada sobre o conjunto completo de teste,
 combinando os acertos do baseline com os itens recuperados no retry.
 
 ---------------------------------------------------------------------------
-SELF-CONSISTENCY
+SELF-CONSISTENCY — DESABILITADA
 ---------------------------------------------------------------------------
+
+**Esta condição não roda mais.** O código continua abaixo, documentado, mas as
+duas funções levantam RuntimeError e o subcomando saiu da CLI. O texto a seguir
+descreve o desenho original, para o caso de a condição voltar.
 
 N amostras com temperatura, voto majoritário. A literatura recente mostra
 self-consistency batendo debate multi-agente (88,2 contra 83,0 no GSM8K), então
@@ -202,8 +206,29 @@ def _wrong_uids(model: str, dataset: str) -> list[str]:
 
 
 # ===========================================================================
-# Self-consistency
+# Self-consistency — DESABILITADA
 # ===========================================================================
+#
+# A condição saiu da grade. O código abaixo fica no repositório como registro do
+# desenho (e para que reativar seja trocar a flag, não reescrever a etapa), mas
+# não há caminho de execução: o subcomando `selfcons` foi removido da CLI e as
+# duas funções abaixo levantam antes de tocar em GPU ou disco.
+#
+# Para reativar: pôr SELFCONS_ENABLED = True aqui e devolver o subcomando em
+# rmcq/cli.py (parser, ESTIMATORS, RUN_ALL_STAGES, runners de run-all).
+
+SELFCONS_ENABLED = False
+
+_SELFCONS_OFF = (
+    "self-consistency está desabilitada nesta versão do framework. "
+    "O código permanece em rmcq/stages/conditions.py, mas não é executável; "
+    "ver SELFCONS_ENABLED no mesmo arquivo."
+)
+
+
+def _require_selfcons() -> None:
+    if not SELFCONS_ENABLED:
+        raise RuntimeError(_SELFCONS_OFF)
 
 
 def plan_selfcons(
@@ -211,6 +236,7 @@ def plan_selfcons(
     datasets: Sequence[str] | None = None,
     n: int = SELFCONS_N,
 ) -> list[dict[str, Any]]:
+    _require_selfcons()
     rows = []
     for model in resolve_students(models):
         for dataset in resolve_datasets(datasets):
@@ -237,6 +263,7 @@ def run_selfcons(
 ) -> dict[str, Any]:
     from rmcq.common import build_answer_prompt
 
+    _require_selfcons()
     ensure_dirs()
     models = resolve_students(models)
     datasets = resolve_datasets(datasets)

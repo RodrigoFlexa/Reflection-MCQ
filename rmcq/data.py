@@ -64,10 +64,33 @@ def resolve_ks(values: Sequence[int] | None = None) -> tuple[int, ...]:
         return tuple(K_VALUES)
     return tuple(sorted(set(int(v) for v in values)))
 
+# Splits que o experimento realmente consome. O laço é treino -> reflexão ->
+# teste; validação não entra em nenhuma etapa. Ver DEFAULT_LOOP_SPLITS abaixo.
+DEFAULT_LOOP_SPLITS = ("train", "test")
 
-def resolve_splits(values: Sequence[str] | None, dataset: str) -> tuple[str, ...]:
+# Direções do pacote de troca com o ambiente dos professores de API.
+# "to-azure" leva as perguntas e as respostas dos alunos; "from-azure" traz as
+# reflexões de volta. Ver rmcq/stages/exchange.py.
+EXCHANGE_DIRECTIONS = ("to-azure", "from-azure")
+
+
+def resolve_splits(
+    values: Sequence[str] | None,
+    dataset: str,
+    default: Sequence[str] | None = None,
+) -> tuple[str, ...]:
+    """
+    Splits a processar.
+
+    Sem argumento, usa `default` (que as etapas passam como treino + teste), não
+    todos os splits: gerar baseline em validação custaria 28% da etapa sem que
+    nada a jusante consumisse o resultado. `--splits all` força os três.
+    """
     available = tuple(DATASETS[dataset].splits)
-    if not values or any(v.lower() in _ALL for v in values):
+    if not values:
+        wanted = set(default) if default else set(available)
+        return tuple(s for s in available if s in wanted)
+    if any(v.lower() in _ALL for v in values):
         return available
     # Silenciosamente ignora splits que o dataset não tem: o GSM8K não tem
     # validation, e pedir `--splits train validation test` não deve dar erro.
@@ -139,6 +162,25 @@ def retry_path(model: str, dataset: str) -> Path:
 
 def selfcons_path(model: str, dataset: str, n: int) -> Path:
     return SELFCONS_DIR / f"{model}__n{n}" / f"{dataset}.jsonl"
+
+
+def exchange_dir(direction: str) -> Path:
+    """
+    Raiz de um dos dois lados do pacote de troca.
+
+    Os nomes são por DIREÇÃO e não por caixa de entrada/saída de propósito:
+    "to-azure" e "from-azure" querem dizer a mesma coisa nas duas máquinas, e
+    "outbox" não.
+    """
+    from rmcq.config import EXCHANGE_DIR
+
+    if direction not in EXCHANGE_DIRECTIONS:
+        raise ValueError(f"direção {direction!r} desconhecida. Válidas: {EXCHANGE_DIRECTIONS}")
+    return EXCHANGE_DIR / direction
+
+
+def exchange_manifest_path(direction: str) -> Path:
+    return exchange_dir(direction) / "manifest.json"
 
 
 def index_paths(dataset: str, embedder: str) -> dict[str, Path]:

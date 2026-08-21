@@ -24,6 +24,21 @@ from rmcq.config import CHOICE_LABELS
 # ===========================================================================
 # 1. PROMPTS  (Caderno, seção 4 — não editar sem versionar)
 # ===========================================================================
+#
+# REVISÃO 2026-08-21 — os dois prompts de perspectiva "teacher" foram
+# reescritos para a rodada com professor GPT-5. Mudou o enquadramento (saiu o
+# parágrafo "You are reviewing the response of another language model"); a
+# lista de tópicos pedidos é a mesma.
+#
+# CONSEQUÊNCIA METODOLÓGICA: as reflexões já gravadas em
+# results/reflections/{aluno}__{professor local}__{depth}/ foram geradas com o
+# texto ANTIGO. Comparar "GPT-5 como professor" com elas mistura duas mudanças
+# — o professor e o prompt. Para uma comparação limpa, regere as reflexões dos
+# professores locais com este texto (apague os diretórios e rode `reflect` de
+# novo); para uma comparação apenas indicativa, registre a ressalva.
+#
+# Os prompts de perspectiva "student" (autorreflexão) NÃO mudaram: eles só
+# entram quando aluno == professor, o que não acontece com professor de API.
 
 ANSWER_PROMPT = """You are answering a multiple-choice question.
 
@@ -70,46 +85,60 @@ Write a detailed reflection on your previous response. Analyze:
 If the answer was correct, explain which parts of your reasoning were reliable and whether your confidence was appropriately calibrated.
 If the answer was incorrect, explain what aspect of your reasoning should change rather than merely noting the correct outcome.
 Do not answer the question again, identify the correct option, or speculate about what the correct answer is.""",
-    ("simple", "teacher"): """You are reviewing the response of another language model (the student model) to a multiple-choice question. Your task is to write a reflection about that model's response, addressed to it, so that it can do better on similar questions later. You are not the one answering the question.
+    ("simple", "teacher"): """You are given:
+1. The original multiple-choice question.
+2. The student's previous answer.
+3. Feedback indicating whether the student's answer was correct or incorrect.
 
-You are given:
-1 - The original multiple-choice question.
-2 - The student model's previous answer (with its reasoning).
-3 - Feedback indicating whether that answer was correct or incorrect.
+Write a brief reflection (3–6 sentences) on the student's previous response.
 
-Write a brief reflection (3-6 sentences) on the student model's response. Discuss:
-- The main factors that influenced its answer.
-- Any assumptions or uncertainties visible in its reasoning.
-- How the feedback supports or challenges its approach.
-- One lesson it should apply when answering similar questions in the future.
+Discuss:
 
-If the answer was correct, explain why its approach was effective and note any remaining uncertainty.
+- The main factors that influenced their answer.
+
+- Any assumptions or uncertainties they had.
+
+- How the feedback supports or challenges their approach.
+
+- One lesson they would apply when answering similar questions in the future.
+
+If the answer was correct, explain why their approach was effective and note any remaining uncertainty.
+
 If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
-Do not answer the question yourself or identify which option is correct.""",
-    ("complex", "teacher"): """You are reviewing the response of another language model (the student model) to a multiple-choice question. Your task is to write a reflection about that model's response, addressed to it, so that it can do better on similar questions later. You are not the one answering the question.
 
-You are given:
-1 - The original multiple-choice question.
-2 - The student model's previous answer (with its reasoning).
-3 - Feedback indicating whether that answer was correct or incorrect.
+**Do not answer the question again or identify which option is correct.**""",
+    ("complex", "teacher"): """You are given:
+1. The original multiple-choice question.
+2. The student's previous answer.
+3. Feedback indicating whether the student's answer was correct or incorrect.
 
-Write a detailed reflection on the student model's response. Analyze:
-- The reasoning strategy it used to reach its answer.
-- The evidence or cues from the question that influenced its decision.
-- Any assumptions, heuristics, or uncertainties that affected its judgment.
-- How the feedback confirms or contradicts its reasoning.
-- Whether its conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.
-- How it should improve its reasoning process for similar problems in the future.
+Write a detailed reflection on the student's previous response.
 
-If the answer was correct, explain which parts of its reasoning were reliable and whether its confidence was appropriately calibrated.
-If the answer was incorrect, explain what aspect of its reasoning should change rather than merely noting the correct outcome.
-Do not answer the question yourself, identify the correct option, or speculate about what the correct answer is.""",
+Analyze:
+
+- The reasoning strategy they used to reach their answer.
+
+- The evidence or cues from the question that influenced their decision.
+
+- Any assumptions, heuristics, or uncertainties that affected their judgment.
+
+- How the feedback confirms or contradicts their reasoning.
+
+- Whether their conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.
+
+- How they would improve their reasoning process for similar problems in the future.
+
+If the answer was correct, explain which parts of their reasoning were reliable and whether their confidence was appropriately calibrated.
+
+If the answer was incorrect, explain what aspect of their reasoning should change rather than merely noting the correct outcome.
+
+**Do not answer the question again, identify the correct option, or speculate about what the correct answer is.**""",
 }
 
 FEEDBACK_CORRECT = "Feedback: Your answer was CORRECT."
 FEEDBACK_INCORRECT = "Feedback: Your answer was INCORRECT."
-FEEDBACK_CORRECT_TEACHER = "Feedback: The student model's answer was CORRECT."
-FEEDBACK_INCORRECT_TEACHER = "Feedback: The student model's answer was INCORRECT."
+FEEDBACK_CORRECT_TEACHER = "Feedback: The student's answer was CORRECT."
+FEEDBACK_INCORRECT_TEACHER = "Feedback: The student's answer was INCORRECT."
 
 
 # --- Injeção das k reflexões recuperadas (era [A PREENCHER] no Caderno) -----
@@ -215,7 +244,7 @@ def build_reflection_prompt(
     instruction = REFLECTION_PROMPTS[(depth, perspective)]
     if perspective == "teacher":
         feedback = FEEDBACK_CORRECT_TEACHER if was_correct else FEEDBACK_INCORRECT_TEACHER
-        answer_header = "Student model's previous answer:"
+        answer_header = "Student's previous answer:"
     else:
         feedback = FEEDBACK_CORRECT if was_correct else FEEDBACK_INCORRECT
         answer_header = "Your previous answer:"

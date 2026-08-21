@@ -1,0 +1,146 @@
+{
+  "direction": "to-azure",
+  "created_at": "2026-08-21T00:46:23",
+  "git_sha": "981013a3a008011762ebbc519838ea16700edc43",
+  "split": "train",
+  "students": [
+    "phi4-mini",
+    "qwen3-8b",
+    "llama3-8b",
+    "mistral-7b"
+  ],
+  "datasets": [
+    "gsm8k",
+    "aqua",
+    "logiqa2",
+    "arc",
+    "openbookqa"
+  ],
+  "files": {
+    "splits/gsm8k/train.jsonl": {
+      "rows": 366,
+      "sha256": "1fc3bb22eef78ae695dfa30afb100de724b6941f922c1d55765ffb4c521cdbb7",
+      "bytes": 318234
+    },
+    "splits/aqua/train.jsonl": {
+      "rows": 383,
+      "sha256": "688aa4bd90600d1c9f10c88f53d6c98e1b1bf93e19a34563b7de235b2d1c0c4f",
+      "bytes": 299998
+    },
+    "splits/logiqa2/train.jsonl": {
+      "rows": 372,
+      "sha256": "3fc2eba6f802716d9ad999baeacd7923b0d0bde1caf6f6b8eb554a2b24365e47",
+      "bytes": 469189
+    },
+    "splits/arc/train.jsonl": {
+      "rows": 286,
+      "sha256": "de818c5a2442a0c1f57fcaccba96280a9f3e9084ba4afeda11c7d075fa778cce",
+      "bytes": 167980
+    },
+    "splits/openbookqa/train.jsonl": {
+      "rows": 356,
+      "sha256": "8a0c9ce76d3059ce36b997bdb22595b402ccada349d059bd1132b886133af1da",
+      "bytes": 164655
+    },
+    "baseline/phi4-mini/gsm8k_train.jsonl": {
+      "rows": 366,
+      "sha256": "312f1f4b59c937a07fbd5dfcfdebc146e25b81102472079e606e1385de10b9a7",
+      "bytes": 642449
+    },
+    "baseline/phi4-mini/aqua_train.jsonl": {
+      "rows": 383,
+      "sha256": "9e12060ef4ad62417ac6f2f290eb9946511942f7d72756d8c39c433e4563d6e0",
+      "bytes": 967697
+    },
+    "baseline/phi4-mini/logiqa2_train.jsonl": {
+      "rows": 372,
+      "sha256": "2ecd6e8054a9eef6b3ea01855da9836b4ad8234588fdfc6930fb48d71d65f94e",
+      "bytes": 1153747
+    },
+    "baseline/phi4-mini/arc_train.jsonl": {
+      "rows": 286,
+      "sha256": "60218502ae7d8dd8f162bc2e8b2f876a56b98ca3bb48d3bd458ddce378302a7d",
+      "bytes": 516535
+    },
+    "baseline/phi4-mini/openbookqa_train.jsonl": {
+      "rows": 356,
+      "sha256": "a5501ee456db25d9f17e9d6fc58f1c0f69ed16caf1bdbb59e1f3228a6d62b306",
+      "bytes": 546585
+    },
+    "baseline/qwen3-8b/gsm8k_train.jsonl": {
+      "rows": 366,
+      "sha256": "c5355a99aa423088ad715bd66fd6b80b16c31cf46384fa42ba358f9028f91c8a",
+      "bytes": 715562
+    },
+    "baseline/qwen3-8b/aqua_train.jsonl": {
+      "rows": 383,
+      "sha256": "ea220dd26b00eb076e6a54bb7a66e0b7f1b68bbd057bccea504f24cee3039bc0",
+      "bytes": 1307572
+    },
+    "baseline/qwen3-8b/logiqa2_train.jsonl": {
+      "rows": 372,
+      "sha256": "e74ac5e69706b8753af6b08bb58745a6e3954f9358c705a8f1d4f9f198879dfc",
+      "bytes": 1612332
+    },
+    "baseline/qwen3-8b/arc_train.jsonl": {
+      "rows": 286,
+      "sha256": "50f97fc33d28ed576cbe377b2c98265a274c07933ca0b38bc7282b48d31a62ae",
+      "bytes": 730620
+    },
+    "baseline/qwen3-8b/openbookqa_train.jsonl": {
+      "rows": 356,
+      "sha256": "68a71087906aed4c43c3e44aa70e8e3d4cd5e333b33c13ab076f5885d7ab94e1",
+      "bytes": 815257
+    },
+    "baseline/llama3-8b/gsm8k_train.jsonl": {
+      "rows": 366,
+      "sha256": "221c9495cb6b8dc82a9206116484a642bcdcd0733c8beff4bd60ad77b7ab161e",
+      "bytes": 613774
+    },
+    "baseline/llama3-8b/aqua_train.jsonl": {
+      "rows": 383,
+      "sha256": "5d3999b50879855abfe021c4c00416cc958a066c28422787a124185ba3f1c8a1",
+      "bytes": 948815
+    },
+    "baseline/llama3-8b/logiqa2_train.jsonl": {
+      "rows": 372,
+      "sha256": "697b598dbe7752ca1c00579f5cb49e8619acbb2da36f6a61f1b210c2a1bd97d3",
+      "bytes": 834293
+    },
+    "baseline/llama3-8b/arc_train.jsonl": {
+      "rows": 286,
+      "sha256": "29ac8633e771a3361caaed5c5c387e612bd2193a00e63ca12220e7220c60e9e0",
+      "bytes": 439692
+    },
+    "baseline/llama3-8b/openbookqa_train.jsonl": {
+      "rows": 356,
+      "sha256": "5b578af00607fa23b72407c34ca0528f8fb1897c85684f99ac3cf69425d858b6",
+      "bytes": 481651
+    },
+    "baseline/mistral-7b/gsm8k_train.jsonl": {
+      "rows": 366,
+      "sha256": "8bedc6c6738287d1c2fab0583021f0d0c9532e4876cd21266f34668f295e8819",
+      "bytes": 509125
+    },
+    "baseline/mistral-7b/aqua_train.jsonl": {
+      "rows": 383,
+      "sha256": "e0ddb73034360f9ef427bde713eaa79a2b5ed2a42ce2f185176b465747cac486",
+      "bytes": 625099
+    },
+    "baseline/mistral-7b/logiqa2_train.jsonl": {
+      "rows": 372,
+      "sha256": "493b2a25e688e09776b4e4dd829b12c3ef5fd3cb7c75b69a7406f3835d12c4b2",
+      "bytes": 723903
+    },
+    "baseline/mistral-7b/arc_train.jsonl": {
+      "rows": 286,
+      "sha256": "e9fa7493f8527c100f20c0690411b4b9467a1ea7228027059669405d2202e169",
+      "bytes": 347740
+    },
+    "baseline/mistral-7b/openbookqa_train.jsonl": {
+      "rows": 356,
+      "sha256": "f18161efe7f6e3176f53ccdebf1a41f09b510881c9066137d7a81c5d2f6ba840",
+      "bytes": 388939
+    }
+  }
+}

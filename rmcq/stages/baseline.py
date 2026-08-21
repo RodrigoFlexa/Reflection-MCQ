@@ -13,6 +13,12 @@ reflexão. É a base de comparação de tudo, e é reaproveitada duas vezes:
 A ordem dos laços não é arbitrária: modelo por fora, dataset por dentro. Carregar
 um modelo de 8B custa de 30 s a alguns minutos; fazer isso por dataset
 multiplicaria esse custo por cinco sem nenhum ganho.
+
+**Splits: treino e teste, não validação.** O laço experimental é treino ->
+reflexão -> teste, e nenhuma etapa a jusante lê validação. Gerar baseline nela
+custaria 28% desta etapa para produzir arquivos que ninguém abre. A validação
+fica reservada para escolher hiperparâmetros — k, embedder — sem tocar no teste;
+quando isso for necessário, `--splits validation` gera sob demanda.
 """
 
 from __future__ import annotations
@@ -23,7 +29,14 @@ from rmcq.backends import GenParams, get_backend
 from rmcq.common import make_record
 from rmcq.common import build_answer_prompt
 from rmcq.config import COND_BASELINE, SEED, STUDENT_GEN, ensure_dirs
-from rmcq.data import baseline_path, load_split, resolve_datasets, resolve_splits, resolve_students
+from rmcq.data import (
+    DEFAULT_LOOP_SPLITS,
+    baseline_path,
+    load_split,
+    resolve_datasets,
+    resolve_splits,
+    resolve_students,
+)
 from rmcq.store import JsonlStore, Timer, get_logger
 
 log = get_logger(__name__)
@@ -43,7 +56,7 @@ def plan(
     rows = []
     for model in resolve_students(models):
         for dataset in resolve_datasets(datasets):
-            for split in resolve_splits(splits, dataset):
+            for split in resolve_splits(splits, dataset, DEFAULT_LOOP_SPLITS):
                 items = load_split(dataset, split)
                 store = JsonlStore(baseline_path(model, dataset, split))
                 done = store.done_keys()
@@ -81,7 +94,7 @@ def run(
         work = [
             (d, s)
             for d in datasets
-            for s in resolve_splits(splits, d)
+            for s in resolve_splits(splits, d, DEFAULT_LOOP_SPLITS)
             if _pending(model, d, s, limit)
         ]
         if not work:
