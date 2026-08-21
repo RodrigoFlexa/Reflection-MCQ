@@ -22,6 +22,7 @@ Uso:
     python sanity_gpt5.py                              # 3 questões de arc, phi4-mini, simple
     python sanity_gpt5.py -n 5 --dataset gsm8k
     python sanity_gpt5.py --depth complex --student llama3-8b
+    python sanity_gpt5.py --teacher gpt-4o-petrobras   # outro deployment
     python sanity_gpt5.py --only-wrong                 # só respostas que o aluno errou
     python sanity_gpt5.py --backend stub               # sem tocar na API, só para ver o formato
 """
@@ -49,7 +50,9 @@ def parse_args(argv=None):
     )
     p.add_argument("-n", "--num", type=int, default=3, help="quantas questões (padrão: 3)")
     p.add_argument("--student", default="phi4-mini", help="aluno cujas respostas serão refletidas")
-    p.add_argument("--teacher", default="gpt5", help="professor (padrão: gpt5)")
+    p.add_argument("--teacher", default=None,
+                   help="professor; por padrão o primeiro de RMCQ_TEACHERS "
+                        "(ex.: gpt-5-mini-petrobras)")
     p.add_argument("--dataset", default="arc", help="dataset (padrão: arc)")
     p.add_argument("--depth", default="simple", choices=("simple", "complex"))
     p.add_argument("--only-wrong", action="store_true",
@@ -80,6 +83,14 @@ def main(argv=None) -> int:
     if args.only_wrong and args.only_right:
         print("--only-wrong e --only-right se excluem.", file=sys.stderr)
         return 2
+
+    if args.teacher is None:
+        from rmcq.config import TEACHERS
+        if not TEACHERS:
+            print("nenhum professor ativo. Defina RMCQ_AZURE_DEPLOYMENTS e "
+                  "RMCQ_TEACHERS no .env, ou passe --teacher.", file=sys.stderr)
+            return 2
+        args.teacher = TEACHERS[0]
 
     # --- carregar questões e respostas do aluno --------------------------
     try:

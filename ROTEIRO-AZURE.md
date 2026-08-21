@@ -1,4 +1,4 @@
-# Roteiro: professor GPT-5 via Azure OpenAI
+# Roteiro: professor GPT-5 (Azure OpenAI) via troca por git
 
 Marque cada `- [ ]` conforme concluir. Cada passo traz o **comando completo** e o
 **critério de aceite** — o que você deve ver na tela se deu certo.
@@ -21,7 +21,7 @@ baseline, sem eval — os três comandos que existem lá são `import-bundle`,
 
 ```
 🖥️ LOCAL                                         🏢 PTB
-baseline (train) ──┐                              ┌── reflect (gpt5)
+baseline (train) ──┐                              ┌── reflect (deployment)
                    │  exchange/to-azure/          │
                    └────────► git ────────────────┘
                                                   │
@@ -32,21 +32,24 @@ baseline (train) ──┐                              ┌── reflect (gpt5)
 **Volume:** 4 alunos × 2 profundidades × 1.763 questões de treino =
 **14.104 chamadas ao GPT-5**. O passo 6 é um piloto obrigatório justamente por isso.
 
-> O `gpt4` continua registrado em `rmcq/config.py` e funciona do mesmo jeito —
-> basta trocar `gpt5` por `gpt4` (ou passar os dois) quando você quiser. Esta
-> rodada é só GPT-5.
+> Ao longo do roteiro o deployment aparece como `gpt-5-mini-petrobras`. **Troque pelo seu nome
+> real** onde aparecer. Para rodar mais de um, liste os dois em
+> `RMCQ_AZURE_DEPLOYMENTS` e em `RMCQ_TEACHERS` — cada um ganha seus próprios
+> diretórios, sem misturar.
 
 ---
 
 ## Duas armadilhas que valem a leitura antes de começar
 
-> **1. `RMCQ_ACTIVE_MODELS` precisa listar os 6 modelos nas duas máquinas.**
-> `--teachers gpt5` é validado contra a lista de professores ativos, que sai de
-> `RMCQ_ACTIVE_MODELS`. Se `gpt5` não estiver lá, o comando morre com
+> **1. `RMCQ_ACTIVE_MODELS` precisa listar todos os modelos nas duas máquinas.**
+> `--teachers gpt-5-mini-petrobras` é validado contra a lista de professores ativos, que sai
+> de `RMCQ_ACTIVE_MODELS`. Se o deployment não estiver lá, o comando morre com
 > "professor desconhecido". Use sempre:
-> `RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt5,gpt4`
+> `RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt-5-mini-petrobras`
+>
+> E o nome do deployment precisa estar antes em `RMCQ_AZURE_DEPLOYMENTS`.
 
-> **2. Na PTB, o `.env` precisa de `RMCQ_TEACHERS=gpt5` e `RMCQ_API_ONLY=1`.**
+> **2. Na PTB, o `.env` precisa de `RMCQ_TEACHERS=gpt-5-mini-petrobras` e `RMCQ_API_ONLY=1`.**
 > Sem o primeiro, `reflect` sem `--teachers` viraria *todos* os professores
 > ativos — incluindo os quatro modelos locais, que aquela máquina tentaria
 > carregar sem GPU e sem pesos. O segundo é a rede de segurança: com ele, pedir
@@ -88,10 +91,11 @@ grep -n RMCQ_ACTIVE_MODELS .env
 Edite a linha para:
 
 ```
-RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt5,gpt4
+RMCQ_AZURE_DEPLOYMENTS=gpt-5-mini-petrobras
+RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt-5-mini-petrobras
 ```
 
-> ✅ **Aceite:** `python -m rmcq status` lista `gpt5` e `gpt4` entre os professores.
+> ✅ **Aceite:** `python -m rmcq status` lista o deployment entre os professores.
 > Aqui eles não precisam de credencial nenhuma: existem só para que `eval` e
 > `analyze` saibam ler as reflexões que voltarem.
 
@@ -105,27 +109,27 @@ RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt5,gpt4
 python -c "from rmcq.backends import available_backends; print(available_backends())"
 ```
 
-> ✅ **Aceite:** `azure` aparece como `indisponível: falta AZURE_OPENAI_ENDPOINT...`
+> ✅ **Aceite:** `azure` aparece como `indisponível: falta AZURE_OPENAI_BASE_URL...`
 > — nesta máquina isso está **correto**, é lá que a credencial mora.
 
 - [ ] **1.2** Ensaio com o backend falso (não toca no Azure, não custa nada)
 
 ```bash
-python -m rmcq reflect --students phi4-mini --teachers gpt5 \
+python -m rmcq reflect --students phi4-mini --teachers gpt-5-mini-petrobras \
   --depths simple --datasets arc --limit 3 --backend stub
 ```
 
-> ✅ **Aceite:** cria `results/reflections/phi4-mini__gpt5__simple/arc.jsonl` com
+> ✅ **Aceite:** cria `results/reflections/phi4-mini__gpt-5-mini-petrobras__simple/arc.jsonl` com
 > 3 linhas. Confira que o papel ficou certo:
 > ```bash
-> python -c "import json; r=json.loads(open('results/reflections/phi4-mini__gpt5__simple/arc.jsonl').readline()); print(r['condition'], r['reflection_perspective'], r['teacher_model'])"
+> python -c "import json; r=json.loads(open('results/reflections/phi4-mini__gpt-5-mini-petrobras__simple/arc.jsonl').readline()); print(r['condition'], r['reflection_perspective'], r['teacher_model'])"
 > ```
-> deve imprimir `external_reflection teacher gpt5`.
+> deve imprimir `external_reflection teacher gpt-5-mini-petrobras`.
 
 - [ ] **1.3** Apagar o ensaio, para não misturar dado falso com dado real
 
 ```bash
-rm -rf results/reflections/phi4-mini__gpt5__simple
+rm -rf results/reflections/phi4-mini__gpt-5-mini-petrobras__simple
 ```
 
 ---
@@ -193,29 +197,46 @@ cp .env.example .env
 Edite `.env` e preencha **só** estas linhas (o resto pode ficar como está):
 
 ```
-AZURE_OPENAI_ENDPOINT=https://<seu-recurso>.openai.azure.com/
+# A URL vai COMO ESTÁ — é o modo que o gateway corporativo exige, e é o
+# AZURE_OPENAI_BASE_URL do config-v1.x.ini dos exemplos oficiais.
+# Deixe AZURE_OPENAI_ENDPOINT vazio: os dois são mutuamente exclusivos.
+AZURE_OPENAI_BASE_URL=<copie do config-v1.x.ini>
 AZURE_OPENAI_API_KEY=<sua-chave>
-AZURE_OPENAI_API_VERSION=2024-10-21
+AZURE_OPENAI_API_VERSION=<copie do config-v1.x.ini>
 
-RMCQ_AZURE_DEPLOYMENT_GPT5=<nome-exato-do-deployment-gpt5>
+# Certificado raiz corporativo (o petrobras-ca-root.pem dos exemplos oficiais).
+# Copie o arquivo para a raiz do repo; sem ele a inspeção TLS derruba a conexão.
+AZURE_OPENAI_CA_BUNDLE=petrobras-ca-root.pem
 
-RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt5,gpt4
+# O nome do DEPLOYMENT vira a chave do modelo e nomeia os diretórios de saída:
+RMCQ_AZURE_DEPLOYMENTS=gpt-5-mini-petrobras
+
+RMCQ_ACTIVE_MODELS=phi4-mini,llama3-8b,qwen3-8b,mistral-7b,gpt-5-mini-petrobras
 RMCQ_BACKEND=azure
 RMCQ_AZURE_CONCURRENCY=4
 
-# Esta máquina só gera reflexões, e só com o GPT-5:
-RMCQ_TEACHERS=gpt5
+# Esta máquina só gera reflexões, e só com esse deployment:
+RMCQ_TEACHERS=gpt-5-mini-petrobras
 RMCQ_API_ONLY=1
 ```
 
 > As duas últimas linhas são o que torna esta máquina segura de operar:
-> `RMCQ_TEACHERS=gpt5` faz `reflect` sem argumento já significar "gpt5", e
+> `RMCQ_TEACHERS=gpt-5-mini-petrobras` faz `reflect` sem argumento já significar esse
+> deployment, e
 > `RMCQ_API_ONLY=1` recusa qualquer modelo local com uma mensagem explicando o
 > motivo, em vez de tentar carregar pesos que não existem aqui.
 
-> ⚠️ **O nome do deployment não é o nome do modelo.** Deployments corporativos
-> costumam ter prefixo próprio (`fgl-gpt-5-prod`). Pegue o nome exato no portal
-> do Azure OpenAI, em *Deployments*.
+> ⚠️ **O nome do deployment é a identidade do modelo aqui.** Ele vira a chave do
+> modelo e nomeia os diretórios de saída
+> (`results/reflections/{aluno}__gpt-5-mini-petrobras__{depth}/`). Não existe apelido genérico
+> de propósito: uma chave `gpt5` apontando para um deployment `-mini` produziria
+> resultados rotulados como se fossem do GPT-5 completo. Pegue o nome exato no
+> portal do Azure, em *Deployments*, ou no `MODEL_DEPLOYMENT_ID` dos exemplos.
+>
+> ⚠️ **`BASE_URL`, não `ENDPOINT`.** São coisas diferentes: com `ENDPOINT` o SDK
+> monta `/openai/deployments/...` sozinho; com `BASE_URL` ele usa a sua URL como
+> está. Gateway corporativo precisa da segunda — usar a errada dá **404 Resource
+> Not Found**, a mesma mensagem de nome de deployment errado.
 > ✅ **Aceite:** `git status --short` **não** lista o `.env` (o `.gitignore` já o cobre).
 
 - [ ] **3.4** Confirmar que a credencial funciona
@@ -237,7 +258,7 @@ print('alunos     :', STUDENTS)
 print('só API     :', API_ONLY)"
 ```
 
-> ✅ **Aceite:** `professores: ('gpt5',)`, os 4 alunos listados, `só API: True`.
+> ✅ **Aceite:** `professores: ('gpt-5-mini-petrobras',)`, os 4 alunos listados, `só API: True`.
 > Os alunos aparecem porque as respostas deles vêm prontas no pacote — nenhum
 > peso é carregado.
 
@@ -274,7 +295,7 @@ ls results/baseline/*/
 - [ ] **5.1** Uma pergunta, um modelo, para validar a ligação
 
 ```bash
-python -m rmcq smoke --models gpt5
+python -m rmcq smoke --models gpt-5-mini-petrobras
 ```
 
 > ✅ **Aceite:** responde `B` (Júpiter).
@@ -344,7 +365,7 @@ python sanity_gpt5.py -n 2 --depth complex --only-wrong
 python -m rmcq reflect --dry-run
 ```
 
-Sem `--teachers` porque `RMCQ_TEACHERS=gpt5` no `.env` já resolve isso.
+Sem `--teachers` porque `RMCQ_TEACHERS=gpt-5-mini-petrobras` no `.env` já resolve isso.
 
 > ✅ **Aceite:** o cabeçalho mostra exatamente:
 > ```
@@ -354,7 +375,7 @@ Sem `--teachers` porque `RMCQ_TEACHERS=gpt5` no `.env` já resolve isso.
 > tokens de entrada       7,334,080  (estimado)
 > tokens de saída         4,019,640  (estimado)
 > ```
-> Se aparecer 80 configurações, `RMCQ_TEACHERS` não pegou e o `gpt4` entrou junto.
+> Se aparecerem mais configurações do que isso, `RMCQ_TEACHERS` não pegou e outros professores entraram junto.
 >
 > **Compare com o orçamento que você tem no Azure antes de seguir.** Multiplique
 > pelo preço por 1M de tokens do seu contrato — e lembre que num modelo de
@@ -391,7 +412,7 @@ python -m rmcq reflect --log-file
 - [ ] **7.3** Conferir a colheita
 
 ```bash
-for d in results/reflections/*gpt5*/; do echo -n "$d "; cat $d/*.jsonl | wc -l; done
+for d in results/reflections/*petrobras*/; do echo -n "$d "; cat $d/*.jsonl | wc -l; done
 ```
 
 > ✅ **Aceite:** 8 diretórios (4 alunos × 2 profundidades), 1.763 linhas cada.
@@ -408,7 +429,7 @@ python -m rmcq export-bundle --direction from-azure
 
 > ✅ **Aceite:** `pacote from-azure: 40 arquivos, 14104 linhas` — 8 diretórios
 > (4 alunos × 2 profundidades) × 5 datasets. Sem `--teachers` porque
-> `RMCQ_TEACHERS=gpt5` já resolve. Se o log avisar de combinações faltando,
+> `RMCQ_TEACHERS=gpt-5-mini-petrobras` já resolve. Se o log avisar de combinações faltando,
 > volte à Fase 7.
 
 - [ ] **8.2** Commitar e enviar
@@ -443,10 +464,10 @@ python -m rmcq import-bundle --direction from-azure
 - [ ] **9.2** Conferir que chegaram onde o `eval` procura
 
 ```bash
-ls results/reflections/ | grep gpt5
+ls results/reflections/ | grep petrobras
 ```
 
-> ✅ **Aceite:** 8 diretórios `{aluno}__gpt5__{simple|complex}`.
+> ✅ **Aceite:** 8 diretórios `{aluno}__gpt-5-mini-petrobras__{simple|complex}`.
 
 - [ ] **9.3** Índice de similaridade (pule se já existe)
 
@@ -460,17 +481,17 @@ python -m rmcq index
 - [ ] **9.4** Ensaio do `eval` antes da rodada longa
 
 ```bash
-python -m rmcq eval --students phi4-mini --teachers gpt5 --depths simple \
+python -m rmcq eval --students phi4-mini --teachers gpt-5-mini-petrobras --depths simple \
   -k 3 --datasets arc --limit 10 --backend stub
 ```
 
-> ✅ **Aceite:** `gpt5/simple/k3/arc: 10 respostas, acerto N%` sem erro de
-> reflexão ausente. Depois: `rm -rf results/eval/phi4-mini__gpt5__simple__k3`.
+> ✅ **Aceite:** `gpt-5-mini-petrobras/simple/k3/arc: 10 respostas, acerto N%` sem erro de
+> reflexão ausente. Depois: `rm -rf results/eval/phi4-mini__gpt-5-mini-petrobras__simple__k3`.
 
 - [ ] **9.5** Avaliação de verdade (usa a GPU local)
 
 ```bash
-python -m rmcq eval --teachers gpt5 --log-file
+python -m rmcq eval --teachers gpt-5-mini-petrobras --log-file
 ```
 
 > ✅ **Aceite:** um diretório por configuração em `results/eval/`.
@@ -479,12 +500,12 @@ python -m rmcq eval --teachers gpt5 --log-file
 - [ ] **9.6** Análise
 
 ```bash
-python -m rmcq analyze --teachers gpt5
+python -m rmcq analyze --teachers gpt-5-mini-petrobras
 cat results/analysis/summary.md
 ```
 
 > ✅ **Aceite:** `results/analysis/accuracy.csv` e `utility.csv` ganham linhas com
-> `teacher_model` = `gpt5`, comparáveis lado a lado com os professores pequenos.
+> `teacher_model` = `gpt-5-mini-petrobras`, comparáveis lado a lado com os professores pequenos.
 > **É esta comparação que responde a pergunta do experimento:** um professor
 > grande produz reflexões mais úteis para um aluno pequeno do que outro modelo pequeno?
 
@@ -523,15 +544,16 @@ git commit -m "Retira o pacote de troca do rastreamento"
 
 | Sintoma | Causa provável | Correção |
 |---|---|---|
-| `professor desconhecido: ['gpt5']` | `RMCQ_ACTIVE_MODELS` sem `gpt5` | acrescente `gpt5,gpt4` no `.env` |
-| `credencial do Azure ausente` | `.env` não lido, ou variável vazia | rode a partir da raiz do repo; confira `AZURE_OPENAI_ENDPOINT` |
+| `professor desconhecido` | falta em `RMCQ_AZURE_DEPLOYMENTS` ou `RMCQ_ACTIVE_MODELS` | acrescente o nome do deployment nas duas |
+| `AZURE_OPENAI_API_KEY ausente` | `.env` não lido, ou variável vazia | rode a partir da raiz do repo |
 | `resposta vazia ... finish_reason='length'` | reasoning gastou o orçamento pensando | `RMCQ_AZURE_REASONING_MIN_TOKENS=8000` |
-| `DeploymentNotFound` | nome do deployment errado | pegue o nome exato no portal do Azure |
+| `404 Resource Not Found` | usou `ENDPOINT` onde precisa `BASE_URL`, ou nome errado | rode `python diag_azure.py` |
+| erro de SSL / certificado | falta o PEM da CA corporativa | `AZURE_OPENAI_CA_BUNDLE=petrobras-ca-root.pem` |
 | muitos 429 / execução lenta | concorrência alta demais | `RMCQ_AZURE_CONCURRENCY=2` |
 | `pacote não confere (sha256)` | transporte corrompeu o arquivo | refaça o `export-bundle` na origem |
 | `gateway rejeitou 'seed'` (aviso) | deployment não aceita o parâmetro | nenhuma — o código remove e segue |
-| tentaria carregar Llama-3 na PTB | `RMCQ_TEACHERS` não definido | ponha `RMCQ_TEACHERS=gpt5` e `RMCQ_API_ONLY=1` no `.env` da PTB |
-| `RMCQ_API_ONLY=1: esta máquina só roda modelos de API` | pediu modelo local na PTB | é a proteção agindo — use `--teachers gpt5` |
+| tentaria carregar Llama-3 na PTB | `RMCQ_TEACHERS` não definido | ponha `RMCQ_TEACHERS=gpt-5-mini-petrobras` e `RMCQ_API_ONLY=1` no `.env` da PTB |
+| `RMCQ_API_ONLY=1: esta máquina só roda modelos de API` | pediu modelo local na PTB | é a proteção agindo — passe o deployment em `--teachers` |
 | a reflexão entrega o gabarito | GPT-5 desobedeceu o prompt | **pare**; ajuste `REFLECTION_PROMPTS` em `rmcq/common.py` |
 
 ---
@@ -542,7 +564,8 @@ git commit -m "Retira o pacote de troca do rastreamento"
 |---|---|
 | [rmcq/backends/azure.py](rmcq/backends/azure.py) | cliente Azure OpenAI: reasoning vs chat, retry, cache, vazio = falha |
 | [rmcq/stages/exchange.py](rmcq/stages/exchange.py) | empacota/verifica/materializa o que atravessa por git |
-| [rmcq/config.py](rmcq/config.py) | registro de `gpt5`/`gpt4` e as variáveis `RMCQ_AZURE_*` |
+| [rmcq/config.py](rmcq/config.py) | registro dinâmico dos deployments e as variáveis `RMCQ_AZURE_*` |
+| [diag_azure.py](diag_azure.py) | separa as causas do 404: URL, nome do deployment, api-version |
 | [rmcq/backends/__init__.py](rmcq/backends/__init__.py) | roteia modelo de API para o Azure, ignorando `--backend` |
 | [sanity_gpt5.py](sanity_gpt5.py) | teste de sanidade: imprime reflexões reais do GPT-5 |
 | [requirements-azure.txt](requirements-azure.txt) | dependências da máquina PTB (sem torch) |

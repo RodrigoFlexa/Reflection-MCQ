@@ -264,50 +264,52 @@ MODELS: dict[str, ModelSpec] = {
         roles=("student", "teacher"),
         notes="Apache 2.0. O repo traz consolidated.safetensors (14 GB), ignorado.",
     ),
-    # --- Professores grandes, via Azure OpenAI -----------------------------
-    # Só PROFESSOR: roles não inclui "student", então STUDENTS os exclui
-    # automaticamente e nenhuma etapa vai pedir baseline ou eval deles.
-    #
-    # repo_id é um pseudo-URI: não existe repositório no Hub para baixar. O que
-    # importa é o nome do DEPLOYMENT no Azure, que vem da env var indicada em
-    # extra_kwargs["deployment_env"] e nunca fica fixo no código (guia, seção
-    # "Configuração"). Rodam apenas no ambiente que tem as credenciais; aqui
-    # existem no registro para que `eval` e `analyze` saibam ler as reflexões
-    # que voltaram por git sem precisar de credencial nenhuma.
-    "gpt5": ModelSpec(
-        key="gpt5",
-        repo_id="azure://gpt-5",
-        params="n/d",
-        roles=("teacher",),
-        provider="azure",
-        extra_kwargs={
-            "deployment_env": "RMCQ_AZURE_DEPLOYMENT_GPT5",
-            "default_deployment": "gpt-5",
-        },
-        notes=(
-            "Modelo de reasoning: usa max_completion_tokens, rejeita temperature "
-            "e seed, e gasta parte do orçamento pensando antes de responder. "
-            "Resposta vazia com finish_reason='length' quer dizer orçamento "
-            "curto — suba RMCQ_AZURE_REASONING_MIN_TOKENS."
-        ),
-    ),
-    "gpt4": ModelSpec(
-        key="gpt4",
-        repo_id="azure://gpt-4",
-        params="n/d",
-        roles=("teacher",),
-        provider="azure",
-        extra_kwargs={
-            "deployment_env": "RMCQ_AZURE_DEPLOYMENT_GPT4",
-            "default_deployment": "gpt-4o",
-        },
-        notes=(
-            "Modelo de chat clássico: max_tokens, temperature e seed normais. "
-            "O deployment real (gpt-4o, gpt-4-turbo, gpt-4.1...) é escolhido "
-            "por RMCQ_AZURE_DEPLOYMENT_GPT4, não aqui."
-        ),
-    ),
 }
+
+# ---------------------------------------------------------------------------
+# Professores de API: o nome do modelo É o nome do deployment
+# ---------------------------------------------------------------------------
+# Não há chave genérica ("gpt5") apontando para um deployment configurável. A
+# razão é de proveniência: a chave do modelo nomeia os diretórios de saída
+# (results/reflections/{aluno}__{professor}__{depth}/), então uma chave "gpt5"
+# apontando para o deployment "gpt-5-mini-petrobras" produziria resultados
+# rotulados como se fossem do GPT-5 completo. Pior, como toda etapa é retomável
+# por uid, trocar o deployment por trás da mesma chave preencheria as lacunas
+# do MESMO arquivo com outro modelo, sem registro de qual linha veio de qual.
+#
+# Então os deployments são declarados por nome, e viram chaves de modelo:
+#
+#     RMCQ_AZURE_DEPLOYMENTS=gpt-5-mini-petrobras,gpt-4o-petrobras
+#
+# e os diretórios saem como phi4-mini__gpt-5-mini-petrobras__simple. O que está
+# escrito é o que rodou.
+
+AZURE_DEPLOYMENTS = tuple(
+    d.strip() for d in os.environ.get("RMCQ_AZURE_DEPLOYMENTS", "").split(",") if d.strip()
+)
+
+
+def _register_azure_deployments() -> None:
+    """Cria um ModelSpec por deployment declarado, com a chave = nome do deployment."""
+    for nome in AZURE_DEPLOYMENTS:
+        if nome in MODELS:
+            raise ValueError(
+                f"RMCQ_AZURE_DEPLOYMENTS: {nome!r} colide com um modelo já registrado."
+            )
+        MODELS[nome] = ModelSpec(
+            key=nome,
+            repo_id=f"azure://{nome}",
+            params="n/d",
+            # Só PROFESSOR: sem "student", STUDENTS os exclui sozinho e nenhuma
+            # etapa vai pedir baseline ou eval deles.
+            roles=("teacher",),
+            provider="azure",
+            extra_kwargs={"deployment": nome},
+            notes="Deployment Azure OpenAI declarado em RMCQ_AZURE_DEPLOYMENTS.",
+        )
+
+
+_register_azure_deployments()
 
 ALL_MODELS = tuple(MODELS)
 
@@ -506,8 +508,24 @@ CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES")
 # ambiente na hora de instanciar o cliente, para que nada de secreto possa
 # vazar num log de config ou num runtime_summary(). Ver guia-azure-openai-fgl.md.
 
+# Duas formas de dizer para onde ir, mutuamente exclusivas (o SDK recusa as
+# duas juntas), e a diferença não é cosmética:
+#
+#   AZURE_OPENAI_ENDPOINT  -> o SDK monta {endpoint}/openai/deployments/{modelo}/...
+#   AZURE_OPENAI_BASE_URL  -> o SDK usa a URL COMO ESTÁ
+#
+# Gateway corporativo costuma exigir a segunda: a URL não segue o padrão
+# <recurso>.openai.azure.com, e montar o caminho padrão em cima dela dá 404
+# "Resource Not Found" — a mesma mensagem de nome de deployment errado.
+# BASE_URL tem precedência quando as duas estiverem definidas.
 AZURE_ENDPOINT_VAR = "AZURE_OPENAI_ENDPOINT"
+AZURE_BASE_URL_VAR = "AZURE_OPENAI_BASE_URL"
 AZURE_API_KEY_VAR = "AZURE_OPENAI_API_KEY"
+
+# Certificado raiz da autoridade corporativa, em PEM. Sem ele, a inspeção TLS
+# do proxy derruba a conexão por certificado desconhecido. Caminho relativo é
+# resolvido a partir da raiz do repositório.
+AZURE_CA_BUNDLE = _env_str("AZURE_OPENAI_CA_BUNDLE", "")
 # 2024-10-21 é GA de outubro de 2024 e NÃO conhece a família gpt-5: com ela
 # a rota do deployment não existe e o Azure responde 404 "Resource Not
 # Found", sem dizer que o problema é a versão. Default numa de 2025.
@@ -587,16 +605,14 @@ def azure_deployment(model_key: str) -> str:
     """
     Nome do deployment Azure de um modelo de API.
 
-    A env var indicada pelo próprio ModelSpec ganha; o default do spec é só um
-    palpite razoável. O nome nunca é fixo no código porque deployments
-    corporativos costumam ter prefixo/sufixo próprio ("fgl-gpt-5-prod").
+    Para os modelos declarados em RMCQ_AZURE_DEPLOYMENTS a chave e o deployment
+    são a mesma string — é justamente isso que faz o nome do diretório de saída
+    dizer a verdade sobre qual modelo escreveu aquelas reflexões.
     """
     spec = MODELS[model_key]
     if not spec.is_api:
         raise ValueError(f"{model_key!r} não é modelo de API (provider={spec.provider!r})")
-    var = spec.extra_kwargs.get("deployment_env", "")
-    default = spec.extra_kwargs.get("default_deployment", model_key)
-    return _env_str(var, default) if var else default
+    return spec.extra_kwargs.get("deployment") or model_key
 
 
 def runtime_summary() -> dict[str, object]:

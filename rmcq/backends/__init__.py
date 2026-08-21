@@ -8,6 +8,7 @@ from rmcq.backends.base import Backend, Generation, GenParams
 from rmcq.config import (
     API_ONLY,
     AZURE_API_KEY_VAR,
+    AZURE_BASE_URL_VAR,
     AZURE_ENDPOINT_VAR,
     BACKEND,
     MODELS,
@@ -28,7 +29,13 @@ def available_backends() -> dict[str, str]:
     try:
         import openai  # noqa: F401
 
-        missing = [v for v in (AZURE_ENDPOINT_VAR, AZURE_API_KEY_VAR) if not os.environ.get(v)]
+        # A URL pode vir de qualquer uma das duas variáveis; a chave é obrigatória.
+        tem_url = os.environ.get(AZURE_BASE_URL_VAR) or os.environ.get(AZURE_ENDPOINT_VAR)
+        missing = []
+        if not tem_url:
+            missing.append(f"{AZURE_BASE_URL_VAR} (ou {AZURE_ENDPOINT_VAR})")
+        if not os.environ.get(AZURE_API_KEY_VAR):
+            missing.append(AZURE_API_KEY_VAR)
         status["azure"] = (
             f"indisponível: falta {', '.join(missing)} no .env" if missing
             else f"ok (openai {openai.__version__})"
@@ -85,8 +92,8 @@ def get_backend(model_key: str, kind: str | None = None, **kwargs) -> Backend:
             f"RMCQ_API_ONLY=1: esta máquina só roda modelos de API, e {model_key!r} "
             f"exige pesos locais e GPU.\n"
             f"Se a intenção era usar um professor de API, passe-o explicitamente "
-            f"(ex.: --teachers gpt5) ou fixe RMCQ_TEACHERS no .env.\n"
-            f"Modelos de API registrados: {[k for k, s in MODELS.items() if s.is_api]}"
+            f"(--teachers <nome-do-deployment>) ou fixe RMCQ_TEACHERS no .env.\n"
+            f"Deployments registrados: {[k for k, s in MODELS.items() if s.is_api] or 'nenhum — defina RMCQ_AZURE_DEPLOYMENTS'}"
         )
 
     if kind == "azure":

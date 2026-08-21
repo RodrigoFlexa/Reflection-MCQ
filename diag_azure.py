@@ -32,9 +32,10 @@ import rmcq  # noqa: F401 — carrega o .env
 from rmcq.config import (
     AZURE_API_KEY_VAR,
     AZURE_API_VERSION,
+    AZURE_BASE_URL_VAR,
+    AZURE_CA_BUNDLE,
+    AZURE_DEPLOYMENTS,
     AZURE_ENDPOINT_VAR,
-    MODELS,
-    azure_deployment,
 )
 
 import os
@@ -92,32 +93,48 @@ def erro_curto(payload) -> str:
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Diagnostica a conexão com o Azure OpenAI.")
-    p.add_argument("--deployment", default=None, help="nome do deployment (padrão: o do .env)")
-    p.add_argument("--model", default="gpt5", help="chave do modelo em config.MODELS")
+    p.add_argument("--deployment", default=None,
+                   help="nome do deployment (padrão: o primeiro de RMCQ_AZURE_DEPLOYMENTS)")
     args = p.parse_args(argv)
 
+    base_url = os.environ.get(AZURE_BASE_URL_VAR, "").strip().rstrip("/")
     endpoint = os.environ.get(AZURE_ENDPOINT_VAR, "").strip().rstrip("/")
     chave = os.environ.get(AZURE_API_KEY_VAR, "").strip()
-    alvo = args.deployment or (azure_deployment(args.model) if args.model in MODELS else args.model)
+    alvo = args.deployment or (AZURE_DEPLOYMENTS[0] if AZURE_DEPLOYMENTS else None)
+
+    # BASE_URL é usada como está; ENDPOINT recebe o caminho padrão do Azure.
+    raiz = base_url or (f"{endpoint}/openai" if endpoint else "")
+    usa_base_url = bool(base_url)
 
     print(f"\n{LINHA}\n  DIAGNÓSTICO AZURE OPENAI\n{LINHA}")
-    print(f"  endpoint     {endpoint or '(VAZIO)'}")
+    print(f"  base_url     {base_url or '(vazio)'}")
+    print(f"  endpoint     {endpoint or '(vazio)'}")
+    print(f"  em uso       {raiz or '(NENHUM)'}   <- {'base_url, como está' if usa_base_url else 'endpoint + /openai'}")
     print(f"  api-key      {mascarar(chave)}")
-    print(f"  api-version  {AZURE_API_VERSION}   (do .env)")
+    print(f"  api-version  {AZURE_API_VERSION}")
+    print(f"  certificado  {AZURE_CA_BUNDLE or '(padrão do sistema)'}")
     print(f"  deployment   {alvo!r}")
     print(LINHA)
 
-    if not endpoint or not chave:
-        print("\n  ERRO: endpoint ou chave ausente no .env. Preencha antes de diagnosticar.\n")
+    if not raiz or not chave:
+        print("\n  ERRO: falta URL ou chave no .env. Preencha antes de diagnosticar.\n")
+        return 2
+    if not alvo:
+        print("\n  ERRO: nenhum deployment. Defina RMCQ_AZURE_DEPLOYMENTS no .env,")
+        print("        ou passe --deployment <nome>.\n")
         return 2
 
     # --- checagem 1: formato do endpoint --------------------------------
     print("\n[1] Formato do endpoint")
-    if "/openai" in endpoint or endpoint.count("/") > 2:
-        print(f"  ✗ PROBLEMA: o endpoint tem caminho sobrando.")
+    if usa_base_url:
+        print(f"  ✓ usando base_url — a URL vai como está, sem o SDK montar caminho.")
+        print(f"    Se os exemplos oficiais usam AZURE_OPENAI_BASE_URL, é este o modo certo.")
+    elif "/openai" in endpoint:
+        print(f"  ✗ PROBLEMA: o endpoint tem /openai sobrando.")
         print(f"    tem  : {endpoint}")
         print(f"    deve : https://<recurso>.openai.azure.com")
-        print("    O SDK acrescenta /openai/deployments/... sozinho.")
+        print(f"    Se a sua URL é de gateway corporativo, ela vai em "
+              f"{AZURE_BASE_URL_VAR}, não em {AZURE_ENDPOINT_VAR}.")
     elif not endpoint.startswith("https://"):
         print(f"  ✗ PROBLEMA: deve começar com https://")
     else:
@@ -127,7 +144,7 @@ def main(argv=None) -> int:
     print("\n[2] Deployments que este recurso realmente tem")
     achou_lista = False
     for ver in ("2023-05-15", "2024-10-21", API_VERSIONS[0]):
-        status, payload = http(f"{endpoint}/openai/deployments?api-version={ver}", chave)
+        status, payload = http(f"{raiz}/deployments?api-version={ver}", chave)
         if status == 200 and isinstance(payload, dict):
             nomes = [d.get("id") for d in payload.get("data", [])]
             achou_lista = True
@@ -137,7 +154,7 @@ def main(argv=None) -> int:
                     print(f"    - {n}{marca}")
                 if alvo not in nomes:
                     print(f"\n  ✗ CAUSA ENCONTRADA: {alvo!r} não está na lista acima.")
-                    print("    Corrija RMCQ_AZURE_DEPLOYMENT_GPT5 no .env com um dos nomes listados.")
+                    print("    Corrija RMCQ_AZURE_DEPLOYMENTS no .env com um dos nomes listados.")
             else:
                 print("    (o recurso não devolveu nenhum deployment)")
             break
@@ -150,7 +167,7 @@ def main(argv=None) -> int:
     corpo = {"messages": [{"role": "user", "content": "hi"}], "max_completion_tokens": 4000}
     funcionou = []
     for ver in API_VERSIONS:
-        url = f"{endpoint}/openai/deployments/{alvo}/chat/completions?api-version={ver}"
+        url = f"{raiz}/deployments/{alvo}/chat/completions?api-version={ver}"
         status, payload = http(url, chave, corpo)
         if status == 200:
             print(f"  ✓ {ver:24} FUNCIONA")
@@ -181,7 +198,9 @@ def main(argv=None) -> int:
     print("       e o portal do Azure > seu recurso > Deployments.")
     print("    2. O endpoint aponta para outro recurso (o deployment pode existir,")
     print("       mas em outro).")
-    print("    3. A chave é de um recurso diferente do endpoint.")
+    print("    3. A chave é de um recurso diferente da URL.")
+    print(f"    4. A URL deveria estar em {AZURE_BASE_URL_VAR} (usada como está)")
+    print("       em vez de AZURE_OPENAI_ENDPOINT — confira o config-v1.x.ini oficial.")
     print()
     return 1
 

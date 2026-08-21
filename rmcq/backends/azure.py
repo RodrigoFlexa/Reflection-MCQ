@@ -31,12 +31,15 @@ import random
 import re
 import threading
 import time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Sequence
 
 from rmcq.backends.base import Backend, Generation, GenParams
 from rmcq.config import (
     AZURE_API_KEY_VAR,
+    AZURE_BASE_URL_VAR,
+    AZURE_CA_BUNDLE,
     AZURE_API_VERSION,
     AZURE_BACKOFF_BASE,
     AZURE_BACKOFF_MAX,
@@ -177,26 +180,76 @@ class AzureBackend(Backend):
                 "Rode: pip install -r requirements-azure.txt"
             ) from exc
 
-        endpoint = os.environ.get(AZURE_ENDPOINT_VAR, "").strip()
         api_key = os.environ.get(AZURE_API_KEY_VAR, "").strip()
-        missing = [
-            var for var, val in ((AZURE_ENDPOINT_VAR, endpoint), (AZURE_API_KEY_VAR, api_key))
-            if not val
-        ]
-        if missing:
+        base_url = os.environ.get(AZURE_BASE_URL_VAR, "").strip()
+        endpoint = os.environ.get(AZURE_ENDPOINT_VAR, "").strip()
+
+        if not api_key:
             raise RuntimeError(
-                f"credencial do Azure ausente: {', '.join(missing)}. "
-                f"Defina no .env desta máquina (veja .env.example) — nunca commite o .env."
+                f"{AZURE_API_KEY_VAR} ausente. Defina no .env desta máquina "
+                f"(veja .env.example) — nunca commite o .env."
+            )
+        if not base_url and not endpoint:
+            raise RuntimeError(
+                f"defina {AZURE_BASE_URL_VAR} ou {AZURE_ENDPOINT_VAR} no .env.\n"
+                f"  {AZURE_BASE_URL_VAR}: a URL é usada como está — é o que gateway "
+                f"corporativo costuma exigir.\n"
+                f"  {AZURE_ENDPOINT_VAR}: o SDK monta /openai/deployments/<modelo>/... "
+                f"em cima dela (padrão <recurso>.openai.azure.com)."
             )
 
-        # max_retries=0: o retry é nosso, porque precisamos intercalar a queda de
-        # parâmetro rejeitado com o backoff.
-        return AzureOpenAI(
-            azure_endpoint=endpoint,
-            api_key=api_key,
-            api_version=AZURE_API_VERSION,
-            max_retries=0,
-        )
+        kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "api_version": AZURE_API_VERSION,
+            # O retry é nosso: precisamos intercalar a queda de parâmetro
+            # rejeitado com o backoff, e o SDK não sabe fazer isso.
+            "max_retries": 0,
+        }
+        # Os dois são mutuamente exclusivos no SDK; base_url ganha porque é a
+        # forma explícita — quem a define está dizendo "a URL é exatamente esta".
+        if base_url:
+            kwargs["base_url"] = base_url
+            if endpoint:
+                log.warning(
+                    "%s e %s definidos; usando %s (são mutuamente exclusivos no SDK)",
+                    AZURE_BASE_URL_VAR, AZURE_ENDPOINT_VAR, AZURE_BASE_URL_VAR,
+                )
+        else:
+            kwargs["azure_endpoint"] = endpoint
+
+        http_client = self._make_http_client()
+        if http_client is not None:
+            kwargs["http_client"] = http_client
+
+        return AzureOpenAI(**kwargs)
+
+    def _make_http_client(self) -> Any:
+        """
+        Cliente HTTP com o certificado raiz corporativo, quando houver.
+
+        Rede com inspeção TLS apresenta um certificado assinado pela CA da
+        empresa. Sem esse PEM, a verificação falha e a conexão nem chega ao
+        Azure — erro de SSL que não se parece nada com um problema de API.
+        """
+        if not AZURE_CA_BUNDLE:
+            return None
+
+        from rmcq import ROOT
+
+        caminho = Path(AZURE_CA_BUNDLE)
+        if not caminho.is_absolute():
+            caminho = ROOT / caminho
+        if not caminho.exists():
+            raise RuntimeError(
+                f"AZURE_OPENAI_CA_BUNDLE aponta para {caminho}, que não existe.\n"
+                f"Copie o PEM da CA raiz para essa máquina, ou deixe a variável "
+                f"vazia se a rede não fizer inspeção TLS."
+            )
+
+        import httpx
+
+        log.info("usando certificado raiz corporativo: %s", caminho)
+        return httpx.Client(verify=str(caminho), timeout=httpx.Timeout(600.0, connect=30.0))
 
     # -- montagem da chamada ------------------------------------------------
 
