@@ -29,6 +29,7 @@ import json
 import os
 import random
 import re
+import ssl
 import threading
 import time
 from pathlib import Path
@@ -249,7 +250,15 @@ class AzureBackend(Backend):
         import httpx
 
         log.info("usando certificado raiz corporativo: %s", caminho)
-        return httpx.Client(verify=str(caminho), timeout=httpx.Timeout(600.0, connect=30.0))
+        try:
+            return httpx.Client(verify=str(caminho), timeout=httpx.Timeout(600.0, connect=30.0))
+        except ssl.SSLError as exc:
+            # "[X509] PEM lib" não diz nada a quem só copiou um arquivo errado.
+            raise RuntimeError(
+                f"{caminho} não é um certificado PEM válido ({exc}).\n"
+                f"O arquivo precisa começar com '-----BEGIN CERTIFICATE-----'. "
+                f"Confira se a cópia veio inteira e não em formato DER/PKCS#12."
+            ) from exc
 
     # -- montagem da chamada ------------------------------------------------
 
