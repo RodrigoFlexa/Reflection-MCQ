@@ -508,7 +508,10 @@ CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES")
 
 AZURE_ENDPOINT_VAR = "AZURE_OPENAI_ENDPOINT"
 AZURE_API_KEY_VAR = "AZURE_OPENAI_API_KEY"
-AZURE_API_VERSION = _env_str("AZURE_OPENAI_API_VERSION", "2024-10-21")
+# 2024-10-21 é GA de outubro de 2024 e NÃO conhece a família gpt-5: com ela
+# a rota do deployment não existe e o Azure responde 404 "Resource Not
+# Found", sem dizer que o problema é a versão. Default numa de 2025.
+AZURE_API_VERSION = _env_str("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
 
 # Quantas chamadas simultâneas. A etapa reflect manda lotes de até ~380 prompts;
 # sequencial isso levaria horas por lote. 4 é conservador o bastante para não

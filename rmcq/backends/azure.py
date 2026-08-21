@@ -345,6 +345,7 @@ class AzureBackend(Backend):
                 if self._maybe_drop_parameter(exc, kwargs):
                     continue  # não conta como tentativa: a chamada mudou
                 if not _is_transient(exc) or attempt == AZURE_MAX_RETRIES:
+                    self._explain_fatal(exc)
                     raise
                 delay = min(AZURE_BACKOFF_MAX, AZURE_BACKOFF_BASE**attempt) * (0.5 + random.random())
                 time.sleep(max(delay, _retry_after_seconds(exc)))
@@ -357,6 +358,38 @@ class AzureBackend(Backend):
             return gen
 
         raise RuntimeError(f"chamada ao Azure falhou após {AZURE_MAX_RETRIES} tentativas") from last_exc
+
+    def _explain_fatal(self, exc: Exception) -> None:
+        """
+        Loga a tradução de um erro que não vai se resolver sozinho.
+
+        O 404 do Azure é o caso que mais custa tempo: a mensagem do servidor é
+        "Resource Not Found" para três causas bem diferentes, e sem contexto
+        não dá para saber qual é.
+        """
+        status = _status_of(exc)
+        if status == 404:
+            log.error(
+                "404 do Azure para deployment=%r em %s.\n"
+                "  'Resource Not Found' aqui tem três causas possíveis:\n"
+                "   1. o nome do deployment não existe nesse recurso (mais comum);\n"
+                "   2. AZURE_OPENAI_ENDPOINT aponta para outro recurso, ou veio com\n"
+                "      caminho sobrando (deve ser só https://<recurso>.openai.azure.com/);\n"
+                "   3. AZURE_OPENAI_API_VERSION é antiga demais para este modelo —\n"
+                "      api-version=%s; a família gpt-5 precisa de uma de 2025.\n"
+                "  Rode `python diag_azure.py` para descobrir qual das três é.",
+                self.deployment, os.environ.get(AZURE_ENDPOINT_VAR, "?"), AZURE_API_VERSION,
+            )
+        elif status == 401:
+            log.error(
+                "401 do Azure: AZURE_OPENAI_API_KEY inválida, ou é a chave de um "
+                "recurso diferente do endpoint configurado."
+            )
+        elif status == 403:
+            log.error(
+                "403 do Azure: a chave é válida mas não tem permissão neste "
+                "deployment, ou há restrição de rede/IP no recurso."
+            )
 
     def _to_generation(self, response: Any, latency_s: float) -> Generation:
         choice = response.choices[0] if response.choices else None
