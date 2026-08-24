@@ -53,6 +53,7 @@ Write a brief reflection (3-6 sentences) on your previous response. Discuss:
 
 If the answer was correct, explain why your approach was effective and note any remaining uncertainty.
 If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
+End with one line starting with "Takeaway:" stating a single, general rule of thumb you would apply to a different question of this kind, phrased so it makes sense without knowing what this question was about.
 Do not answer the question again or identify which option is correct.""",
     ("complex", "student"): """You are given:
 1 - The original multiple-choice question.
@@ -69,6 +70,7 @@ Write a detailed reflection on your previous response. Analyze:
 
 If the answer was correct, explain which parts of your reasoning were reliable and whether your confidence was appropriately calibrated.
 If the answer was incorrect, explain what aspect of your reasoning should change rather than merely noting the correct outcome.
+End with one line starting with "Takeaway:" stating a single, general rule of thumb you would apply to a different question of this kind, phrased so it makes sense without knowing what this question was about.
 Do not answer the question again, identify the correct option, or speculate about what the correct answer is.""",
     ("simple", "teacher"): """You are reviewing the response of another language model (the student model) to a multiple-choice question. Your task is to write a reflection about that model's response, addressed to it, so that it can do better on similar questions later. You are not the one answering the question.
 
@@ -85,6 +87,7 @@ Write a brief reflection (3-6 sentences) on the student model's response. Discus
 
 If the answer was correct, explain why its approach was effective and note any remaining uncertainty.
 If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
+End with one line starting with "Takeaway:" stating a single, general rule of thumb it should apply to a different question of this kind, phrased so it makes sense without knowing what this question was about.
 Do not answer the question yourself or identify which option is correct.""",
     ("complex", "teacher"): """You are reviewing the response of another language model (the student model) to a multiple-choice question. Your task is to write a reflection about that model's response, addressed to it, so that it can do better on similar questions later. You are not the one answering the question.
 
@@ -103,6 +106,7 @@ Write a detailed reflection on the student model's response. Analyze:
 
 If the answer was correct, explain which parts of its reasoning were reliable and whether its confidence was appropriately calibrated.
 If the answer was incorrect, explain what aspect of its reasoning should change rather than merely noting the correct outcome.
+End with one line starting with "Takeaway:" stating a single, general rule of thumb it should apply to a different question of this kind, phrased so it makes sense without knowing what this question was about.
 Do not answer the question yourself, identify the correct option, or speculate about what the correct answer is.""",
 }
 
@@ -114,41 +118,93 @@ FEEDBACK_INCORRECT_TEACHER = "Feedback: The student model's answer was INCORRECT
 
 # --- Injeção das k reflexões recuperadas (era [A PREENCHER] no Caderno) -----
 #
-# Duas decisões de formato, com a razão de cada uma:
+# Revisão de engenharia de prompt (24/08/2026). Cinco decisões, cada uma com a
+# razão e o custo de cada uma:
 #
-# 1. ORDEM: as reflexões aparecem em similaridade CRESCENTE, então a mais
-#    parecida com a questão nova fica por último, imediatamente antes dela.
-#    Modelos de decodificação causal atendem mais ao que está perto do fim do
-#    prompt, então essa ordem coloca o conselho mais relevante na posição de
-#    maior peso. Também mantém a posição relativa estável entre k = 1, 3 e 5.
+# 1. ORDEM DAS LIÇÕES: continuam em similaridade CRESCENTE — a mais parecida
+#    com a questão nova fica por último, imediatamente antes do "---". Também
+#    mantém a posição relativa estável entre k = 1, 3 e 5.
 #
-# 2. A QUESTÃO DE ORIGEM NÃO É INCLUÍDA por padrão. Incluir transformaria a
-#    reflexão em exemplo few-shot de uma questão quase idêntica, que é
-#    exatamente o confundidor de memorização que a extensão existe para
-#    eliminar. Também inflaria o prompt (as premissas do LogiQA2 têm ~100
-#    tokens cada) em 460 mil gerações. Para ablação, ligue
-#    RMCQ_INJECT_SOURCE_QUESTION=1.
+# 2. QUESTÃO PRIMEIRO, LIÇÕES DEPOIS (mudou de ordem: antes era lições →
+#    questão). Duas razões: (a) "lost in the middle" — conteúdo no meio de um
+#    contexto longo é usado pior do que no início ou perto do fim (Liu et al.,
+#    2023); com k=3 e profundidade complex o bloco de lições passa de 900
+#    palavras, e a Lição 2 ficava literalmente no meio dele, na pior posição
+#    possível mesmo já ordenada por similaridade. (b) o modelo agora lê a
+#    questão concreta ANTES de ler as lições, então cada lição é processada já
+#    com o problema-alvo ativado, em vez de reter conselho genérico e só
+#    depois tentar casar com a questão. Isso invalida `results/eval/*`
+#    existente — o formato do prompt mudou, precisa re-rodar a etapa 4.
+#
+# 3. QUESTÃO DE ORIGEM DA LIÇÃO, por padrão. Cada lição chega ancorada ao
+#    enunciado concreto que a gerou. O risco de memorização continua real e
+#    não foi resolvido, só aceito: com o enunciado à vista, uma lição de uma
+#    questão QUASE idêntica (top-1 de datasets pequenos, ou pares muito
+#    parecidos no LogiQA2) vira exemplo few-shot de fato — o confundidor que a
+#    extensão existe para medir. Isso precisa virar limitação/variável de
+#    controle no paper. Ablação: RMCQ_INJECT_SOURCE_QUESTION=0.
+#
+# 4. RESULTADO DA FONTE (acerto/erro), por padrão. Cada lição diz se veio de
+#    uma resposta certa ou errada na questão de origem — "[Lesson N — from a
+#    correct/incorrect answer, ...]". Isso é seguro do ponto de vista de
+#    vazamento: é informação sobre uma questão DIFERENTE, não sobre a questão
+#    atual, então não entrega a resposta de nada que o modelo ainda vai
+#    responder. A hipótese é que saber se a lição nasceu de um acerto ("repita
+#    essa estratégia") ou de um erro ("evite esse padrão") ajuda o modelo a
+#    calibrar como aplicá-la, em vez de ter que inferir isso lendo a prosa
+#    toda. Abstenção na fonte (was_correct=None) fica sem rótulo, de propósito
+#    — rotular como "nem certo nem errado" criaria uma terceira categoria sem
+#    necessidade. Ablação: RMCQ_TAG_SOURCE_OUTCOME=0.
+#
+# 5. INSTRUÇÃO-PONTE + REFORÇO DO AVISO DE NÃO-VAZAMENTO, no fim do turno do
+#    usuário (posição de maior peso pro modelo decoder-only, já que o system
+#    vem ANTES do user na renderização do chat template — ver EVAL_SYSTEM
+#    logo abaixo). Antes só existia o aviso genérico no topo ("they do not
+#    contain its answer"); agora tem uma linha explícita pedindo pra checar se
+#    alguma lição se aplica, e repetindo que nenhuma delas revela a resposta,
+#    bem antes do FINAL ANSWER.
+#
+# Nenhuma dessas cinco mudanças foi aplicada a baseline/retry/self-consistency
+# nem ao prompt de resposta usado dentro de build_answer_prompt — esses ficam
+# byte a byte iguais ao antes, porque não dependem de reflexão e já têm
+# resultado coletado. Sem lições (fallback), build_eval_prompt cai de volta
+# nesse mesmo prompt congelado.
 
-RETRIEVED_HEADER = """Below are lessons you recorded after answering other, different multiple-choice questions in the past. They are ordered from least to most relevant to the question you are about to answer.
-
-They are not about the question below and they do not contain its answer. Use them only as guidance on how to reason.
-
-{reflections}
----
-"""
-
-RETRIEVED_ITEM = """[Lesson {i}]
-{reflection}
-"""
-
-RETRIEVED_ITEM_WITH_SOURCE = """[Lesson {i} — recorded on a different question: "{source_question}"]
-{reflection}
-"""
-
-INJECT_SOURCE_QUESTION = os.environ.get("RMCQ_INJECT_SOURCE_QUESTION", "0") in (
+TAG_SOURCE_OUTCOME = os.environ.get("RMCQ_TAG_SOURCE_OUTCOME", "1") in (
+    "1", "true", "True",
+)
+INJECT_SOURCE_QUESTION = os.environ.get("RMCQ_INJECT_SOURCE_QUESTION", "1") in (
     "1", "true", "True",
 )
 SOURCE_QUESTION_MAX_CHARS = 220
+
+# System da etapa de avaliação: moldura fixa e instruções de formato, que são
+# idênticas em toda chamada. Nenhuma outra etapa usa o papel `system` (ver
+# Backend.render) — só aqui, porque a avaliação já ia precisar re-rodar por
+# causa do reorder acima, então separar system/user não tem custo adicional
+# de invalidação. Estender isso a baseline/retry/self-consistency/reflect
+# invalidaria dado já coletado (1.763 gerações x 4 alunos no baseline) sem que
+# a ordenação das lições exigisse.
+EVAL_SYSTEM = """You are answering a multiple-choice question.
+
+Instructions:
+- Think step by step before answering.
+- Choose exactly one option.
+- End your response with this exact line, and nothing after it:
+FINAL ANSWER: <letter>"""
+
+EVAL_QUESTION_BLOCK = """Question: {question}
+
+Options:
+{options}"""
+
+RETRIEVED_HEADER = """Below are lessons you recorded after answering other, different multiple-choice questions in the past. They are ordered from least to most relevant to the question above.
+
+They are not about the question above and they do not contain its answer. Use them only as guidance on how to reason.
+
+{reflections}
+---
+If any lesson above is relevant to this question, use it to inform your reasoning; it does not reveal the answer."""
 
 
 # --- Retry com feedback e sem reflexão (condição de controle) ---------------
@@ -229,13 +285,26 @@ def build_reflection_prompt(
     )
 
 
+def _lesson_header(i: int, source_question: str | None, outcome_label: str | None) -> str:
+    """Monta '[Lesson N ...]' com origem e resultado como partes opcionais."""
+    parts = [f"Lesson {i}"]
+    if outcome_label:
+        article = "an" if outcome_label[0] in "aeiou" else "a"
+        parts.append(f"from {article} {outcome_label} answer")
+    if source_question:
+        parts.append(f'recorded on a different question: "{source_question}"')
+    return "[" + " — ".join(parts) + "]"
+
+
 def build_retrieval_prefix(
     reflections: Sequence[str],
     source_questions: Sequence[str] | None = None,
+    source_was_correct: Sequence[bool | None] | None = None,
     include_source: bool | None = None,
+    include_outcome: bool | None = None,
 ) -> str:
     """
-    Prefixo com as k reflexões recuperadas, em similaridade crescente.
+    Bloco com as k reflexões recuperadas, em similaridade crescente.
 
     `reflections` deve chegar JÁ ordenado do menos para o mais similar. Quem
     ordena é rmcq.retrieval; aqui só formatamos, para que a ordem seja uma
@@ -244,19 +313,30 @@ def build_retrieval_prefix(
     if not reflections:
         return ""
 
-    include = INJECT_SOURCE_QUESTION if include_source is None else include_source
+    include_src = INJECT_SOURCE_QUESTION if include_source is None else include_source
+    include_out = TAG_SOURCE_OUTCOME if include_outcome is None else include_outcome
 
     blocks = []
     for i, reflection in enumerate(reflections, start=1):
         text = reflection.strip()
-        if include and source_questions:
+
+        src = None
+        if include_src and source_questions:
             src = source_questions[i - 1].strip().replace("\n", " ")
             if len(src) > SOURCE_QUESTION_MAX_CHARS:
                 src = src[: SOURCE_QUESTION_MAX_CHARS - 3] + "..."
-            blocks.append(RETRIEVED_ITEM_WITH_SOURCE.format(
-                i=i, reflection=text, source_question=src))
-        else:
-            blocks.append(RETRIEVED_ITEM.format(i=i, reflection=text))
+
+        outcome = None
+        if include_out and source_was_correct:
+            was_correct = source_was_correct[i - 1]
+            if was_correct is True:
+                outcome = "correct"
+            elif was_correct is False:
+                outcome = "incorrect"
+            # was_correct is None (abstenção na fonte): fica sem rótulo.
+
+        header = _lesson_header(i, src, outcome)
+        blocks.append(f"{header}\n{text}\n")
 
     return RETRIEVED_HEADER.format(reflections="\n".join(blocks))
 
@@ -265,10 +345,26 @@ def build_eval_prompt(
     item: dict[str, Any],
     reflections: Sequence[str],
     source_questions: Sequence[str] | None = None,
+    source_was_correct: Sequence[bool | None] | None = None,
 ) -> str:
-    """Prompt da etapa de avaliação: reflexões recuperadas + prompt congelado."""
-    prefix = build_retrieval_prefix(reflections, source_questions)
-    return prefix + build_answer_prompt(item) if prefix else build_answer_prompt(item)
+    """
+    Prompt da etapa de avaliação: questão primeiro, lições recuperadas depois.
+
+    As instruções fixas de formato (Instructions/FINAL ANSWER) NÃO estão mais
+    aqui — foram para EVAL_SYSTEM, que quem chama passa como `system=` pro
+    backend. Sem lições, cai no prompt congelado de baseline
+    (`build_answer_prompt`), byte a byte igual — não existe um terceiro
+    formato de prompt para "k pedido mas nada recuperado".
+    """
+    if not reflections:
+        return build_answer_prompt(item)
+
+    question_block = EVAL_QUESTION_BLOCK.format(
+        question=format_question(item),
+        options=format_options(item["choices"]),
+    )
+    lessons_block = build_retrieval_prefix(reflections, source_questions, source_was_correct)
+    return f"{question_block}\n\n{lessons_block}"
 
 
 def build_retry_prompt(item: dict[str, Any], previous_letter: str) -> str:
