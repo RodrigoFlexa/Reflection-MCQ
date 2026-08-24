@@ -198,22 +198,41 @@ Os prompts de reflexão formam uma grade de dois por dois, cruzando profundidade
 | You are reviewing the response of another language model (the student model) to a multiple-choice question. Your task is to write a reflection about that model's response, addressed to it, so that it can do better on similar questions later. You are not the one answering the question. You are given: 1 \- The original multiple-choice question. 2 \- The student model's previous answer (with its reasoning). 3 \- Feedback indicating whether that answer was correct or incorrect. Write a detailed reflection on the student model's response. Analyze: \- The reasoning strategy it used to reach its answer. \- The evidence or cues from the question that influenced its decision. \- Any assumptions, heuristics, or uncertainties that affected its judgment. \- How the feedback confirms or contradicts its reasoning. \- Whether its conclusion depended on missing knowledge, incorrect interpretation,   overconfidence, or insufficient evaluation of alternatives. \- How it should improve its reasoning process for similar problems in the future. If the answer was correct, explain which parts of its reasoning were reliable and whether its confidence was appropriately calibrated. If the answer was incorrect, explain what aspect of its reasoning should change rather than merely noting the correct outcome. Do not answer the question yourself, identify the correct option, or speculate about what the correct answer is. |
 | :---- |
 
-### **Resposta com reflexões recuperadas**
+### **Resposta com reflexões recuperadas (reescrito 24/08/2026)**
 
-Congelado em `rmcq/common.py` (`RETRIEVED_HEADER`). O prefixo abaixo é concatenado ao prompt de resposta padrão, sem alterá-lo.
+Congelado em `rmcq/common.py`. Mudou de forma desde a v1: antes era `[lições] + prompt de resposta padrão`; agora é `questão (system+user) + lições + instrução-ponte`, com o `system` carregando a moldura fixa e o `FINAL ANSWER` pela primeira vez fora do turno `user`. Isso invalida `results/eval/*` coletado até aqui — precisa re-rodar a etapa 4.
 
-| Below are lessons you recorded after answering other, different multiple-choice questions in the past. They are ordered from least to most relevant to the question you are about to answer. They are not about the question below and they do not contain its answer. Use them only as guidance on how to reason. \[Lesson 1\] {reflexão} \[Lesson 2\] {reflexão} ... \--- |
+**System (`EVAL_SYSTEM`, novo — só nesta etapa):**
+
+| You are answering a multiple-choice question. Instructions: \- Think step by step before answering. \- Choose exactly one option. \- End your response with this exact line, and nothing after it: FINAL ANSWER: \<letter\> |
 | :---- |
 
-**Três decisões de formato, com a razão de cada uma:**
+**User (`build_eval_prompt`):**
 
-**Ordem: similaridade crescente.** A reflexão mais parecida com a questão nova fica por **último**, imediatamente antes dela. Decodificação causal atende mais ao que está perto do fim do prompt, então essa posição dá mais peso ao conselho mais relevante. Também mantém a posição relativa da mais similar estável entre k \= 1, 3 e 5, o que é necessário para que a comparação entre valores de k isole o efeito da quantidade e não o da posição.
+| Question: {question} Options: {options} Below are lessons you recorded after answering other, different multiple-choice questions in the past. They are ordered from least to most relevant to the question above. They are not about the question above and they do not contain its answer. Use them only as guidance on how to reason. \[Lesson 1 — from a correct/incorrect answer — recorded on a different question: "{enunciado de origem}"\] {reflexão} \[Lesson 2 ...\] ... \--- If any lesson above is relevant to this question, use it to inform your reasoning; it does not reveal the answer. |
+| :---- |
 
-**A questão de origem NÃO é incluída.** Incluir transformaria a reflexão em exemplo few-shot de uma questão quase idêntica, que é exatamente o confundidor de memorização que a extensão existe para eliminar. Também inflaria o prompt (as premissas do LogiQA2 têm cerca de 100 tokens cada) em 460 mil gerações. Existe como ablação, via `RMCQ_INJECT_SOURCE_QUESTION=1`.
+**Cinco decisões de formato, com a razão de cada uma:**
 
-**A negação explícita ("They are not about the question below and they do not contain its answer") é necessária.** Sem ela, o modelo tende a ler as reflexões como feedback sobre a própria resposta à questão atual, e passa a procurar nelas a alternativa correta.
+**Ordem das lições: similaridade crescente**, sem mudança — a mais parecida fica por **último**, imediatamente antes do "---". Decodificação causal atende mais ao que está perto do fim do turno, então essa posição dá mais peso ao conselho mais relevante. Mantém a posição relativa estável entre k \= 1, 3 e 5.
+
+**Questão antes das lições (mudou — antes era lições → questão).** Duas razões: "lost in the middle" (Liu et al., 2023) — com k=3 e profundidade complex o bloco de lições passa de 900 palavras, e a Lição do meio ficava na pior posição possível mesmo já ordenada por similaridade; e o modelo agora lê o problema concreto antes de ler conselho genérico, em vez de ter que reter o conselho e só depois casar com a questão.
+
+**A questão de origem é incluída por padrão.** Cada lição chega ancorada ao enunciado que a gerou. Risco não resolvido, só aceito conscientemente: com o enunciado à vista, uma lição de uma questão quase idêntica (top-1 de dataset pequeno, ou par muito parecido no LogiQA2) vira exemplo few-shot de fato — o confundidor de memorização que a extensão existe para medir. Precisa virar limitação/variável de controle no paper. Infla o prompt (premissas do LogiQA2 têm \~100 tokens cada) em \~460 mil gerações. Ablação: `RMCQ_INJECT_SOURCE_QUESTION=0`.
+
+**Resultado da fonte (acerto/erro) por padrão — novo.** Cada lição diz se veio de uma resposta certa ou errada na questão de origem. Seguro quanto a vazamento: é informação sobre uma questão diferente, não sobre a atual. Hipótese: ajuda o modelo a calibrar "repita essa estratégia" vs. "evite esse padrão" sem depender de inferir isso da prosa. Abstenção na fonte fica sem rótulo. Ablação: `RMCQ_TAG_SOURCE_OUTCOME=0`.
+
+**Instrução-ponte + reforço do aviso de não-vazamento — novo.** Antes só existia o aviso genérico no topo. Agora tem uma linha explícita, no fim do turno `user` (posição de maior peso, já que `system` vem antes de `user` na renderização do chat template), pedindo pra checar se alguma lição se aplica e repetindo que nenhuma revela a resposta.
+
+**A negação explícita ("they do not contain its answer") continua necessária.** Sem ela, o modelo tende a ler as reflexões como feedback sobre a própria resposta à questão atual, e passa a procurar nelas a alternativa correta.
+
+**Nada disso foi aplicado a baseline/retry/self-consistency.** Esses ficam com o prompt congelado original (`ANSWER_PROMPT`/`RETRY_PROMPT`), sem `system` separado, porque já têm resultado coletado e não dependem de reflexão — não havia motivo pra invalidar.
 
 \# Nota sobre candidatos: a recuperação só considera itens de treino que **têm reflexão gerada**. Sem esse filtro, um arquivo rotulado k \= 3 pode receber uma reflexão só quando a etapa de reflexão está incompleta, e nada quebra para avisar. O número real injetado por linha fica em `extra.n_reflections_injected`.
+
+### **Prompt de reflexão: pedido de "Takeaway" (novo, 24/08/2026)**
+
+Os quatro prompts de reflexão (seções acima) ganharam uma linha nova, logo antes do "Do not answer...": pedir que a reflexão termine com uma linha começando em `"Takeaway:"`, com uma regra geral e reaproveitável, redigida de um jeito que faça sentido sem saber do que era a questão original. Motivação: nos exemplos que já temos, a "uma lição" pedida no prompt antigo saía diluída dentro da prosa narrativa ("percebi que...", "eu assumi que..."), em vez de vir como uma heurística extraível — o que é exatamente a tensão que o cosseno reflexão↔questão (seção 5\) já existe para medir. Isso é uma mudança no prompt CONGELADO da etapa 2 — invalida `results/reflections/*` (todas as 40 combinações aluno×professor×profundidade) e, em cascata, `results/eval/*`, porque a etapa 4 depende das reflexões da etapa 2\. As duas etapas precisam ser re-rodadas.
 
 ## **5\. Métricas**
 
