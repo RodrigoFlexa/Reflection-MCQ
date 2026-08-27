@@ -1,0 +1,366 @@
+{"uid": "gsm8k-train-000005", "takeaway": "When translating verbal percentage relationships into equations or multipliers, formalize the logic by briefly denoting variables and writing equations to avoid ambiguity."}
+{"uid": "gsm8k-train-000025", "takeaway": "When decomposing a problem into segments, confirm that the segmented totals add up to the overall total and perform a quick cross-check by calculating the total hits and ensuring hits + misses = total balls."}
+{"uid": "gsm8k-train-000066", "takeaway": "Avoid introducing irrelevant steps in your reasoning process and ensure that your computed numbers align with your final choice to maintain internal consistency and accuracy."}
+{"uid": "gsm8k-train-000068", "takeaway": "After computing a numerical answer, pause to rephrase the question, do a quick sanity check, and match the exact number you computed to the option list carefully before finalizing."}
+{"uid": "gsm8k-train-000101", "takeaway": "Focus on unit awareness and consistency throughout calculations by explicitly labeling units in each step."}
+{"uid": "gsm8k-train-000122", "takeaway": "Distinguish between capacity and actual usage, and explicitly check that fractional references apply to the correct quantity."}
+{"uid": "gsm8k-train-000135", "takeaway": "Parse comparative phrases carefully (\"larger than\", \"more than\", \"less than\", \"times\") and ensure the order of operations matches the language."}
+{"uid": "gsm8k-train-000180", "takeaway": "When applying fractions to \"what is left\" in a problem, update the base after each step to ensure accurate calculations."}
+{"uid": "gsm8k-train-000229", "takeaway": "Be explicit about units at each step to avoid ambiguity."}
+{"uid": "gsm8k-train-000242", "takeaway": "Keep units consistent throughout a calculation and perform a quick unit check before choosing an option to avoid errors."}
+{"uid": "gsm8k-train-000266", "takeaway": "Maintain exact values where possible to avoid rounding artifacts and reinforce exactness."}
+{"uid": "gsm8k-train-000274", "takeaway": "Formalize relationships with variables and equations to reduce the chance of misreading relational phrases and ensure clarity in mathematical modeling."}
+{"uid": "gsm8k-train-000277", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., \"units\" instead of \"puppies\")."}
+{"uid": "gsm8k-train-000279", "takeaway": "When detecting a clear geometric pattern, consider complementing the step-by-step method with the geometric series sum formula to verify results quickly and reduce arithmetic error risk."}
+{"uid": "gsm8k-train-000358", "takeaway": "Focus on the general lesson or reasoning principle, abstracting away specific details and keeping essential subject-matter concepts, to extract a reusable rule or principle from a reflection."}
+{"uid": "gsm8k-train-000374", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., \"days\" instead of \"yesterday\" and \"the day before\")."}
+{"uid": "gsm8k-train-000421", "takeaway": "Verify intermediate totals and explicitly consider units and context to ensure accuracy and robustness in calculations."}
+{"uid": "gsm8k-train-000427", "takeaway": "When decomposing a problem, explicitly parse timelines and label components to prevent omissions."}
+{"uid": "gsm8k-train-000436", "takeaway": "Before selecting an answer, restate to yourself what the question is asking and match units and scope carefully to ensure your selected option corresponds precisely to the requested quantity."}
+{"uid": "gsm8k-train-000442", "takeaway": "Always perform a plausibility check: The average of numbers must lie within the range of those numbers; if it doesn’t, re-examine your steps."}
+{"uid": "gsm8k-train-000470", "takeaway": "Verify the requested quantity and convert the computed variable to it before selecting an option to ensure alignment with the question's demand."}
+{"uid": "gsm8k-train-000478", "takeaway": "Verify relational statements and totals for consistency and plausibility."}
+{"uid": "gsm8k-train-000502", "takeaway": "Make implicit assumptions explicit by defining variables and writing out the relationships between them to clarify the logic and prevent accidental misinterpretation."}
+{"uid": "gsm8k-train-000519", "takeaway": "When combining counts and prices, ensure that quantities are matched to their corresponding unit prices, and consider using unit tracking or a sanity check to prevent double counting and mismatch."}
+{"uid": "gsm8k-train-000530", "takeaway": "Verify per-category divisibility when the problem specifies \"same number of each dessert\" to ensure a robust approach."}
+{"uid": "gsm8k-train-000551", "takeaway": "Identify and ignore irrelevant details."}
+{"uid": "gsm8k-train-000557", "takeaway": "Use a stepwise approach, handling one operation at a time, and carry forward the new remainder to ensure accurate calculations."}
+{"uid": "gsm8k-train-000562", "takeaway": "Break down complex problems into smaller, manageable parts, and consistently track units throughout the calculation to ensure dimensional consistency and accuracy."}
+{"uid": "gsm8k-train-000572", "takeaway": "Track units explicitly at each step to avoid mixing or confusing them."}
+{"uid": "gsm8k-train-000573", "takeaway": "When solving \"how much more\" problems, use the reliable template: total = quantity × unit price, then difference = total1 − total2."}
+{"uid": "gsm8k-train-000608", "takeaway": "When solving problems with dependent relationships, prioritize computing intermediate values before proceeding to the next relation."}
+{"uid": "gsm8k-train-000619", "takeaway": "When performing calculations, explicitly state units at each step to prevent unit-related errors."}
+{"uid": "gsm8k-train-000625", "takeaway": "When translating words to arithmetic, ensure the units and relationships are consistent by confirming you're multiplying the intended reference quantity."}
+{"uid": "gsm8k-train-000641", "takeaway": "Structure your solution by identifying all resource changes (additions/subtractions) before computing outputs."}
+{"uid": "gsm8k-train-000643", "takeaway": "Focus on translating verbal relationships into intermediate expressions to keep the structure crisp and reduce the risk of misreading phrases."}
+{"uid": "gsm8k-train-000673", "takeaway": "When solving percentage-discount problems, consider a quick sanity check by calculating the result as a percentage of the original total to ensure accuracy."}
+{"uid": "gsm8k-train-000700", "takeaway": "Keep consistent units throughout a calculation and verify the final quantity."}
+{"uid": "gsm8k-train-000764", "takeaway": "When solving word problems, use a two-step breakdown: compute the relevant quantity first, then compare or combine as the question asks."}
+{"uid": "gsm8k-train-000767", "takeaway": "When answering questions that involve set intersections, explicitly note which set is being referred to (e.g., \"half of the tubers\" vs. \"half of all kids\") to avoid set-mixups."}
+{"uid": "gsm8k-train-000775", "takeaway": "Focus on the general reasoning strategy and preserve the direction of relational cues, rather than getting bogged down in specific details or numbers."}
+{"uid": "gsm8k-train-000776", "takeaway": "When a comparative phrase lacks an explicit referent, pause and test both plausible interpretations."}
+{"uid": "gsm8k-train-000780", "takeaway": "Focus on the general reasoning principle, abstracting away specific details and keeping essential subject-matter concepts, to extract a reusable rule or strategy."}
+{"uid": "gsm8k-train-000788", "takeaway": "When comparing amounts made up of identical units, subtract the counts first and then apply the unit value to the difference."}
+{"uid": "gsm8k-train-000791", "takeaway": "When applying nested fractions, break down the problem stepwise, treating each fraction as a filter on the previous group, and verify the counts remain integers and decrease logically at each stage."}
+{"uid": "gsm8k-train-000792", "takeaway": "Use a variable-and-equation approach to solve problems, and as a quick check, plug your solution back into the original conditions to validate both the difference and the total."}
+{"uid": "gsm8k-train-000817", "takeaway": "When converting usage to cost via package sizes, remember that for \"per week spending,\" proportional costs (price per ounce) are usually more accurate than rounding to a whole number of packages."}
+{"uid": "gsm8k-train-000837", "takeaway": "When converting between quantities, account for all entities explicitly before performing the conversion, rather than relying on heuristics or approximations."}
+{"uid": "gsm8k-train-000846", "takeaway": "Maintain attention to units and timeframes, as done here; explicitly noting units at each step helps prevent mix-ups in other contexts where periods differ."}
+{"uid": "gsm8k-train-000871", "takeaway": "When solving problems involving age differences, use the anchor-and-propagate method and consider the potential for birthday-edge cases that could introduce off-by-one issues."}
+{"uid": "gsm8k-train-000875", "takeaway": "Break down complex calculations into smaller, manageable components, and verify intermediate results to ensure accuracy."}
+{"uid": "gsm8k-train-000895", "takeaway": "Continue to break problems into parts and verify units at each step."}
+{"uid": "gsm8k-train-000897", "takeaway": "Parse comparative statements carefully, using templates like \"A is k less than B\" to ensure correct direction and sign in setting up relationships."}
+{"uid": "gsm8k-train-000933", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers or scenarios with general categories (e.g., \"units\" instead of \"steps\")."}
+{"uid": "gsm8k-train-000934", "takeaway": "Focus on translating verbal statements into equations, and double-check what the question asks to avoid picking an intermediate result."}
+{"uid": "gsm8k-train-000964", "takeaway": "When comparing rates or quantities, ensure that your calculation and final selection align with the problem's strict inequality requirements, such as \"beat\" or \"exceed\", by computing the additional amount required to go strictly above the benchmark."}
+{"uid": "gsm8k-train-001000", "takeaway": "Structure solutions by breaking problems into clear steps: compute totals, then derive unit rates."}
+{"uid": "gsm8k-train-001020", "takeaway": "When solving problems, focus on the general reasoning principle and abstract away specific details to ensure unit consistency and reduce the chance of confusion."}
+{"uid": "gsm8k-train-001025", "takeaway": "Verify intermediate steps and show arithmetic explicitly to reduce the chance of a slip and ensure clarity."}
+{"uid": "gsm8k-train-001044", "takeaway": "Continue using unit analysis to ensure you're multiplying compatible quantities (e.g., minutes × dollars per minute)."}
+{"uid": "gsm8k-train-001051", "takeaway": "Use a variable-definition and equation-translation strategy, and verify the solution by plugging back the answer into the original equation to ensure reasonableness."}
+{"uid": "gsm8k-train-001119", "takeaway": "When decomposing a problem, focus on the general reasoning principle and abstract away specific details, rather than getting bogged down in specific numbers or scenarios."}
+{"uid": "gsm8k-train-001125", "takeaway": "When translating verbal relations into algebraic or arithmetic operations, focus on decomposing the problem into stages, using simple and explicit operations, and verifying each step to ensure accuracy."}
+{"uid": "gsm8k-train-001159", "takeaway": "When decomposing complex problems, focus on the general reasoning principle and abstract away specific details, ensuring that your approach is sound, structured, and transparent."}
+{"uid": "gsm8k-train-001163", "takeaway": "Verify calculations by back-substitution to confirm the average returns to the expected value."}
+{"uid": "gsm8k-train-001182", "takeaway": "Convert units early and consistently throughout computations to reduce the chance of unit errors."}
+{"uid": "gsm8k-train-001243", "takeaway": "When applying proportional reasoning, explicitly track units throughout the calculation to prevent dimensional mistakes and ensure accuracy."}
+{"uid": "gsm8k-train-001282", "takeaway": "When working with comparative phrases, maintain directionality by applying the inverse operation appropriately, and use a step-by-step approach to ensure accuracy."}
+{"uid": "gsm8k-train-001283", "takeaway": "When comparing quantities, explicitly consider the direction of the comparison (e.g., \"more\" vs. \"less\") and avoid relying on mechanical sign flips, instead articulating the meaning of the result."}
+{"uid": "gsm8k-train-001285", "takeaway": "Define variables or labels explicitly and write simple equations to prevent misinterpretation and ensure accurate reasoning."}
+{"uid": "gsm8k-train-001312", "takeaway": "Verify units at each step to avoid conflating intermediate totals with final answers."}
+{"uid": "gsm8k-train-001316", "takeaway": "When applying a fraction to a set, structure the computation by aggregating totals first, then applying the fraction."}
+{"uid": "gsm8k-train-001319", "takeaway": "Maintain a structured breakdown of calculations, itemizing, computing, summing, and dividing, and regularly check units and pricing bases to ensure accuracy."}
+{"uid": "gsm8k-train-001334", "takeaway": "Track units carefully (envelopes vs. hours vs. envelopes per hour) to ensure accurate calculations."}
+{"uid": "gsm8k-train-001337", "takeaway": "Explicitly track units at each step to ensure consistency and accuracy in word problem solving."}
+{"uid": "gsm8k-train-001344", "takeaway": "Label and lock in intermediate results to avoid unnecessary rework and maintain confidence in your calculations."}
+{"uid": "gsm8k-train-001354", "takeaway": "Focus on the general reasoning structure and cues from the question, rather than getting bogged down in specific details."}
+{"uid": "gsm8k-train-001388", "takeaway": "When faced with word problems involving multiple categories and a single event affecting one category, use a systematic approach of identifying each group, adjusting for changes, and aggregating the remaining counts."}
+{"uid": "gsm8k-train-001394", "takeaway": "Focus on the general reasoning principle, abstracting away specific details, and maintain consistent units throughout a calculation."}
+{"uid": "gsm8k-train-001478", "takeaway": "Focus on formalizing the problem setup with a concise equation to reinforce the structure and reduce the chance of arithmetic slips."}
+{"uid": "gsm8k-train-001507", "takeaway": "Before locking in a choice, explicitly match your computed number to the corresponding option and double-check that the letter matches the value you wrote."}
+{"uid": "gsm8k-train-001526", "takeaway": "Focus on formalizing relationships with variables to create a quick check and reduce the chance of arithmetic slips."}
+{"uid": "gsm8k-train-001540", "takeaway": "Verify intermediate calculations and ensure consistency between computed values and final selection to prevent small slips and maintain accuracy."}
+{"uid": "gsm8k-train-001548", "takeaway": "When dealing with multi-stage operations, explicitly confirm the order of operations to avoid potential pitfalls and ensure accurate results."}
+{"uid": "gsm8k-train-001575", "takeaway": "Continue to explicitly track units and totals at each step."}
+{"uid": "gsm8k-train-001678", "takeaway": "When interpreting word problems, confirm the nature of thresholds (exactly equals vs. at least) by re-reading key phrases to avoid misinterpretation."}
+{"uid": "gsm8k-train-001689", "takeaway": "Formalize ambiguous phrases and make intermediate steps explicit to guard against misinterpretation in future problems."}
+{"uid": "gsm8k-train-001701", "takeaway": "Focus on articulating units at each step to guard against unit mistakes."}
+{"uid": "gsm8k-train-001706", "takeaway": "Pay close attention to phrases like \"of those who...\" which signal conditional percentages, and always ensure you're applying percentages to the intended subgroup."}
+{"uid": "gsm8k-train-001729", "takeaway": "When encountering relational statements, convert them into concrete numbers using a step-by-step approach, and then verify the final quantity."}
+{"uid": "gsm8k-train-001743", "takeaway": "Use unit-aware, step-by-step calculations and label units explicitly to reinforce dimensional correctness and minimize mistakes."}
+{"uid": "gsm8k-train-001752", "takeaway": "Focus on computing an absolute quantity first, then apply relational differences to derive other quantities."}
+{"uid": "gsm8k-train-001754", "takeaway": "When interpreting ambiguous terms like \"the rest\" or \"remaining\", explicitly anchor operations to the correct base quantity to avoid potential pitfalls."}
+{"uid": "gsm8k-train-001760", "takeaway": "When solving problems, maintain a clear, modular approach by computing individual totals, ensuring unit correctness, and then aggregating, to ensure reliable and accurate reasoning."}
+{"uid": "gsm8k-train-001761", "takeaway": "When solving partition problems, use a complementary counting strategy and verify your answer by adding the computed remainder back to the given parts to ensure it reconstructs the total."}
+{"uid": "gsm8k-train-001769", "takeaway": "When partitioning a set into categories, ensure that the categories are mutually exclusive and collectively exhaustive, and verify that the fractions apply to the correct subgroup."}
+{"uid": "gsm8k-train-001773", "takeaway": "Avoid overgeneralizing from a single data point and instead, parse language carefully to distinguish between specific instances and general rules."}
+{"uid": "gsm8k-train-001790", "takeaway": "When interpreting ambiguous comparative phrases, explicitly state your interpretation and consider alternative interpretations to ensure alignment with context."}
+{"uid": "gsm8k-train-001804", "takeaway": "When aggregating quantities from multiple sources, explicitly track units and consider multiplicative factors for each contributing element to ensure accurate calculations."}
+{"uid": "gsm8k-train-001816", "takeaway": "Focus on the general lesson or reasoning principle, abstracting away specific details and keeping essential subject-matter concepts, to develop a reliable and well-structured problem-solving approach."}
+{"uid": "gsm8k-train-001825", "takeaway": "Define the comparison explicitly: Savings = Cost without insurance − Total cost with insurance."}
+{"uid": "gsm8k-train-001892", "takeaway": "When performing calculations, maintain unit tracking explicitly to reinforce dimensional consistency."}
+{"uid": "gsm8k-train-001893", "takeaway": "Focus on maintaining consistent units throughout a calculation to prevent common errors."}
+{"uid": "gsm8k-train-001902", "takeaway": "Focus on explicitly denoting relationships symbolically before computing to ensure consistency and reduce risk of misreading a relationship."}
+{"uid": "gsm8k-train-001905", "takeaway": "When solving multi-step unit problems, explicitly chain conversions and sanity-check calculations by verifying divisibility, quantity availability, and rate application."}
+{"uid": "gsm8k-train-001913", "takeaway": "When a single resource must perform multiple tasks sequentially, the total calendar time equals the sum of the individual task times, regardless of order."}
+{"uid": "gsm8k-train-001964", "takeaway": "Continuously map units and relationships to prevent misoperations and ensure accurate calculations."}
+{"uid": "gsm8k-train-001970", "takeaway": "Use a complementary approach as a quick check to catch misreads or arithmetic slips, such as computing the remaining quantity directly from the given fraction."}
+{"uid": "gsm8k-train-001998", "takeaway": "Parse the language carefully to determine operation order: isolate what is kept/removed first, then distribute what remains."}
+{"uid": "gsm8k-train-002014", "takeaway": "Verify units and ensure no double-counting or omission in calculations."}
+{"uid": "gsm8k-train-002030", "takeaway": "Focus on the generalizable reasoning principle, abstracting away specific details, and ensure dimensional consistency in intermediate steps."}
+{"uid": "gsm8k-train-002041", "takeaway": "Track units explicitly at each step to prevent rate inversion or arithmetic slips."}
+{"uid": "gsm8k-train-002045", "takeaway": "When interpreting phrases like \"twice as much\" in a problem, explicitly tie them to the correct reference or component to avoid misinterpretation."}
+{"uid": "gsm8k-train-002048", "takeaway": "When solving proportionality problems, explicitly tie the ratio to each unit (e.g., per-user, per-hour) to avoid misapplication and ensure correct scaling."}
+{"uid": "gsm8k-train-002060", "takeaway": "When applying sequential percentages, ensure that each percentage is applied to the relevant quantity (original or remaining) and consider performing a quick proportional sanity check to validate the result."}
+{"uid": "gsm8k-train-002071", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"rate\" instead of \"5 push-ups per 10 seconds\")."}
+{"uid": "gsm8k-train-002074", "takeaway": "Make implicit assumptions explicit to guard against misinterpretations in problem-solving."}
+{"uid": "gsm8k-train-002112", "takeaway": "When comparing two route scenarios, focus on the segments that change."}
+{"uid": "gsm8k-train-002151", "takeaway": "Anchor fractional changes to the correct base by restating in your own words, and consider expressing the sequence as a single operation on the updated quantity as a consistency check."}
+{"uid": "gsm8k-train-002175", "takeaway": "When encountering \"times more\" phrasing, explicitly convert it to a multiplier to avoid ambiguity and to double-check."}
+{"uid": "gsm8k-train-002193", "takeaway": "When breaking down multi-part problems, use a modular, step-by-step approach and verify the final quantity by scaling the per-member cost by the number of members."}
+{"uid": "gsm8k-train-002219", "takeaway": "When solving \"rest is used for...\" problems, use a remainder/subtraction framework and explicitly state the formula upfront to clarify the structure and reduce the chance of error."}
+{"uid": "gsm8k-train-002226", "takeaway": "Focus on the general pattern or reasoning principle, abstracting away specific details, and verify the final result using a quick check or alternative method."}
+{"uid": "gsm8k-train-002235", "takeaway": "Make implicit assumptions explicit to avoid potential pitfalls and ensure clarity in your reasoning."}
+{"uid": "gsm8k-train-002241", "takeaway": "When dealing with pursuit problems where both parties are moving in the same direction, explicitly use relative speed to account for the target's ongoing motion."}
+{"uid": "gsm8k-train-002243", "takeaway": "Continue anchoring on a base quantity and expressing the others as multiples/fractions of that base—this is a robust method."}
+{"uid": "gsm8k-train-002248", "takeaway": "When interpreting verbal phrases in math problems, explicitly map them to mathematical operations to avoid misinterpretation."}
+{"uid": "gsm8k-train-002258", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"multiplicative relationships\" instead of \"2 times as many\" and \"3 times as many\")."}
+{"uid": "gsm8k-train-002267", "takeaway": "Always confirm divisibility when converting from totals to capacity-limited units, and consider sanity checks to prevent mix-ups and ensure correct application of phrasing nuances."}
+{"uid": "gsm8k-train-002288", "takeaway": "Focus on the general reasoning principle and abstract away specific details, rather than getting bogged down in specific numbers or scenarios."}
+{"uid": "gsm8k-train-002289", "takeaway": "When interpreting ambiguous wording, explicitly consider alternative interpretations and justify your chosen interpretation based on the prompt."}
+{"uid": "gsm8k-train-002455", "takeaway": "Continue to compute per-unit (or per-student) totals first, then scale—this is a reliable strategy."}
+{"uid": "gsm8k-train-002505", "takeaway": "Focus on the specific quantity requested in the question and ensure alignment by restating it before finalizing the answer."}
+{"uid": "gsm8k-train-002577", "takeaway": "Maintain a structured approach by parsing the problem, summing or aggregating as needed, and then applying the unit rate."}
+{"uid": "gsm8k-train-002625", "takeaway": "When solving problems involving percentages, consider using a direct method to compute the unknown quantity by applying the ratio of the known part to the whole, rather than first finding the whole and then subtracting the known part."}
+{"uid": "gsm8k-train-002626", "takeaway": "Break down complex problems into labeled components and sum them up, ensuring that each step is justified and accurate."}
+{"uid": "gsm8k-train-002639", "takeaway": "When performing calculations, break them down into transparent steps to reduce the chance of arithmetic slips and make it easy to verify each stage."}
+{"uid": "gsm8k-train-002649", "takeaway": "When decomposing a problem, break it down into clear, manageable components, and handle each part separately to avoid arithmetic mistakes and ensure accurate calculations."}
+{"uid": "gsm8k-train-002657", "takeaway": "Continue to parse word problems by converting units to numbers and performing operations in a stepwise manner."}
+{"uid": "gsm8k-train-002673", "takeaway": "When translating verbal descriptions into mathematical problems, explicitly clarify any ambiguous phrases to avoid misinterpretation."}
+{"uid": "gsm8k-train-002689", "takeaway": "Explicitly identify the base quantity for each comparative phrase and restate it in your own words to ensure you're multiplying by the right reference."}
+{"uid": "gsm8k-train-002711", "takeaway": "When encountering an incorrect result, recheck arithmetic line-by-line rather than changing units or guessing the closest option."}
+{"uid": "gsm8k-train-002767", "takeaway": "When solving word problems, explicitly state key assumptions, especially when details are implied rather than stated."}
+{"uid": "gsm8k-train-002782", "takeaway": "Keep units consistent and align them with the question and options, avoiding unnecessary conversions and rounding."}
+{"uid": "gsm8k-train-002814", "takeaway": "When decomposing a problem into parts, explicitly check for potential overlaps or ambiguities in listed intervals and state assumptions clearly."}
+{"uid": "gsm8k-train-002822", "takeaway": "Focus on explicitly anchoring calculations to the correct time reference (\"now\" vs \"in ten years\") to prevent misapplication of relationships."}
+{"uid": "gsm8k-train-002835", "takeaway": "When solving multi-part quantitative problems, use a clear, step-by-step decomposition of the problem, translating each part into arithmetic, and verify the final quantity through a quick sanity check."}
+{"uid": "gsm8k-train-002840", "takeaway": "Perform quick sanity checks: nonnegativity, integrality, and divisibility by the per-vehicle wheel count."}
+{"uid": "gsm8k-train-002842", "takeaway": "Translate narrative statements into labeled quantities before computing, distinguishing between \"problems completed\" and \"problems remaining\" and checking whether the wording describes an addition or subtraction."}
+{"uid": "gsm8k-train-002862", "takeaway": "When breaking down multi-part cost problems, explicitly confirm interpretations of terms to avoid ambiguity."}
+{"uid": "gsm8k-train-002884", "takeaway": "When translating verbal ratios into equations, consider restating ambiguous phrases in unambiguous mathematical terms before computing to avoid misinterpretation."}
+{"uid": "gsm8k-train-002936", "takeaway": "Verify that the specified fractions do not exceed 1 by performing a quick fraction-level check before doing all arithmetic."}
+{"uid": "gsm8k-train-002944", "takeaway": "Use dimensional analysis consciously, carrying units through each step to ensure the final unit matches what's asked."}
+{"uid": "gsm8k-train-002987", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003012", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003028", "takeaway": "Make units explicit in intermediate steps to maintain clarity and prevent mixing categories."}
+{"uid": "gsm8k-train-003123", "takeaway": "When encountering \"refills\" in a problem, briefly consider whether the initial fill is relevant or explicitly included in the count to avoid errors in differently worded problems."}
+{"uid": "gsm8k-train-003125", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003130", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003148", "takeaway": "When solving linear-relationship word problems, choose the variable that is directly involved in the proportional relationship to simplify the work."}
+{"uid": "gsm8k-train-003171", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-003267", "takeaway": "When solving \"the rest are\" problems, use complementary counting and include a quick sanity check to verify the final decomposition and ensure the blue count is nonnegative and reasonable."}
+{"uid": "gsm8k-train-003271", "takeaway": "Maintain the practice of explicitly parsing \"each\" and confirming whether numbers are per person or total."}
+{"uid": "gsm8k-train-003278", "takeaway": "Focus on the quantity the question asks for and minimize unnecessary computations."}
+{"uid": "gsm8k-train-003283", "takeaway": "Always perform a brief sanity check to ensure the solution is reasonable and consistent with the problem constraints."}
+{"uid": "gsm8k-train-003294", "takeaway": "Continuously check for proportional (compounding) or fixed (linear) increases in problems, and consider formulating the situation algebraically as a quick verification."}
+{"uid": "gsm8k-train-003320", "takeaway": "Verify each step of a calculation by re-checking intermediate results and performing a quick sanity check to ensure logical consistency."}
+{"uid": "gsm8k-train-003339", "takeaway": "Verify results with a quick check by multiplying your answer by the original multiplier to ensure it returns the original value."}
+{"uid": "gsm8k-train-003342", "takeaway": "When dealing with ratio problems, use linear scaling as a heuristic by multiplying first and then adding for totals."}
+{"uid": "gsm8k-train-003370", "takeaway": "Track units rigorously, keeping separate and consistent units throughout calculations, and avoid rounding in combinatorial problems with discrete counts."}
+{"uid": "gsm8k-train-003379", "takeaway": "Verify the directionality of comparative phrases by restating relationships in equation form to prevent reversal errors."}
+{"uid": "gsm8k-train-003382", "takeaway": "Focus on separating accrual, usage, and remaining quantities explicitly, and double-check language for potential ambiguities."}
+{"uid": "gsm8k-train-003413", "takeaway": "When interpreting phrases like \"twice as much\", anchor them to a clearly identified reference quantity to avoid misinterpretation."}
+{"uid": "gsm8k-train-003480", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003497", "takeaway": "Track units explicitly and carry them through calculations to catch reciprocal mistakes and ensure consistency."}
+{"uid": "gsm8k-train-003507", "takeaway": "Explicitly identify the base quantity for each percentage before calculating to guard against applying percentages to the wrong number."}
+{"uid": "gsm8k-train-003519", "takeaway": "Focus on the specific quantity being asked for, and ensure that your final answer aligns with it, rather than providing extra or unnecessary information."}
+{"uid": "gsm8k-train-003535", "takeaway": "Maintain a disciplined, step-by-step updating of quantities and regularly check plausibility after each step to ensure accuracy and robustness."}
+{"uid": "gsm8k-train-003538", "takeaway": "When using \"every X units\" in a calculation, consider whether to count completed intervals across the entire span and clarify rounding logic if the quotient isn't an integer."}
+{"uid": "gsm8k-train-003567", "takeaway": "When working with subgroups, keep operations within the same population and avoid mixing categories, ensuring that your computed value matches the definition of the target quantity."}
+{"uid": "gsm8k-train-003579", "takeaway": "Verify arithmetic with a quick mental check to ensure correct scaling."}
+{"uid": "gsm8k-train-003582", "takeaway": "When solving a problem, explicitly label each step and perform a quick reasonableness check to prevent mix-ups and ensure internal consistency."}
+{"uid": "gsm8k-train-003645", "takeaway": "When partitioning a problem, maintain consistency in units and calculations by applying the same framework (e.g., round-trip or one-way) throughout the breakdown."}
+{"uid": "gsm8k-train-003672", "takeaway": "Maintain unit labels throughout the calculation to ensure clarity and prevent dimension errors."}
+{"uid": "gsm8k-train-003675", "takeaway": "Clarify what exactly is doubling and maintain consistency in applying it throughout the calculation."}
+{"uid": "gsm8k-train-003697", "takeaway": "Clarify terms and verify the final question's ask by re-reading the sentence and aligning your final number with the exact phrasing."}
+{"uid": "gsm8k-train-003769", "takeaway": "Verify that orientation doesn't change area unless specified otherwise."}
+{"uid": "gsm8k-train-003798", "takeaway": "Focus on maintaining consistent units throughout a calculation and verify the final quantity."}
+{"uid": "gsm8k-train-003816", "takeaway": "When solving problems, use a clear, step-by-step approach and verify your calculations with an alternative method to ensure accuracy and confidence."}
+{"uid": "gsm8k-train-003829", "takeaway": "Focus on the general lesson or reasoning principle, abstracting away specific details and keeping essential subject-matter concepts."}
+{"uid": "gsm8k-train-003842", "takeaway": "When solving word problems, maintain a clear structure by defining variables, expressing relationships, setting up the total equation, simplifying carefully, solving, and verifying, and consider including a quick check by substituting the found value back into the expressions to strengthen confidence and catch any arithmetic slips."}
+{"uid": "gsm8k-train-003871", "takeaway": "Continue to track units explicitly to prevent confusion."}
+{"uid": "gsm8k-train-003887", "takeaway": "Keep units consistent by converting all quantities to the same unit (daily or weekly) before combining them, or convert everything to one unit before combining."}
+{"uid": "gsm8k-train-003934", "takeaway": "When solving word problems, focus on the general reasoning principle and abstract away specific details, using general categories and concepts to guide your solution."}
+{"uid": "gsm8k-train-003938", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-003940", "takeaway": "Maintain unit consistency and stop once the necessary unit matches the answer choices to avoid unnecessary conversions."}
+{"uid": "gsm8k-train-003985", "takeaway": "When solving word problems involving proportional relationships and averages, use a clear, sequential approach, explicitly listing each step and verifying intermediate results to ensure accuracy and reliability."}
+{"uid": "gsm8k-train-003988", "takeaway": "Keep units and quantities consistent and explicitly show intermediate steps to prevent simple arithmetic slips."}
+{"uid": "gsm8k-train-004060", "takeaway": "State implicit assumptions explicitly to show awareness of potential constraints."}
+{"uid": "gsm8k-train-004078", "takeaway": "When interpreting percentage relationships in word problems, express the relationship explicitly as a multiplier to reinforce precision and prevent misreads."}
+{"uid": "gsm8k-train-004157", "takeaway": "Convert mixed numbers to improper fractions before operating to avoid calculation errors."}
+{"uid": "gsm8k-train-004188", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing them with general categories or concepts."}
+{"uid": "gsm8k-train-004189", "takeaway": "Focus on abstracting away specific details and identifying the general reasoning principle or lesson, rather than getting bogged down in specific numbers or scenarios."}
+{"uid": "gsm8k-train-004199", "takeaway": "Explicitly track units at each step to maintain clarity and prevent dimension errors."}
+{"uid": "gsm8k-train-004218", "takeaway": "Verify the difference and sum explicitly after solving to reinforce correctness and catch potential arithmetic slips."}
+{"uid": "gsm8k-train-004242", "takeaway": "Verify divisibility before concluding the count of complete items, and explicitly note how to handle remainders if not divisible."}
+{"uid": "gsm8k-train-004254", "takeaway": "Focus on the specific question being asked, rather than just reporting the new value or increase, and ensure that your answer matches the question's requirements."}
+{"uid": "gsm8k-train-004317", "takeaway": "When solving multi-step word problems, explicitly restate what each number represents and double-check that the final quantity matches the question's scope to ensure accurate and complete calculations."}
+{"uid": "gsm8k-train-004328", "takeaway": "Verify the meaning of terms like \"cost\" vs \"earn\" in word problems to ensure accurate interpretation."}
+{"uid": "gsm8k-train-004364", "takeaway": "Ensure the number of increments in your breakdown matches the stated \"next X weeks\" phrasing by explicitly labeling the weeks or translating the description into a simple expression."}
+{"uid": "gsm8k-train-004377", "takeaway": "When solving algebraic modeling problems, maintain a structured translation of relational statements and add a quick back-check to verify the solution."}
+{"uid": "gsm8k-train-004391", "takeaway": "Focus on maintaining explicit unit tracking throughout calculations, especially when converting between units, to avoid mistakes and ensure accurate results."}
+{"uid": "gsm8k-train-004408", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-004413", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-004418", "takeaway": "Anchor the percentage to the correct quantity and track units and quantities explicitly to avoid double-counting and ensure accurate calculations."}
+{"uid": "gsm8k-train-004426", "takeaway": "Anchor the ratio correctly by consistently mapping the known length to the smallest ratio number across your setup."}
+{"uid": "gsm8k-train-004441", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-004450", "takeaway": "When applying discounts or markups, treat the language carefully and ensure that the discount or markup is applied exactly as described (per ticket vs. total)."}
+{"uid": "gsm8k-train-004468", "takeaway": "Focus on maintaining consistent units throughout a calculation to ensure accurate and reliable results."}
+{"uid": "gsm8k-train-004477", "takeaway": "Keep units consistent and perform a reasonableness check throughout multi-step fraction problems to reduce errors and ensure alignment between calculations and options."}
+{"uid": "gsm8k-train-004482", "takeaway": "When using decomposition strategies, explicitly note and address potential ambiguities or edge cases to strengthen robustness and avoid common pitfalls."}
+{"uid": "gsm8k-train-004488", "takeaway": "Focus on the underlying structure and relationships between variables, rather than breaking down problems into individual steps."}
+{"uid": "gsm8k-train-004498", "takeaway": "Break multi-step word problems into a timeline of states and operations."}
+{"uid": "gsm8k-train-004507", "takeaway": "Always align the rate's unit (per week, per day) with the time interval in the question."}
+{"uid": "gsm8k-train-004542", "takeaway": "When interpreting verbal descriptions, translate them carefully and verify with brief algebraic or magnitude checks to ensure correct interpretation and reliable arithmetic."}
+{"uid": "gsm8k-train-004621", "takeaway": "Track units explicitly and distinguish clearly between \"number of instruments\" and \"number of strings per instrument\" to avoid unit/quantity mismatches and compounding errors."}
+{"uid": "gsm8k-train-004622", "takeaway": "When solving problems, use a structured approach to compute known parts, isolate unknowns, and divide by counts, and always sanity-check results to ensure accuracy."}
+{"uid": "gsm8k-train-004640", "takeaway": "Avoid rounding in exact distribution problems; check divisibility after adjusting for constraints."}
+{"uid": "gsm8k-train-004663", "takeaway": "When breaking down complex calculations, explicitly verify units and ensure correct computation before multiplying by volume."}
+{"uid": "gsm8k-train-004675", "takeaway": "Parse transaction language carefully by restating the action from the subject's perspective to avoid misinterpretation."}
+{"uid": "gsm8k-train-004678", "takeaway": "Double-check key arithmetic operations, especially simple additions where slips are common."}
+{"uid": "gsm8k-train-004698", "takeaway": "When a computed answer doesn't match any option in a straightforward arithmetic problem, treat that as a signal to revisit assumptions and inputs rather than approximate."}
+{"uid": "gsm8k-train-004746", "takeaway": "When dealing with different percentages applying to different-sized groups, compute the result for each group separately and then sum, rather than averaging the percentages."}
+{"uid": "gsm8k-train-004748", "takeaway": "When solving word problems, focus on the general relationship or principle, rather than specific details, and use a structured approach to ensure accuracy and generality."}
+{"uid": "gsm8k-train-004764", "takeaway": "When interpreting percentage increases, focus on the base amount and compute the increment by multiplying the base by the percentage, rather than misinterpreting it as a flat addition or percentage of something else."}
+{"uid": "gsm8k-train-004835", "takeaway": "When dealing with multi-part word problems with dependent quantities, use a structured breakdown to define item prices, compute subtotals, and then apply percentage or fraction-based costs."}
+{"uid": "gsm8k-train-004836", "takeaway": "Keep track of units throughout a calculation and verify the final quantity to prevent unit mismatches and ensure accuracy."}
+{"uid": "gsm8k-train-004841", "takeaway": "When working with nested percentages, structure the problem by clearly identifying the base group at each step and perform a quick reasonableness check to ensure units and bases are correct."}
+{"uid": "gsm8k-train-004844", "takeaway": "When solving multi-part word problems, use a clear, step-by-step decomposition of the problem and verify the final quantity through a sanity check to catch arithmetic slips."}
+{"uid": "gsm8k-train-004867", "takeaway": "Use unit rates for comparisons, as it's a robust and widely applicable strategy."}
+{"uid": "gsm8k-train-004884", "takeaway": "Validate units and context, and scan answer choices for plausibility to guard against simple slips."}
+{"uid": "gsm8k-train-004887", "takeaway": "When working with sequential fractions, treat each fraction as applied to the correct, current subtotal, rather than the original total."}
+{"uid": "gsm8k-train-004948", "takeaway": "Focus on parsing quantities per unit (per box) versus number of units (number of boxes) to ensure accurate calculations."}
+{"uid": "gsm8k-train-004963", "takeaway": "Make interpretive assumptions explicit and justify them briefly to improve the reasoning process."}
+{"uid": "gsm8k-train-004988", "takeaway": "When solving problems involving a timeline of transactions, use a sequential, running-balance approach and explicitly tie each numeric operation to the corresponding phrase in the problem to avoid mis-sequencing."}
+{"uid": "gsm8k-train-004990", "takeaway": "When solving word problems, structure the solution as a mini-equation and explicitly check units and interpretations to ensure alignment with the price terms."}
+{"uid": "gsm8k-train-004997", "takeaway": "Track dependencies carefully when quantities are defined relative to different years or groups."}
+{"uid": "gsm8k-train-005074", "takeaway": "Always verify whether counts refer to items (e.g., ears) or people (e.g., pairs), especially if wording could be ambiguous."}
+{"uid": "gsm8k-train-005077", "takeaway": "Focus on the exact question asked and avoid introducing unnecessary steps or heuristics unless explicitly required by the problem."}
+{"uid": "gsm8k-train-005103", "takeaway": "Isolate relevant quantities and translate verbal percentage statements into multipliers to reduce error and maintain a robust reasoning approach."}
+{"uid": "gsm8k-train-005176", "takeaway": "Ensure labels match the quantities being summed to avoid confusion."}
+{"uid": "gsm8k-train-005182", "takeaway": "When an equation leads to a contradiction, don't just rename variables; revisit assumptions about what's being equated and whether all given numbers are used."}
+{"uid": "gsm8k-train-005191", "takeaway": "Make units explicit at each step, avoiding mid-calculation unit adjustments, and convert to a percentage first when a problem mentions \"percentage points\"."}
+{"uid": "gsm8k-train-005194", "takeaway": "Verify that the definition of \"net profit\" aligns with the information provided, and include all cost components if other costs are mentioned."}
+{"uid": "gsm8k-train-005208", "takeaway": "Always include a quick check by plugging the result back into the original constraints to guard against small arithmetic slips."}
+{"uid": "gsm8k-train-005215", "takeaway": "Stick consistently to a relative or variable-based framework when the absolute starting value is unknown, avoiding mixing absolute values with relative changes."}
+{"uid": "gsm8k-train-005260", "takeaway": "Keep units consistent and minimize conversions to reduce the chance of arithmetic or transcription errors."}
+{"uid": "gsm8k-train-005284", "takeaway": "Keep track of units at each stage of a multi-step calculation to ensure accuracy and avoid mixing units or skipping steps."}
+{"uid": "gsm8k-train-005292", "takeaway": "Focus on the general reasoning principle and abstract away specific details to extract the essential lesson."}
+{"uid": "gsm8k-train-005315", "takeaway": "Always verify your answer by plugging it back into the original equation or problem to ensure it matches the expected result."}
+{"uid": "gsm8k-train-005321", "takeaway": "When solving multi-part problems, explicitly restate the target quantity in your own words before calculating to guard against scope omissions."}
+{"uid": "gsm8k-train-005325", "takeaway": "When using a forward-reasoning approach, consider writing a quick equation to formalize the relationship and verify it at the end to reduce the chance of errors and improve generalizability."}
+{"uid": "gsm8k-train-005360", "takeaway": "When solving problems, focus on the general reasoning principle and abstract away specific details to identify the essential constraints and relationships."}
+{"uid": "gsm8k-train-005370", "takeaway": "Convert everything to the same unit, then divide."}
+{"uid": "gsm8k-train-005373", "takeaway": "When decomposing a problem into manageable parts, prioritize clarity and sequencing of steps to prevent errors, even if the order of operations doesn't change the final result."}
+{"uid": "gsm8k-train-005384", "takeaway": "When applying percentage changes, explicitly identify the base quantity before applying the change to avoid ambiguity and ensure accurate calculations."}
+{"uid": "gsm8k-train-005398", "takeaway": "When dealing with percentages, state the base quantity explicitly to avoid ambiguity."}
+{"uid": "gsm8k-train-005425", "takeaway": "Verify constraints explicitly and check net effects by including all sources introduced and removed to ensure accuracy and avoid double counting."}
+{"uid": "gsm8k-train-005428", "takeaway": "When solving problems involving sequential segments, explicitly restate or map the sequence of segments to ensure alignment with the problem statement."}
+{"uid": "gsm8k-train-005453", "takeaway": "Always explicitly match your computed answer to the corresponding option before finalizing your response to prevent misalignment."}
+{"uid": "gsm8k-train-005501", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-005525", "takeaway": "When solving word problems, break down the scenario into explicit, sequential operations, and compute each step explicitly to ensure accuracy and transparency."}
+{"uid": "gsm8k-train-005552", "takeaway": "Maintain explicit unit labeling in each step to prevent slips in more complex problems."}
+{"uid": "gsm8k-train-005559", "takeaway": "Maintain a structured breakdown of a problem into categories, compute each category's contribution, and then sum, while also verifying language cues and performing a mental reasonableness check."}
+{"uid": "gsm8k-train-005587", "takeaway": "Focus on explicitly identifying the \"state\" at each step to avoid order errors."}
+{"uid": "gsm8k-train-005691", "takeaway": "Verify unit counts and per-item pricing to avoid miscounting."}
+{"uid": "gsm8k-train-005702", "takeaway": "When solving problems, explicitly label intermediate quantities to maintain clarity and prevent mix-ups."}
+{"uid": "gsm8k-train-005712", "takeaway": "Track units explicitly at each step to avoid double counting."}
+{"uid": "gsm8k-train-005730", "takeaway": "Verify the sequence of events explicitly, especially when problems involve multiple charges and interest applications."}
+{"uid": "gsm8k-train-005734", "takeaway": "When decomposing multi-part totals, explicitly label units and note any interpretations to prevent mixing quantities and ensure accurate calculations."}
+{"uid": "gsm8k-train-005735", "takeaway": "When solving problems that involve differences, consider computing the difference directly, rather than computing both totals and then subtracting."}
+{"uid": "gsm8k-train-005738", "takeaway": "When solving problems that involve partitioning a group into disjoint categories, use a \"total minus known parts equals remainder\" approach, and verify your calculations by re-summing the categories to ensure they total the expected value."}
+{"uid": "gsm8k-train-005749", "takeaway": "Use the \"total then divide\" structure for equal-sharing tasks."}
+{"uid": "gsm8k-train-005780", "takeaway": "When solving percentage discount problems, convert the discount to the complement percentage and multiply the original price by the resulting multiplier, as this approach is often less error-prone than subtracting the discount amount."}
+{"uid": "gsm8k-train-005784", "takeaway": "Verify the problem details and perform a quick mental estimation as a sanity check to guard against minor arithmetic errors."}
+{"uid": "gsm8k-train-005810", "takeaway": "When solving percent-of-total problems, use a two-step structure: solve for the total first, then apply the second percentage to that total."}
+{"uid": "gsm8k-train-005830", "takeaway": "Focus on maintaining unit consistency throughout a calculation to avoid mixing up totals and ensure accurate results."}
+{"uid": "gsm8k-train-005838", "takeaway": "Focus on the underlying reasoning principle and abstract away specific details to extract the general lesson."}
+{"uid": "gsm8k-train-005885", "takeaway": "Continue explicitly tracking units to prevent unit confusion, especially when rates change across intervals."}
+{"uid": "gsm8k-train-005886", "takeaway": "Translate percent statements into equations clearly and convert percentages to decimals carefully, double-checking the division by a decimal to avoid arithmetic mistakes."}
+{"uid": "gsm8k-train-005897", "takeaway": "Fully propagate fixed numbers through relationships before introducing or retaining variables."}
+{"uid": "gsm8k-train-005929", "takeaway": "When solving word problems, translate words into explicit expressions or mini-equations to keep track of relationships clearly."}
+{"uid": "gsm8k-train-005959", "takeaway": "Verify that all categories named in the question align with the umbrella term used, especially in problems where categories might be ambiguous."}
+{"uid": "gsm8k-train-005968", "takeaway": "Focus on maintaining unit consistency throughout calculations to ensure accuracy and prevent mix-ups in more complex problems."}
+{"uid": "gsm8k-train-005987", "takeaway": "Always check units early and choose the simplest consistent unit system to reduce cognitive load."}
+{"uid": "gsm8k-train-006011", "takeaway": "When solving equal distribution problems, explicitly confirm the interpretation of \"equal amount\" and verify the arithmetic sums to ensure accuracy."}
+{"uid": "gsm8k-train-006027", "takeaway": "Verify multiplicative phrases like \"each\" by restating them as totals (e.g., \"2 chickens, 3 eggs each = 6 eggs\")."}
+{"uid": "gsm8k-train-006038", "takeaway": "Continue to parse multi-step word problems by isolating each operation in order."}
+{"uid": "gsm8k-train-006040", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"units\" instead of \"flyers\")."}
+{"uid": "gsm8k-train-006064", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-006071", "takeaway": "Focus on maintaining unit awareness by keeping track of whether you're applying operations to the correct quantities."}
+{"uid": "gsm8k-train-006076", "takeaway": "Focus on the general reasoning principle, abstracting away specific details, and keep essential subject-matter concepts, to extract a reusable rule or strategy from a reflection on a student's problem-solving process."}
+{"uid": "gsm8k-train-006093", "takeaway": "When interpreting phrasing, explicitly confirm your understanding by stating the assumption or noting any potential variations."}
+{"uid": "gsm8k-train-006111", "takeaway": "Ensure that your narrative matches your calculations to avoid confusion and maintain clarity and correctness."}
+{"uid": "gsm8k-train-006119", "takeaway": "When performing calculations, explicitly track units at each step to reinforce clarity and catch potential arithmetic slips."}
+{"uid": "gsm8k-train-006124", "takeaway": "Always state explicitly which unit you'll use throughout a calculation before proceeding to prevent errors in more complex problems."}
+{"uid": "gsm8k-train-006146", "takeaway": "Verify the exact quantity being asked and perform a quick sanity check to ensure the calculation is correct and reasonable."}
+{"uid": "gsm8k-train-006159", "takeaway": "Maintain unit awareness (dollars vs. counts) to avoid mixing quantities."}
+{"uid": "gsm8k-train-006170", "takeaway": "When interpreting ambiguous language, explicitly tie pronouns back to their referents to prevent misreadings."}
+{"uid": "gsm8k-train-006235", "takeaway": "Avoid premature rounding and keep exact fractions or sufficient significant figures until the final step to ensure precise and defensible calculations."}
+{"uid": "gsm8k-train-006238", "takeaway": "When breaking down multi-part cost problems, use a step-by-step decomposition and maintain clarity about quantities and units to ensure accurate calculations."}
+{"uid": "gsm8k-train-006247", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-006253", "takeaway": "When calculating averages, explicitly count the data points by listing names to avoid grouping errors."}
+{"uid": "gsm8k-train-006279", "takeaway": "Maintain a clear, standard method and present intermediate steps to reduce error risk and increase confidence in calculations."}
+{"uid": "gsm8k-train-006311", "takeaway": "When solving multi-part cost problems, use a structured breakdown to decompose the problem, and verify thresholds and wording to ensure the correct rule is applied, especially when totals are near the boundary."}
+{"uid": "gsm8k-train-006352", "takeaway": "Verify units at each step to avoid mixing quantities."}
+{"uid": "gsm8k-train-006401", "takeaway": "Verify the relationship by subtraction: ensure the difference between the two quantities matches the stated difference to reinforce accuracy and catch slips."}
+{"uid": "gsm8k-train-006419", "takeaway": "When comparing unit rates, be precise and consistent, and avoid using \"costs the most\" as a tie-breaker; instead, compare exact unit rates, compute the maximum number of whole items, and check for even budget division."}
+{"uid": "gsm8k-train-006483", "takeaway": "When solving mixture and ratio problems, focus on maintaining the same ratio between components, and use proportional reasoning to scale up or down, rather than getting bogged down in specific details."}
+{"uid": "gsm8k-train-006496", "takeaway": "Keep explicitly tracking units at each step to prevent mixing scales and ensure accurate calculations."}
+{"uid": "gsm8k-train-006522", "takeaway": "When using a backward-chaining approach, explicitly formalize relationships with variables to cross-check and verify each step, and perform a quick forward check after deriving values to catch any misread steps."}
+{"uid": "gsm8k-train-006562", "takeaway": "When applying percentage increases, explicitly state the base of the percentage to avoid misinterpretation."}
+{"uid": "gsm8k-train-006590", "takeaway": "When answering \"how many more\" questions, compute totals for each group and find their difference, respecting repetition implied by \"each\" and avoiding arithmetic slips."}
+{"uid": "gsm8k-train-006591", "takeaway": "Maintain a structured approach: define the cycle duration, verify units, and then divide total time by cycle time."}
+{"uid": "gsm8k-train-006606", "takeaway": "Focus on handling one relationship at a time to reduce complexity and avoid mixing relationships."}
+{"uid": "gsm8k-train-006611", "takeaway": "When solving multi-part word problems, use a structured decomposition strategy, explicitly tie each arithmetic operation to a phrase in the problem, and verify arithmetic to minimize simple errors."}
+{"uid": "gsm8k-train-006624", "takeaway": "Formalize the relationship as an equation first to prevent order-of-operations mistakes."}
+{"uid": "gsm8k-train-006625", "takeaway": "Maintain explicit linkage between quantities and units to avoid interpretive ambiguity."}
+{"uid": "gsm8k-train-006716", "takeaway": "When solving problems, explicitly state key assumptions and double-check units and counts to avoid misreads and ensure robust reasoning."}
+{"uid": "gsm8k-train-006744", "takeaway": "Continuously track units to ensure dimensional consistency throughout calculations."}
+{"uid": "gsm8k-train-006782", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-006792", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., use \"percentage\" instead of \"25%\")."}
+{"uid": "gsm8k-train-006809", "takeaway": "Use unit-based step-by-step reasoning and consider adding a quick cross-check via an alternative route to further strengthen your solution."}
+{"uid": "gsm8k-train-006830", "takeaway": "Clarify the target quantity and apply inclusion-exclusion consistently to avoid double counting and ensure accurate calculations."}
+{"uid": "gsm8k-train-006907", "takeaway": "Track units explicitly and label intermediate results to ensure consistency and accuracy in calculations."}
+{"uid": "gsm8k-train-006915", "takeaway": "When working with mutually exclusive categories, explicitly note their exclusivity to ensure airtight logic, especially in problems where wording could be ambiguous."}
+{"uid": "gsm8k-train-006964", "takeaway": "Focus on maintaining consistent units throughout a calculation to avoid common mistakes."}
+{"uid": "gsm8k-train-006970", "takeaway": "When reporting a final quantity, double-check that it exactly matches the question's wording and align your explanation with the selection by restating what the variable represents and what subset you're reporting."}
+{"uid": "gsm8k-train-006978", "takeaway": "Clarify referents by explicitly asking when a problem says some wolves are hunting for the pack, \"When it says 'each wolf needs to kill,' does it mean each hunter or each wolf in the pack?\""}
+{"uid": "gsm8k-train-006987", "takeaway": "Clarify phrasing by restating the interpretation in your own words to avoid ambiguity and ensure accurate understanding."}
+{"uid": "gsm8k-train-007001", "takeaway": "When giving away a portion of a total, you automatically keep the other portion, and a single computation of the portion suffices."}
+{"uid": "gsm8k-train-007011", "takeaway": "Translate verbal comparisons into equations and explicitly combine quantities as requested to ensure accurate calculations."}
+{"uid": "gsm8k-train-007021", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-007025", "takeaway": "Focus on the general reasoning strategy and arithmetic approach, rather than specific details, to ensure a reliable and complete solution."}
+{"uid": "gsm8k-train-007032", "takeaway": "Use unit conversion first to standardize quantities."}
+{"uid": "gsm8k-train-007041", "takeaway": "When interpreting verbal descriptions, explicitly parse language to prevent misinterpretation, and use verification-friendly numbers and quick sanity checks to ensure plausibility."}
+{"uid": "gsm8k-train-007048", "takeaway": "Keep labeling units explicitly at each step to guard against mixing up rates."}
+{"uid": "gsm8k-train-007051", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific numbers and scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-007071", "takeaway": "When translating a story into an equation, focus on the general sequence of events and the relationships between quantities, rather than specific details or scenarios."}
+{"uid": "gsm8k-train-007091", "takeaway": "Maintain unit awareness by thinking in terms of the relevant units (e.g., \"clamps per bike\") to keep proportional relationships clear and prevent misinterpretation."}
+{"uid": "gsm8k-train-007105", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-007108", "takeaway": "Prioritize unit consistency before comparing quantities."}
+{"uid": "gsm8k-train-007112", "takeaway": "When solving percent decrease problems, compute the discount and express it as a fraction of the original price, and consider adding a quick proportionality check to validate your result from a different angle."}
+{"uid": "gsm8k-train-007139", "takeaway": "Maintain the integrity constraint: groups must remain whole numbers at each split because you cannot split a single book."}
+{"uid": "gsm8k-train-007175", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories."}
+{"uid": "gsm8k-train-007238", "takeaway": "Calibrate confidence to the coherence of your calculations, and treat inconsistencies or mismatched units as red flags to revisit earlier steps rather than forcing a match."}
+{"uid": "gsm8k-train-007254", "takeaway": "When translating word problems into arithmetic steps, focus on abstracting away specific details and expressing relationships as general categories, rather than specific numbers or scenarios."}
+{"uid": "gsm8k-train-007261", "takeaway": "Segment multi-stage problems around events like refills, resets, or state changes to reduce mistakes."}
+{"uid": "gsm8k-train-007271", "takeaway": "Focus on the general reasoning principle, abstracting away specific details, and verify the goal and assumptions to ensure a reliable and well-justified solution."}
+{"uid": "gsm8k-train-007290", "takeaway": "Clarify labels and quantities at each step to avoid misinterpretation and ensure accurate calculations."}
+{"uid": "gsm8k-train-007312", "takeaway": "When translating word problems into equations, explicitly define variables and verify the total constraint to catch arithmetic slips and reinforce correctness."}
+{"uid": "gsm8k-train-007331", "takeaway": "When comparing costs for different quantities, ensure unit consistency and volume equivalence before comparing costs, and consider cross-validating with a unit-rate check to confirm the direction and magnitude of savings."}
+{"uid": "gsm8k-train-007377", "takeaway": "Maintain a structured approach: convert to a single unit, sum, then apply the percentage once."}
+{"uid": "gsm8k-train-007387", "takeaway": "Focus on the general reasoning principle and abstract away specific details, replacing specific names, numbers, or scenarios with general categories (e.g., \"units\" instead of \"eggs\")."}
+{"uid": "gsm8k-train-007419", "takeaway": "Validate your solution by plugging the found value back into the relationship and total, and consider using heuristics like the average-difference method to provide a quick cross-check against your algebra."}
+{"uid": "gsm8k-train-007439", "takeaway": "When wording is ambiguous, compute both totals (the number eaten and the number left) and match the interpretation to the phrasing and the options."}
+{"uid": "gsm8k-train-007466", "takeaway": "Make assumptions explicit and track units explicitly at each step to maintain clarity and prevent mixing units."}

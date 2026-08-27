@@ -44,7 +44,6 @@ Copie de `.env.example`. Ele é lido em `rmcq/__init__.py` **antes** de qualquer
 | `RMCQ_EMBEDDER` | padrão `BAAI/bge-large-en-v1.5` |
 | `RMCQ_MAX_NEW_TOKENS` | teto de geração; o Caderno fixa 4096 |
 | `RMCQ_VLLM_GPU_UTIL` | fração da VRAM reservada pelo vLLM |
-| `RMCQ_SELFCONS_N` | amostras da condição self-consistency |
 
 Variáveis passadas na linha de comando ganham do `.env`: `CUDA_VISIBLE_DEVICES=3 python -m rmcq eval` funciona.
 
@@ -61,7 +60,7 @@ Dois modelos, nos dois papéis, e um valor de k.
 | k | 3 |
 | configs de avaliação | 8 |
 
-Custo estimado (`--dry-run`, ~1500 tok/s de vLLM): baseline 0,9 h · reflexão 0,7 h · avaliação 1,8 h · self-consistency 2,3 h. **Cerca de 6 h de GPU no total**, contra ~26 h da grade completa.
+Custo estimado (`--dry-run`, ~1500 tok/s de vLLM): baseline 0,9 h · reflexão 0,7 h · avaliação 1,8 h. **Cerca de 3,5 h de GPU no total**, contra ~26 h da grade completa.
 
 `python -m rmcq status` imprime o escopo ativo. Para abrir depois, mude `RMCQ_ACTIVE_MODELS` e `RMCQ_K_VALUES` no `.env` — **nada é regerado**, porque baseline, reflexões e índice são compartilhados entre valores de k, e as etapas são retomáveis por `uid`.
 
@@ -77,7 +76,6 @@ Custo estimado (`--dry-run`, ~1500 tok/s de vLLM): baseline 0,9 h · reflexão 0
 | `reflect` | **2.** professor escreve reflexão sobre cada resposta de treino |
 | `eval` | **4.** aluno responde o teste com as k reflexões mais próximas |
 | `retry` | controle: feedback de erro, sem reflexão |
-| `selfcons` | controle: N amostras e voto majoritário |
 | `analyze` | **5.** métricas da seção 5 do Caderno |
 | `status` | progresso de todas as etapas |
 | `run-all` | tudo, na ordem correta |
@@ -90,7 +88,7 @@ Flags comuns: `--dry-run` (estima gerações e tokens sem carregar modelo), `--b
 
 Com os quatro modelos e k em {1,3,5} a avaliação são ~460 mil gerações, 87% do custo. O que o framework faz para não desperdiçar:
 
-**Baseline reaproveitado.** As respostas de treino do aluno são geradas uma vez e lidas pelas 32 combinações de reflexão. As de teste são o ponto de comparação da avaliação e o ponto de partida de retry e self-consistency. Sem isso seriam 56 mil gerações a mais só para reproduzir textos idênticos.
+**Baseline reaproveitado.** As respostas de treino do aluno são geradas uma vez e lidas pelas 32 combinações de reflexão. As de teste são o ponto de comparação da avaliação e o ponto de partida do retry. Sem isso seriam 56 mil gerações a mais só para reproduzir textos idênticos.
 
 **Modelo carregado uma vez por papel.** Na etapa de reflexão o laço externo é o **professor**, porque é ele que gera: 4 cargas em vez de 32. Na avaliação o laço externo é o **aluno**: 4 cargas em vez de 96.
 
@@ -114,7 +112,7 @@ notebooks/
 ├── 01_formatacao_e_selecao.ipynb   # schema unificado, dedup, Cochran
 └── 02_teste_inferencia.ipynb       # teste de fumaça manual
 
-data/{raw,processed,splits}/   results/{baseline,reflections,index,eval,retry,selfcons,analysis}/
+data/{raw,processed,splits}/   results/{baseline,reflections,index,eval,retry,analysis}/
 scripts/                        # shims deprecados, delegam para o CLI
 ```
 
@@ -162,4 +160,4 @@ Cada modelo ativo atua como aluno e como professor. Aluno com temperatura 0, pro
 
 `retry` mede quanto do ganho vem só de saber que errou: em 4 alternativas, isso sobe o chute de 25% para 33%. **Ele não é diretamente comparável à etapa de avaliação** — ali o modelo revisita a mesma questão sabendo que errou, aqui ele responde uma questão nova sem feedback sobre a própria resposta. O retry controla o protocolo do paper anterior, não o da extensão.
 
-`selfcons` não tem orçamento igual à reflexão por construção: a reflexão gasta tokens de entrada, self-consistency gasta de saída. `analysis/cost.csv` tem os dois lados para a comparação ser feita com números reais.
+`selfcons` (self-consistency) foi **desabilitado**: o subcomando saiu da CLI e as funções em `rmcq/stages/conditions.py` levantam `RuntimeError`. O código continua no repositório como registro do desenho; para reativar, ver `SELFCONS_ENABLED` naquele arquivo.

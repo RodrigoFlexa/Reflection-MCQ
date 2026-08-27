@@ -481,8 +481,7 @@ python -m rmcq index
 - [ ] **9.4** Ensaio do `eval` antes da rodada longa
 
 ```bash
-python -m rmcq eval --students phi4-mini --teachers gpt-5-mini-petrobras --depths simple \
-  -k 3 --datasets arc --limit 10 --backend stub
+python -m rmcq eval --students phi4-mini --teachers gpt-5-mini-petrobras --depths simple -k 3 --datasets arc --limit 10 --backend stub
 ```
 
 > ✅ **Aceite:** `gpt-5-mini-petrobras/simple/k3/arc: 10 respostas, acerto N%` sem erro de

@@ -35,3 +35,7 @@ data/*
 data/splits/*
 !data/splits/manifest_splits.json
 models/
+results.zip
+requirements-lock.txt
+data/manifest_datasets.json
+data/splits/manifest_splits.json

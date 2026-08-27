@@ -180,6 +180,199 @@ INJECT_SOURCE_QUESTION = os.environ.get("RMCQ_INJECT_SOURCE_QUESTION", "0") in (
 SOURCE_QUESTION_MAX_CHARS = 220
 
 
+# --- v2: layout revisto para modelos pequenos (2026-08-26) -----------------
+#
+# O v1 acima entrega as lições ANTES de qualquer enquadramento de tarefa: o
+# aluno lê de 130 a 615 palavras de crítica em segunda pessoa antes de saber
+# que vai responder uma questão de múltipla escolha. Em phi4-mini (3,8 B) e
+# llama3-8b isso custa caro. Cada mudança do v2 responde a um número medido
+# neste repositório (results/reflections/, agosto de 2026):
+#
+# 1. ENQUADRAMENTO PRIMEIRO, QUESTÃO POR ÚLTIMO. Uma linha declara a tarefa
+#    antes do material de referência; a questão e o formato de saída ficam
+#    colados na posição de geração, que é onde um decoder causal atende mais.
+#    No v1, "You are answering a multiple-choice question" aparecia DEPOIS das
+#    reflexões, e a instrução de formato ficava a ~2.000 tokens do início.
+#
+# 2. DELIMITADOR DURO (<notes>/<note id="i">) em vez de "[Lesson 1]" + "---".
+#    Sem isso o enunciado de origem compete com o enunciado a responder: no
+#    GSM8K a nota fala de ovos e preço por dúzia e a questão nova também, e o
+#    modelo mistura os dois.
+#
+# 3. QUESTÃO DE ORIGEM LIGADA POR PADRÃO, com contexto e orçamento maior. A
+#    similaridade é calculada sobre contexto + pergunta (rmcq.retrieval), mas
+#    quem chamava injetava só item["question"] — no LogiQA2 isso vira "Which
+#    of the following can be inferred?" sem a premissa, ou seja, ruído puro.
+#    Sem o enunciado, a lição é conselho sem referente. O confundidor de
+#    memorização que motivava manter isso desligado é controlado pelo limiar
+#    de similaridade e pela deduplicação do notebook 01, não por esconder o
+#    enunciado.
+#
+# 4. ORÇAMENTO POR NOTA. As reflexões `complex` têm 615 palavras de mediana
+#    (LogiQA2, professor gpt-5); com k=3 são ~1.850 palavras de referência
+#    para uma questão de ~60. compact_reflection() corta pela CAUDA, porque é
+#    lá que mora a parte generalizável ("Lesson: ...", "How to improve: ...")
+#    enquanto a cabeça narra o que aconteceu na questão de origem.
+#
+# 5. NEUTRALIZAÇÃO DE LETRA. 50% das reflexões `complex` e 42% das de
+#    autorreflexão citam uma letra de alternativa ("you selected D"). Essa
+#    letra vem de OUTRA questão e ancora o aluno numa alternativa da questão
+#    nova. Trocamos a letra por "[letter]" e dizemos explicitamente que a
+#    resposta certa aqui pode ser outra letra.
+#
+# Tudo é ablação: RMCQ_EVAL_PROMPT=v1 volta ao layout antigo byte a byte,
+# RMCQ_NOTE_MAX_WORDS=0 desliga o corte, RMCQ_NEUTRALIZE_LETTERS=0 desliga a
+# neutralização. Sem notas recuperadas, o v2 devolve build_answer_prompt()
+# inalterado — o fallback continua idêntico ao baseline, byte a byte.
+
+EVAL_PROMPT_VERSION = os.environ.get("RMCQ_EVAL_PROMPT", "v2").strip().lower()
+
+NOTES_HEADER_V2 = """You are answering a multiple-choice question.
+
+First, some notes from earlier attempts at OTHER questions. They are reference material about how to reason. None of them is about the question below, and none of them contains its answer.
+
+<notes>
+{notes}
+</notes>
+
+"""
+
+NOTE_V2 = """<note id="{i}">
+{body}
+</note>"""
+
+NOTE_SOURCE_V2 = 'This note was written about a different question: "{source_question}"'
+NOTE_OUTCOME_V2 = {
+    True: "The earlier answer to that question was correct.",
+    False: "The earlier answer to that question was incorrect.",
+}
+
+EVAL_TAIL_V2 = """Question: {question}
+
+Options:
+{options}
+
+Instructions:
+- The notes are advice on how to reason, nothing more. The correct option here may be a different letter than any letter mentioned in a note.
+- Think step by step before answering.
+- Choose exactly one option.
+- End your response with this exact line, and nothing after it:
+FINAL ANSWER: <letter>"""
+
+# 120 palavras ~ o tamanho de uma reflexão `simple` (mediana 128), então o
+# corte é quase inócuo nelas e vale 5x nas `complex`. 0 desliga.
+NOTE_MAX_WORDS = int(os.environ.get("RMCQ_NOTE_MAX_WORDS", "120"))
+
+# 600 caracteres cobrem a premissa completa do LogiQA2 (o percentil alto fica
+# em ~550); os 220 do v1 cortavam a premissa no meio, que é pior que omiti-la.
+SOURCE_QUESTION_MAX_CHARS_V2 = int(os.environ.get("RMCQ_SOURCE_QUESTION_MAX_CHARS", "600"))
+
+NEUTRALIZE_OPTION_LETTERS = os.environ.get("RMCQ_NEUTRALIZE_LETTERS", "1") in (
+    "1", "true", "True",
+)
+
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+_BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
+
+# "option D", "answer (B)", "chose C" — sempre letra MAIÚSCULA isolada, então
+# o artigo "a" e palavras comuns não são atingidos.
+_LETTER_MENTIONS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b((?:option|choice|answer|alternative|response)s?\s+)\(?([A-H])\)?(?![\w-])"),
+    re.compile(r"\b((?:chose|choose|chosen|selected|select|picked|pick|answered)\s+)\(?([A-H])\)?(?![\w-])"),
+    re.compile(r"(\s)\(([A-H])\)(?![\w-])"),
+)
+
+
+# Continuação de enumeração: "options [letter], C, and D" — o primeiro é
+# pego pela palavra-gatilho, os seguintes só pelo que vem antes deles.
+_LETTER_ENUM = re.compile(r"(\[letter\])(,?\s+(?:and|or)\s+|,\s*)([A-H])(?![\w-])")
+
+# Letra entre aspas: "A", “B”.
+_LETTER_QUOTED = re.compile(r"([\"“'])([A-H])([\"”'])")
+
+
+def neutralize_option_letters(text: str) -> str:
+    """
+    Troca menções a letras de alternativa por "[letter]".
+
+    A reflexão foi escrita sobre OUTRA questão, onde "D" era outra coisa. Ler
+    "you selected D" antes de responder ancora o aluno na letra D da questão
+    nova — um viés que não tem nada a ver com o conteúdo do conselho. A frase
+    continua legível ("you selected [letter]"), só perde a âncora.
+
+    Cobre palavra-gatilho ("option D", "you selected D"), enumeração
+    ("options B, C, and D"), parênteses ("(C)") e aspas ("A"). NÃO cobre letra
+    solta sem nenhuma pista ("arguing that A could be possible"): distinguir
+    isso do artigo "A" no início de frase daria falso positivo em texto comum,
+    e o preço de errar é maior que o do resíduo.
+    """
+    for pattern in _LETTER_MENTIONS:
+        text = pattern.sub(r"\1[letter]", text)
+    text = _LETTER_QUOTED.sub(r"\1[letter]\3", text)
+    while True:
+        text, n = _LETTER_ENUM.subn(r"\1\2[letter]", text)
+        if not n:
+            return text
+
+
+def _text_units(text: str) -> list[str]:
+    """Linhas e frases da reflexão, na ordem, sem vazios — a unidade de corte."""
+    units: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in _SENTENCE_END.split(line) if p.strip()]
+        units.extend(parts or [line])
+    return units
+
+
+def compact_reflection(text: str, max_words: int | None = None) -> str:
+    """
+    Limita a reflexão a `max_words`, cortando pela CABEÇA.
+
+    Medido nas reflexões deste repositório: a cabeça narra a questão de origem
+    ("Your reasoning centered on a straightforward causal chain: government
+    policies increased demand...") e a cauda traz o que transfere ("Use the
+    negation test for necessary assumptions..."). Cortar pela cauda, que seria
+    o reflexo natural, joga fora exatamente a parte reaproveitável.
+    """
+    max_words = NOTE_MAX_WORDS if max_words is None else max_words
+    text = (text or "").strip()
+    if max_words <= 0 or len(text.split()) <= max_words:
+        return text
+
+    kept: list[str] = []
+    total = 0
+    for unit in reversed(_text_units(text)):
+        n = len(unit.split())
+        if kept and total + n > max_words:
+            break
+        kept.append(unit)
+        total += n
+    kept.reverse()
+    if not kept:
+        return " ".join(text.split()[:max_words])
+    # Reconstitui a lista de bullets: colar tudo numa linha só apaga a
+    # estrutura que torna a parte "how to improve" fácil de ler.
+    out = ""
+    for unit in kept:
+        sep = "\n" if out and _BULLET.match(unit) else (" " if out else "")
+        out += sep + unit
+    return "(...) " + out
+
+
+def format_source_question(text: str, max_chars: int | None = None) -> str:
+    """Enunciado de origem em uma linha, cortado em fronteira de frase."""
+    max_chars = SOURCE_QUESTION_MAX_CHARS_V2 if max_chars is None else max_chars
+    text = " ".join((text or "").split())
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars]
+    stop = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "))
+    return (cut[: stop + 1] if stop > max_chars // 2 else cut.rstrip()) + " (...)"
+
+
 # --- Retry com feedback e sem reflexão (condição de controle) ---------------
 #
 # O Caderno já registra o problema desta condição: "sua resposta estava
@@ -262,42 +455,93 @@ def build_retrieval_prefix(
     reflections: Sequence[str],
     source_questions: Sequence[str] | None = None,
     include_source: bool | None = None,
+    source_was_correct: Sequence[bool | None] | None = None,
+    version: str | None = None,
 ) -> str:
     """
-    Prefixo com as k reflexões recuperadas, em similaridade crescente.
+    Bloco com as k reflexões recuperadas, em similaridade crescente.
 
     `reflections` deve chegar JÁ ordenado do menos para o mais similar. Quem
     ordena é rmcq.retrieval; aqui só formatamos, para que a ordem seja uma
     decisão de um só lugar.
+
+    No v2 este bloco é apenas a PRIMEIRA metade do prompt (enquadramento +
+    notas): a questão vem depois, montada por build_eval_prompt. Concatenar
+    este prefixo com build_answer_prompt() como no v1 duplicaria a linha de
+    enquadramento — use build_eval_prompt.
     """
     if not reflections:
         return ""
 
-    include = INJECT_SOURCE_QUESTION if include_source is None else include_source
+    version = (version or EVAL_PROMPT_VERSION).lower()
 
-    blocks = []
+    if version == "v1":
+        include = INJECT_SOURCE_QUESTION if include_source is None else include_source
+        blocks = []
+        for i, reflection in enumerate(reflections, start=1):
+            text = reflection.strip()
+            if include and source_questions:
+                src = source_questions[i - 1].strip().replace("\n", " ")
+                if len(src) > SOURCE_QUESTION_MAX_CHARS:
+                    src = src[: SOURCE_QUESTION_MAX_CHARS - 3] + "..."
+                blocks.append(RETRIEVED_ITEM_WITH_SOURCE.format(
+                    i=i, reflection=text, source_question=src))
+            else:
+                blocks.append(RETRIEVED_ITEM.format(i=i, reflection=text))
+        return RETRIEVED_HEADER.format(reflections="\n".join(blocks))
+
+    include = True if include_source is None else include_source
+    notes = []
     for i, reflection in enumerate(reflections, start=1):
-        text = reflection.strip()
+        lines = []
         if include and source_questions:
-            src = source_questions[i - 1].strip().replace("\n", " ")
-            if len(src) > SOURCE_QUESTION_MAX_CHARS:
-                src = src[: SOURCE_QUESTION_MAX_CHARS - 3] + "..."
-            blocks.append(RETRIEVED_ITEM_WITH_SOURCE.format(
-                i=i, reflection=text, source_question=src))
-        else:
-            blocks.append(RETRIEVED_ITEM.format(i=i, reflection=text))
+            lines.append(NOTE_SOURCE_V2.format(
+                source_question=format_source_question(source_questions[i - 1])))
+        if source_was_correct:
+            outcome = NOTE_OUTCOME_V2.get(source_was_correct[i - 1])
+            if outcome:
+                lines.append(outcome)
 
-    return RETRIEVED_HEADER.format(reflections="\n".join(blocks))
+        text = compact_reflection(reflection)
+        if NEUTRALIZE_OPTION_LETTERS:
+            text = neutralize_option_letters(text)
+        lines.append(text)
+
+        notes.append(NOTE_V2.format(i=i, body="\n".join(lines)))
+
+    return NOTES_HEADER_V2.format(notes="\n\n".join(notes))
 
 
 def build_eval_prompt(
     item: dict[str, Any],
     reflections: Sequence[str],
     source_questions: Sequence[str] | None = None,
+    source_was_correct: Sequence[bool | None] | None = None,
+    include_source: bool | None = None,
+    version: str | None = None,
 ) -> str:
-    """Prompt da etapa de avaliação: reflexões recuperadas + prompt congelado."""
-    prefix = build_retrieval_prefix(reflections, source_questions)
-    return prefix + build_answer_prompt(item) if prefix else build_answer_prompt(item)
+    """
+    Prompt da etapa de avaliação: notas recuperadas + a questão nova.
+
+    Sem nenhuma reflexão recuperada, devolve build_answer_prompt() byte a
+    byte — é o que garante que a linha de fallback seja comparável ao
+    baseline em vez de ser uma terceira condição.
+    """
+    if not reflections:
+        return build_answer_prompt(item)
+
+    version = (version or EVAL_PROMPT_VERSION).lower()
+    prefix = build_retrieval_prefix(
+        reflections, source_questions, include_source, source_was_correct, version
+    )
+
+    if version == "v1":
+        return prefix + build_answer_prompt(item)
+
+    return prefix + EVAL_TAIL_V2.format(
+        question=format_question(item),
+        options=format_options(item["choices"]),
+    )
 
 
 def build_retry_prompt(item: dict[str, Any], previous_letter: str) -> str:

@@ -1,0 +1,286 @@
+{"uid": "arc-train-000002", "takeaway": "Distinguish between depositional processes (which form strata) and deformational processes (which bend or break them) when evaluating structural features like folds."}
+{"uid": "arc-train-000003", "takeaway": "Anchor choices in converging evidence while noting when multiple contributing factors may exist even if one mechanism is dominant."}
+{"uid": "arc-train-000008", "takeaway": "Prioritize traits that are strongly environmental or learned over anatomical traits when making the distinction between genetic and environmental influences."}
+{"uid": "arc-train-000013", "takeaway": "Prioritize the direct causal link between the intervention and reproductive success, while briefly considering—but not overweighing—edge cases that don’t change the general outcome."}
+{"uid": "arc-train-000014", "takeaway": "Identify the fundamental energy source behind the process being asked about and distinguish between drivers of motion and drivers of phase change."}
+{"uid": "arc-train-000015", "takeaway": "Prioritize outcomes with clear, direct causal links and use plausibility and known mechanisms to eliminate distractors."}
+{"uid": "arc-train-000017", "takeaway": "Focus on the underlying principle or cause, rather than specific details, to ensure a clear and accurate explanation."}
+{"uid": "arc-train-000026", "takeaway": "Prioritize properties that are physically meaningful and observable for distant objects, and be cautious about Earth-like descriptors that don't apply in astrophysical contexts."}
+{"uid": "arc-train-000033", "takeaway": "Pair process-of-elimination with the most plausible mechanistic link to observed patterns, while briefly checking for non-biological confounders before concluding."}
+{"uid": "arc-train-000034", "takeaway": "Anchor your reasoning on fundamental properties of matter (shape and volume behavior of solids, liquids, and gases) to quickly eliminate distractors."}
+{"uid": "arc-train-000038", "takeaway": "Identify the primary mechanism at work and briefly acknowledge secondary factors to show comprehensive reasoning."}
+{"uid": "arc-train-000042", "takeaway": "When comparing habitats, consider pollutant persistence and source concentration alongside food-web length."}
+{"uid": "arc-train-000046", "takeaway": "Double-check units and definitions, especially when converting between different time periods, to ensure consistency and accuracy."}
+{"uid": "arc-train-000050", "takeaway": "Anchor decisions in evidence-based practices, such as reproducibility, while recognizing the value of consulting peers to identify potential flaws or improvements."}
+{"uid": "arc-train-000060", "takeaway": "Focus on the defining biological characteristics relevant to the organism's main genome and choose the best match among the provided options."}
+{"uid": "arc-train-000066", "takeaway": "When comparing properties, consider multiple factors that can influence the outcome, rather than relying on a single characteristic."}
+{"uid": "arc-train-000070", "takeaway": "Anchor your reasoning in known global budget estimates (orders of magnitude) for each reservoir to reinforce confidence and reduce uncertainty."}
+{"uid": "arc-train-000072", "takeaway": "Align your choice with the most direct environmental mechanism implied by the problem, rather than broader impacts."}
+{"uid": "arc-train-000075", "takeaway": "Distinguish between properties that are directly observable and those that require quantitative measurement or physical testing."}
+{"uid": "arc-train-000077", "takeaway": "Identify the central biological process at play and map it explicitly to energy forms, while quickly ruling out distractors that don’t match known plant physiology."}
+{"uid": "arc-train-000078", "takeaway": "Verify the context of ambiguous terminology before proceeding with a problem or question."}
+{"uid": "arc-train-000091", "takeaway": "Focus on the direction of heat flow and the concept of equilibrium."}
+{"uid": "arc-train-000092", "takeaway": "Anchor your analysis in the 10% rule and energy loss between levels, rather than traits like organism size."}
+{"uid": "arc-train-000098", "takeaway": "When seeing intermediate phenotypes, consider inheritance patterns like incomplete dominance first, but also quickly rule out alternative explanations by checking whether they fit the biology of the cross."}
+{"uid": "arc-train-000104", "takeaway": "Center your evaluation on strategies that enhance fitness within new conditions, while explicitly comparing their reliability and scope relative to alternatives."}
+{"uid": "arc-train-000107", "takeaway": "Align your choice tightly with the exact wording and scope of the question, identifying whether it implies a single canonical pair or accepts multiple valid systems."}
+{"uid": "arc-train-000111", "takeaway": "Watch for ambiguous wording and consider common exceptions while still anchoring your choice in the core biological concept."}
+{"uid": "arc-train-000112", "takeaway": "Focus on relevant cues and avoid extra calculations that don't affect the conceptual outcome."}
+{"uid": "arc-train-000121", "takeaway": "Distinguish whether a trait is heritable or environmentally driven by anchoring your choice in basic inheritance principles."}
+{"uid": "arc-train-000122", "takeaway": "Prioritize origin conditions and major heat exchange processes while recognizing that some effects may be negligible."}
+{"uid": "arc-train-000123", "takeaway": "Continue checking units and doing a quick magnitude sanity check to ensure the computed result aligns with realistic expectations."}
+{"uid": "arc-train-000124", "takeaway": "Focus on whether a choice changes electrical load directly, and consider the relative impact when comparing options."}
+{"uid": "arc-train-000126", "takeaway": "Look for fundamental commonalities (such as energy flow or matter cycling) when comparing biological processes."}
+{"uid": "arc-train-000128", "takeaway": "Prioritize key biological processes and consider potential competing factors that might alter the expected outcome."}
+{"uid": "arc-train-000129", "takeaway": "Prioritize examples where systems interact to regulate internal conditions rather than those that merely enable movement or perception."}
+{"uid": "arc-train-000132", "takeaway": "Prioritize parameters that directly measure water chemistry and biological conditions (e.g., pH, dissolved oxygen, turbidity, microbial load) rather than mainly physical lake features."}
+{"uid": "arc-train-000134", "takeaway": "Identify the most likely transmission pathway and select the intervention that directly disrupts that pathway."}
+{"uid": "arc-train-000135", "takeaway": "Immediately convert to Kelvin and focus on temperature alone when asked about average kinetic energy per molecule, ignoring volume and phase unless explicitly relevant."}
+{"uid": "arc-train-000136", "takeaway": "When faced with a likely typo in a test option, consider the test's intent and select the best fit that matches the concept, rather than defaulting to an unrelated category."}
+{"uid": "arc-train-000140", "takeaway": "Translate given ordering into a corresponding trend (higher vs. lower) before evaluating each option."}
+{"uid": "arc-train-000142", "takeaway": "Prioritize clear evidence of product formation (like new substances) when analyzing chemical reactions."}
+{"uid": "arc-train-000143", "takeaway": "Match processes with their typical outcomes: external agents like weathering/erosion alter shapes and transport materials, while internal processes drive structural or compositional changes."}
+{"uid": "arc-train-000148", "takeaway": "State or check assumptions about relative motion before computing."}
+{"uid": "arc-train-000149", "takeaway": "Control all relevant variables and include replication to ensure reliable, comparable results."}
+{"uid": "arc-train-000158", "takeaway": "Default to adding component masses for mixtures and solutions unless the problem explicitly mentions a process that changes total mass."}
+{"uid": "arc-train-000159", "takeaway": "Anchor your choice in the reproductive mechanism (asexual vs. sexual) while staying aware of edge cases."}
+{"uid": "arc-train-000162", "takeaway": "Determine whether the system is open or closed and then apply the law of conservation of mass accordingly."}
+{"uid": "arc-train-000163", "takeaway": "Start by translating phenotypes into genotypes and then systematically use a Punnett square to predict offspring."}
+{"uid": "arc-train-000166", "takeaway": "Identify the foundational quantity or framework before considering supplementary details."}
+{"uid": "arc-train-000171", "takeaway": "Focus on the most immediate, mechanism-based effect and rule out options that imply unrelated or less direct consequences."}
+{"uid": "arc-train-000174", "takeaway": "Key in on directional cues like \"end product affects an earlier step\" and distinguish inhibition from amplification to choose the correct feedback type."}
+{"uid": "arc-train-000175", "takeaway": "Prioritize the most immediate, demonstrable outcome that directly and reliably affects communities over broader or indirect environmental benefits."}
+{"uid": "arc-train-000179", "takeaway": "Match a material's property directly to its practical function in the context given, and beware of options that describe desirable electrical outcomes but don't match the material's behavior."}
+{"uid": "arc-train-000180", "takeaway": "Avoid stretching approximations and be cautious about ruling out options based on perceived imprecision when the question itself allows approximate timing."}
+{"uid": "arc-train-000188", "takeaway": "Explicitly separate direct decomposers from organisms that influence decomposition indirectly to avoid overthinking edge cases."}
+{"uid": "arc-train-000191", "takeaway": "Prioritize the option that most directly addresses the specific physiological signal described."}
+{"uid": "arc-train-000199", "takeaway": "When asked about \"volume\", focus on the spatial extent and distribution of each component within the atom rather than the particles' intrinsic sizes or masses."}
+{"uid": "arc-train-000201", "takeaway": "Identify the defining features of the process being compared and separate mechanisms from results when evaluating options."}
+{"uid": "arc-train-000202", "takeaway": "Prioritize tracing the primary causal pathway and identifying the most sensitive organisms to the immediate abiotic change."}
+{"uid": "arc-train-000204", "takeaway": "Prioritize the primary, widely accepted components and avoid adding speculative specifics that aren’t required by the question."}
+{"uid": "arc-train-000207", "takeaway": "Match each device or process to the specific pollutants it targets and be cautious of plausible-sounding but unrelated outcomes."}
+{"uid": "arc-train-000211", "takeaway": "Apply fundamental principles and default to standard conditions unless the question states otherwise."}
+{"uid": "arc-train-000213", "takeaway": "When applying units to a problem, not only match units to the proper scale, but also recall alternative conventions and ensure the question's phrasing aligns with the most commonly used unit for the given context."}
+{"uid": "arc-train-000215", "takeaway": "Prioritize properties that directly enable the observed phenomenon and use precise terminology to capture the nature of the system."}
+{"uid": "arc-train-000216", "takeaway": "Connect changes in kinetic energy to intermolecular forces."}
+{"uid": "arc-train-000217", "takeaway": "Separate representable visual/structural aspects from intrinsic material properties when evaluating what models can and cannot show."}
+{"uid": "arc-train-000222", "takeaway": "When analyzing color interactions, prioritize understanding the wavelengths present in the light and the object's ability to reflect those wavelengths, rather than relying on simple color mixing rules."}
+{"uid": "arc-train-000226", "takeaway": "Focus on linking each option to specific forecasting processes (data collection, modeling, and verification)."}
+{"uid": "arc-train-000227", "takeaway": "Prioritize precise definitions and distinguish between widespread prevalence and infectious spread when evaluating terms like epidemic or pandemic."}
+{"uid": "arc-train-000229", "takeaway": "When reliability is the concern, look for options that strengthen reproducibility and validation (e.g., repeated trials, adequate controls, and replication across conditions)."}
+{"uid": "arc-train-000232", "takeaway": "Explicitly link an organism's physical traits to the most likely environmental constraint in that habitat, while briefly considering and ruling out alternatives to reduce uncertainty."}
+{"uid": "arc-train-000236", "takeaway": "When evaluating the heritability of a trait, explicitly check whether it is encoded by genes and expressed consistently across generations, rather than shaped by life events or personal choices."}
+{"uid": "arc-train-000238", "takeaway": "Link adaptive traits to outcomes that increase fitness within the species, and read options carefully for wording that might imply reduced reproductive success."}
+{"uid": "arc-train-000240", "takeaway": "Pay close attention to qualifiers like \"for most adults\" and use them to frame the most common, not exceptional, scenarios."}
+{"uid": "arc-train-000246", "takeaway": "Use the timeframe implied by the question to eliminate options that don’t match the immediacy or nature of the stimulus."}
+{"uid": "arc-train-000248", "takeaway": "Prefer plausible, mechanism-aligned outcomes and be cautious of extreme or unrelated claims."}
+{"uid": "arc-train-000251", "takeaway": "Frame options in terms of limiting resources and direct impacts on the species' energy and reproduction, while considering indirect but strong environmental factors."}
+{"uid": "arc-train-000254", "takeaway": "Avoid inventing numbers and instead rely strictly on the provided data, selecting conclusions that are clearly supported without inferring extra characteristics unless they are explicitly shown."}
+{"uid": "arc-train-000261", "takeaway": "Distinguish carefully between the variable to control for fair comparison and the variables that may still differ and influence outcomes, avoiding statements that imply equality unless all relevant factors are held constant."}
+{"uid": "arc-train-000265", "takeaway": "Prioritize well-established physiological context when evaluating enzyme function across environments, while briefly checking other variables to rule them out."}
+{"uid": "arc-train-000266", "takeaway": "Treat hardness as a decisive filter and verify common variants and luster types before eliminating options."}
+{"uid": "arc-train-000280", "takeaway": "Anchor comparisons on primary physiological functions and remember species-specific adaptations that can fulfill those functions in different ways."}
+{"uid": "arc-train-000282", "takeaway": "Connect an organism's traits to its environment and use process-of-elimination grounded in biology to discard misleading alternatives."}
+{"uid": "arc-train-000283", "takeaway": "Ground choices in first principles while staying alert to common confusions between related phenomena."}
+{"uid": "arc-train-000291", "takeaway": "Replicate under carefully controlled conditions and document any sources of variability before considering changes to the hypothesis or design."}
+{"uid": "arc-train-000292", "takeaway": "Pay close attention to whether the prompt is asking about \"largest body\" versus \"largest planet\" to determine the correct choice."}
+{"uid": "arc-train-000300", "takeaway": "Treat evaluative language like \"better\" as interpretive, and ask whether a claim depends on interpretation or a value judgment versus a concrete measurement."}
+{"uid": "arc-train-000301", "takeaway": "Match careful reasoning with the precise phrasing of choices, and note any potentially misleading language."}
+{"uid": "arc-train-000308", "takeaway": "Anchor your reasoning in the fundamental definition and eliminate options that describe non-defining or conditional characteristics."}
+{"uid": "arc-train-000316", "takeaway": "Identify the tectonic setting (intraplate vs. plate boundary) of each option and match it to the process described."}
+{"uid": "arc-train-000322", "takeaway": "Keep anchoring answers in the underlying mechanisms while remembering there are edge cases that don’t overturn the general patterns."}
+{"uid": "arc-train-000324", "takeaway": "Look for mutual benefit in plant-pollinator interactions and use biological principles to evaluate each option logically."}
+{"uid": "arc-train-000330", "takeaway": "Clearly distinguish between action–reaction pairs (on different objects) and net force (on a single object) to avoid conflation of \"no motion\" with \"no force\"."}
+{"uid": "arc-train-000331", "takeaway": "Focus on the underlying principles and concepts, rather than specific details, to develop a generalizable understanding and approach to similar problems."}
+{"uid": "arc-train-000336", "takeaway": "Distinguish between innate and learned behaviors by looking for clues about training, experience, or environmental triggers."}
+{"uid": "arc-train-000337", "takeaway": "Prioritize fundamental forces and use process of elimination to rule out mechanisms that don't operate at the relevant scale."}
+{"uid": "arc-train-000345", "takeaway": "Favor intrinsic, amount-independent properties when the material is the same, and distinguish clearly between related concepts like density (intrinsic) and weight (extrinsic)."}
+{"uid": "arc-train-000346", "takeaway": "Anchor behavioral questions in whether the trait requires environmental input (learned/acquired) versus being expressed without it (inherited)."}
+{"uid": "arc-train-000347", "takeaway": "Link properties to specific processes to ensure the property is functionally tied to the outcome being asked."}
+{"uid": "arc-train-000349", "takeaway": "Prioritize general state-of-matter principles (particle motion, energy, shape) while being cautious about substance-specific anomalies."}
+{"uid": "arc-train-000352", "takeaway": "Prioritize the primary comparison (categories vs. time) and choose a display that directly represents the target measure."}
+{"uid": "arc-train-000354", "takeaway": "When answering questions, note any implied conditions in the question and consider how real-world variables can affect the outcome, even if the core principle remains the same."}
+{"uid": "arc-train-000356", "takeaway": "Prioritize major lineage relationships and avoid making specific taxonomic claims unless certain or verifiable."}
+{"uid": "arc-train-000369", "takeaway": "Systematically test each option against the criteria for mixtures (multiple substances present, not chemically bonded, separable physically) to avoid confusing physical state with composition."}
+{"uid": "arc-train-000373", "takeaway": "Rely on the primary physical relationship (time and distance) while avoiding absolute statements about constants and acknowledging environmental factors that can subtly affect measurements."}
+{"uid": "arc-train-000376", "takeaway": "Stay alert to edge cases and ensure the question's phrasing supports your interpretation before deciding."}
+{"uid": "arc-train-000377", "takeaway": "Use process-of-elimination on causal categories, but double-check phrasing to ensure no hidden human influence is implied."}
+{"uid": "arc-train-000385", "takeaway": "Translate common names to scientific terms and systematically align the sequence with the choices to avoid traps in terminology or order."}
+{"uid": "arc-train-000386", "takeaway": "Center your reasoning on fundamental processes while avoiding overly broad claims unless clearly supported."}
+{"uid": "arc-train-000387", "takeaway": "Identify the hemisphere of the location first, then apply the opposite-season logic when the other hemisphere is tilted toward the Sun."}
+{"uid": "arc-train-000388", "takeaway": "Distinguish carefully between temperature changes (which affect kinetic energy) and phase changes (which may involve energy changes that do not increase kinetic energy)."}
+{"uid": "arc-train-000392", "takeaway": "Define \"independent of sunlight\" as referring to the immediate primary energy pathway of the ecosystem, and note that some deep-sea systems may have mixed or detrital inputs even if they don't receive light."}
+{"uid": "arc-train-000394", "takeaway": "Quickly translate \"every X minutes per 1 km\" into a rate by checking units (km per hour) and verifying the time and distance conversions align."}
+{"uid": "arc-train-000399", "takeaway": "Anchor your choice in the fundamental definition of the concept and treat other observable changes as supportive, not determinative."}
+{"uid": "arc-train-000411", "takeaway": "Link population trends directly to survival and reproductive success and use process-of-elimination based strictly on the information provided."}
+{"uid": "arc-train-000416", "takeaway": "Avoid adding unnecessary assumptions and instead justify why the result doesn't depend on them when possible."}
+{"uid": "arc-train-000419", "takeaway": "Use categorical reasoning and process of elimination when options mix different kinds of objects, focusing on the defining properties relevant to the question."}
+{"uid": "arc-train-000421", "takeaway": "Distinguish clearly between acceleration (set by net force) and velocity (which may persist temporarily in a different direction)."}
+{"uid": "arc-train-000427", "takeaway": "Verify units to avoid mixing concepts or dimensions."}
+{"uid": "arc-train-000435", "takeaway": "Ensure your intermediate evaluations align with your final rationale, clearly connecting the mechanism you describe to the option you select."}
+{"uid": "arc-train-000436", "takeaway": "Anchor decisions in the primary constraints of the context (climate, resources, survival needs) before evaluating options."}
+{"uid": "arc-train-000438", "takeaway": "When evaluating a question, first ask whether the trait can be observed without changing the substance; if so, it's likely a physical property."}
+{"uid": "arc-train-000442", "takeaway": "Prioritize general cues and sanity-check specific scales against typical ranges to resolve any mismatches and ensure a robust conclusion."}
+{"uid": "arc-train-000446", "takeaway": "Identify whether the example illustrates benefits or harms and choose the option that directly matches that focus."}
+{"uid": "arc-train-000447", "takeaway": "When applying mechanical advantage principles, consider the distance-force trade-off and explicitly check whether a device changes only the direction of force or also trades distance for force."}
+{"uid": "arc-train-000449", "takeaway": "When asked about energy transformations, prioritize the primary, intended function of the device over secondary effects."}
+{"uid": "arc-train-000450", "takeaway": "Key in on action words in the question and distinguish between resources that enable growth and materials that actually convert into nutrients."}
+{"uid": "arc-train-000459", "takeaway": "Prioritize isolating the phenomenon being described from its causes or related processes to avoid conflating terms."}
+{"uid": "arc-train-000465", "takeaway": "Prioritize options that offer specific, direct evidence of a process or past condition over general associations."}
+{"uid": "arc-train-000470", "takeaway": "Use ordered frameworks you've memorized while staying alert to context clues that might indicate alternative or historical classifications."}
+{"uid": "arc-train-000471", "takeaway": "Prioritize universal features over specialized structures when comparing entities with different characteristics."}
+{"uid": "arc-train-000472", "takeaway": "Favor properties that uniquely and directly diagnose the category, rather than indirect indicators."}
+{"uid": "arc-train-000473", "takeaway": "Use group/period knowledge to quickly rule out distractors and verify the remaining choice."}
+{"uid": "arc-train-000474", "takeaway": "Match the spatial and temporal scale in the question to the processes involved, using process-of-elimination grounded in how those processes actually operate."}
+{"uid": "arc-train-000477", "takeaway": "Consider all relevant heat-transfer pathways (conduction, convection, radiation, and especially evaporation) when analyzing heat transfer scenarios."}
+{"uid": "arc-train-000482", "takeaway": "Anchor phase-change questions in kinetic theory by linking decreasing temperature to lower molecular speed and stronger intermolecular attractions."}
+{"uid": "arc-train-000483", "takeaway": "Define key terms consistently and explicitly, and remain alert to less obvious connections when evaluating options."}
+{"uid": "arc-train-000488", "takeaway": "Identify the start and end energy forms clearly, and note important intermediate conversions when relevant."}
+{"uid": "arc-train-000490", "takeaway": "Focus on the general concepts and principles, rather than specific details or scenarios, to strengthen your explanations and understanding."}
+{"uid": "arc-train-000499", "takeaway": "Focus on the option that most directly increases the reliability and generalizability of the specific claim being made, especially through replication by independent parties."}
+{"uid": "arc-train-000500", "takeaway": "Identify the fundamental direction of cause-and-effect and be cautious of options that reverse it or reduce it to only one form of energy."}
+{"uid": "arc-train-000504", "takeaway": "Match the visualization to the primary analytic task (e.g., trends, comparisons, proportions) and the data structure."}
+{"uid": "arc-train-000515", "takeaway": "Track each element (or stable polyatomic ion) consistently, perhaps in a quick table, to avoid small counting slips while preserving your solid step-by-step strategy."}
+{"uid": "arc-train-000516", "takeaway": "Prioritize intrinsic, differentiating properties (e.g., magnetism, conductivity, reactivity) over indirect or non-specific methods."}
+{"uid": "arc-train-000519", "takeaway": "Match each option to the specific evidence type or method it represents and eliminate those that belong to different subfields or tools."}
+{"uid": "arc-train-000521", "takeaway": "Prioritize multiple trials and consistency checks before altering experimental conditions."}
+{"uid": "arc-train-000522", "takeaway": "Focus on which physical parameters actually change to arrive at the correct conclusion."}
+{"uid": "arc-train-000524", "takeaway": "Identify the net force in the direction of motion and consider whether forces balance or not, while being alert to special cases where friction's role can be less obvious."}
+{"uid": "arc-train-000529", "takeaway": "Identify the most salient, observable property tied to the concept being tested and choose the method that best captures that property."}
+{"uid": "arc-train-000540", "takeaway": "Anchor choices in the core defining property of the concept and use that to systematically eliminate distractors."}
+{"uid": "arc-train-000545", "takeaway": "Map each option to a step of the scientific process and look for cues that indicate direct data collection versus planning or inference."}
+{"uid": "arc-train-000547", "takeaway": "Map verbal claims to specific, measurable quantities while noting that other factors can matter but are distinct from the primary quantity."}
+{"uid": "arc-train-000548", "takeaway": "Anchor your decision to the function that most directly enables verification and cumulative progress in science."}
+{"uid": "arc-train-000549", "takeaway": "Distinguish between desirable qualities (simplicity, practicality) and decisive ones (predictive power and corroboration) when evaluating scientific theories."}
+{"uid": "arc-train-000558", "takeaway": "Prioritize well-established primary mechanisms and use them to quickly eliminate distractors that reflect secondary or unrelated processes."}
+{"uid": "arc-train-000562", "takeaway": "When distinguishing chemical from physical changes, look for evidence of new substances (gas production, heat/light from a reaction, irreversible changes)."}
+{"uid": "arc-train-000563", "takeaway": "Determine whether heat is being added or removed and then match that direction to the appropriate phase change while noting any context like pressure or special conditions."}
+{"uid": "arc-train-000574", "takeaway": "Prioritize well-established biological principles when evaluating choices, while remaining aware that absolute statements can have exceptions even if they're still correct in a basic science context."}
+{"uid": "arc-train-000575", "takeaway": "A quick estimate can be sufficient to identify the closest option without over-calculation, while still checking which choice is numerically nearest."}
+{"uid": "arc-train-000583", "takeaway": "Continue methodically ruling out options by matching each function to its biological context, while staying alert to nuanced definitions."}
+{"uid": "arc-train-000584", "takeaway": "Anchor choices in the underlying material type and its renewability."}
+{"uid": "arc-train-000587", "takeaway": "Prioritize explanations grounded in evolutionary mechanisms and evidence from the fossil record."}
+{"uid": "arc-train-000589", "takeaway": "Prioritize safety checks before tool use, ensuring they are consistently elevated to the top of the checklist."}
+{"uid": "arc-train-000598", "takeaway": "Select the most specific term supported by the evidence provided and avoid broader categories unless the prompt clearly indicates a defined interaction."}
+{"uid": "arc-train-000601", "takeaway": "Prioritize the factor most relevant to the question's framing when considering multiple factors that affect a phenomenon."}
+{"uid": "arc-train-000602", "takeaway": "Prioritize solutions that directly address the limiting factor in the scenario rather than ancillary supports or inputs."}
+{"uid": "arc-train-000604", "takeaway": "Use reaction indicators (gas formation, precipitates, color change, temperature change) while ruling out purely physical processes that might produce similar observations."}
+{"uid": "arc-train-000608", "takeaway": "Rely on general periodic trends when questions ask for broad comparisons, while keeping in mind that exceptions exist."}
+{"uid": "arc-train-000609", "takeaway": "Identify the variable most directly tied to the biological process in question and consider which environmental differences most plausibly impact it, while briefly noting any potential confounders."}
+{"uid": "arc-train-000614", "takeaway": "Anchor your choice to broad, well-established ecological principles and check that the behavior described is common and adaptive rather than exceptional."}
+{"uid": "arc-train-000615", "takeaway": "Separate structural, genetically determined features from condition-dependent traits that respond to current environmental conditions."}
+{"uid": "arc-train-000634", "takeaway": "When determining whether a fact involves physical or chemical properties, ask if it involves forming new substances or breaking/forming bonds."}
+{"uid": "arc-train-000637", "takeaway": "When evaluating a phenomenon, consider the direction and rate of energy flow, not just the material's inherent properties."}
+{"uid": "arc-train-000639", "takeaway": "Prioritize the core process being tested while staying alert to nuanced phrasing that might broaden or narrow what counts as a correct contribution."}
+{"uid": "arc-train-000642", "takeaway": "Be precise with terminology while applying the hierarchy of biological organization to choose the best category."}
+{"uid": "arc-train-000653", "takeaway": "Prioritize common, near-term processes in biogeochemical cycles when asked about \"most likely\" outcomes, while keeping alternative fates in mind."}
+{"uid": "arc-train-000658", "takeaway": "Use environmental context to narrow choices, while briefly considering alternative processes to check for possible exceptions before committing to a conclusion."}
+{"uid": "arc-train-000659", "takeaway": "Double-check that the option you select exactly matches the order you've established to avoid a selection error."}
+{"uid": "arc-train-000663", "takeaway": "Distinguish between possible but uncommon effects and well-documented, direct consequences, especially in environmental contexts."}
+{"uid": "arc-train-000671", "takeaway": "Distinguish between the instruments that collect data and the phenomena being measured or mapped."}
+{"uid": "arc-train-000690", "takeaway": "Distinguish between mass number (protons + neutrons for a specific atom) and average atomic mass (weighted average of isotopes)."}
+{"uid": "arc-train-000692", "takeaway": "Assess whether a topic reflects broad, progressive change in environmental conditions rather than isolated or rapid events."}
+{"uid": "arc-train-000693", "takeaway": "Classify variables (independent vs. dependent) and determine data type (continuous or categorical) before choosing a graph type."}
+{"uid": "arc-train-000698", "takeaway": "Prioritize official guidelines or authority-provided protocols over actions that only seem reasonable but may not meet safety or regulatory standards."}
+{"uid": "arc-train-000708", "takeaway": "Identify the primary variables that scale a process and note any secondary factors that could modify the outcome."}
+{"uid": "arc-train-000709", "takeaway": "Anchor choices in the underlying physical processes to differentiate typical weather signatures, while remembering that local variations can produce exceptions."}
+{"uid": "arc-train-000724", "takeaway": "Consider both the optical purpose and the shape/curvature of the medium, not just the material, when judging how much refraction occurs."}
+{"uid": "arc-train-000738", "takeaway": "Anchor choices in established safety rules (e.g., PPE use, handwashing, decontamination, and no eating/drinking) when questions involve laboratory or field investigations."}
+{"uid": "arc-train-000741", "takeaway": "Identify the root cause versus contributing factors to avoid being distracted by related but non-primary influences."}
+{"uid": "arc-train-000744", "takeaway": "Map the most immediate energy-flow consequences first (who eats whom) and use that to eliminate distractors that either reverse causality or rely on unlikely compensatory changes."}
+{"uid": "arc-train-000749", "takeaway": "When recording discrete data points, prioritize a format that minimizes interpretation and is immediately readable without specialized knowledge."}
+{"uid": "arc-train-000750", "takeaway": "Focus on the essential variables and ignore specific details, such as units or conversions, when applying a formula or concept."}
+{"uid": "arc-train-000754", "takeaway": "Pay attention to how exam phrasing handles approximations and conventions, especially with \"always\" or \"exactly\", and use accepted scientific rounding while still noting the underlying precision."}
+{"uid": "arc-train-000758", "takeaway": "Read option wording carefully and ensure your reasoning aligns with the specific terms used."}
+{"uid": "arc-train-000764", "takeaway": "Prioritize the direct causal relationship emphasized in the question and avoid extending too far into longer-term outcomes unless the prompt asks for them."}
+{"uid": "arc-train-000767", "takeaway": "Prioritize the direct, widely accepted consequences of a process or phenomenon when evaluating options, and acknowledge when statements are simplified or nuanced."}
+{"uid": "arc-train-000768", "takeaway": "Identify the controlling variables for the process in question and compare options by how strongly they support those variables."}
+{"uid": "arc-train-000771", "takeaway": "Identify the independent and controlled variables and ensure the conclusion directly matches what the experiment actually tested."}
+{"uid": "arc-train-000773", "takeaway": "Anchor your choice to the core mechanism that poses the greatest enduring risk and affects the largest system."}
+{"uid": "arc-train-000779", "takeaway": "Frame conclusions in terms of angular diameter and note that apparent sizes can vary slightly due to changing distances."}
+{"uid": "arc-train-000782", "takeaway": "Prioritize traits that increase the number of generations and genetic variation per unit time when comparing evolutionary rates across organisms."}
+{"uid": "arc-train-000784", "takeaway": "Consider both the pace of environmental change and the population's capacity to respond when evaluating the likelihood of natural selection occurring."}
+{"uid": "arc-train-000795", "takeaway": "Prioritize features that can only form at the surface and clearly separate \"how rocks moved\" from \"what proves they were once exposed\"."}
+{"uid": "arc-train-000796", "takeaway": "Separate rotation effects (daily cycles) from revolution/tilt effects (seasonal or orbital events) before choosing an answer."}
+{"uid": "arc-train-000800", "takeaway": "Frame statements in terms of what is typical versus rare, acknowledging that while exceptions can exist, prevailing conditions often point to the most common scales."}
+{"uid": "arc-train-000801", "takeaway": "Prioritize mechanisms that change the intensity and duration of sunlight over misconceptions when explaining temperature patterns."}
+{"uid": "arc-train-000802", "takeaway": "Always link the measuring instrument to the physical quantity and units it's designed to measure, then rule out distractors that require different tools."}
+{"uid": "arc-train-000804", "takeaway": "Explicitly separate intrinsic properties from context-dependent ones."}
+{"uid": "arc-train-000805", "takeaway": "Prioritize core physical principles and eliminate distractors that don't directly affect the process."}
+{"uid": "arc-train-000806", "takeaway": "Map each phenomenon explicitly to its driver and its typical period."}
+{"uid": "arc-train-000816", "takeaway": "Align your wording with the mechanisms involved to avoid internal contradictions in your explanation."}
+{"uid": "arc-train-000822", "takeaway": "Assess system boundaries and measurement reliability before considering less plausible explanations."}
+{"uid": "arc-train-000827", "takeaway": "Prioritize well-known high-emission sources and explicitly define the scope of \"pollution\" to strengthen your justification."}
+{"uid": "arc-train-000830", "takeaway": "Clarify the primary communicative goal (comparison, trend, or composition) before choosing a display format."}
+{"uid": "arc-train-000835", "takeaway": "Focus on the primary, well-established mechanism at play and use process-of-elimination to dismiss less relevant or secondary effects."}
+{"uid": "arc-train-000836", "takeaway": "Verify the direction of the outcome being asked about, rather than just identifying a relevant consequence."}
+{"uid": "arc-train-000845", "takeaway": "When dealing with changes of state, focus on particle-level explanations and double-check that the choice describes particle behavior rather than macroscopic container effects."}
+{"uid": "arc-train-000847", "takeaway": "Tie the animal's exact coloration to the dominant substrate or visual textures of each habitat, rather than relying on general diversity or cover."}
+{"uid": "arc-train-000849", "takeaway": "Distinguish between similar concepts by definition to avoid confusion in related contexts."}
+{"uid": "arc-train-000850", "takeaway": "Look for the word \"primarily\" and match it to the core design intent of the technology."}
+{"uid": "arc-train-000859", "takeaway": "Choose evidence that directly links to the process in question, especially signs of continuous renewal or turnover, rather than general physiological facts."}
+{"uid": "arc-train-000866", "takeaway": "Eliminate options that invoke unrelated mechanisms and focus on the most directly relevant physical principle."}
+{"uid": "arc-train-000870", "takeaway": "Check whether a listed factor is a property of the medium (causal) or a consequence of wave parameters (descriptive)."}
+{"uid": "arc-train-000880", "takeaway": "Look for explicit evidence of training or conditioning when identifying learned behaviors."}
+{"uid": "arc-train-000887", "takeaway": "Read closely to distinguish between the container (what something is made of) and the contents (what is inside)."}
+{"uid": "arc-train-000888", "takeaway": "Distinguish clearly between an object's intrinsic characteristics and observational effects when evaluating why something appears brighter."}
+{"uid": "arc-train-000895", "takeaway": "Focus on the underlying principles and concepts, rather than specific details or assumptions, when explaining a phenomenon or making a decision."}
+{"uid": "arc-train-000898", "takeaway": "Identify the medium and whether bulk motion is involved; when fluids circulate and carry heat, that's convection, whereas in solids or at fixed contacts, conduction dominates."}
+{"uid": "arc-train-000906", "takeaway": "Scrutinize absolute wording and confirm whether a trait is truly exclusive before concluding that it's a valid difference."}
+{"uid": "arc-train-000912", "takeaway": "Align specific design features with the precise hazard they mitigate, and be careful to distinguish overlapping but distinct risks."}
+{"uid": "arc-train-000917", "takeaway": "Match the evidence type to the claim being communicated and, when possible, consider multiple valid indicators of the phenomenon."}
+{"uid": "arc-train-000918", "takeaway": "Prioritize the best-supported overlap in the choices given, even if it isn’t the most comprehensive descriptor of both fields."}
+{"uid": "arc-train-000919", "takeaway": "When evaluating behaviors, weigh how much a behavior relies on learning versus innate programming and choose the option that is most clearly learned or least purely instinctual."}
+{"uid": "arc-train-000922", "takeaway": "Be cautious with quantitative claims and consider whether the difference is meaningful or negligible."}
+{"uid": "arc-train-000924", "takeaway": "Identify the primary, broadly applicable benefit in a list of plausible advantages and match it to the option that captures that core principle."}
+{"uid": "arc-train-000927", "takeaway": "Prioritize characteristics that directly reflect the target property while briefly considering potential confounders."}
+{"uid": "arc-train-000930", "takeaway": "Scrutinize absolute claims and lean on well-established properties (location, charge, and relative mass) when comparing subatomic particles."}
+{"uid": "arc-train-000933", "takeaway": "Continue using elimination based on fundamental physical properties while noting nuances in terminology to ensure the comparison fits the question's intent."}
+{"uid": "arc-train-000952", "takeaway": "Anchor choices in clear causal mechanisms rather than superficial attributes that aren't mechanically relevant."}
+{"uid": "arc-train-000953", "takeaway": "Use precise language to distinguish physical dispersion from chemical change, and note when substances remain molecular versus ionize or react."}
+{"uid": "arc-train-000959", "takeaway": "Anchor choices in precise biological definitions and distinguish levels of organization (individual, population, community, ecosystem) when evaluating options."}
+{"uid": "arc-train-000961", "takeaway": "In forced-choice questions, align your justification closely with the prompt's stated mechanism and consider edge cases, rather than introducing alternatives outside the provided options."}
+{"uid": "arc-train-000964", "takeaway": "Continue using elimination while anchoring choices in well-established scientific impacts, especially when several plausible-sounding issues are presented."}
+{"uid": "arc-train-000969", "takeaway": "Convert familiar formulas into explicit atom counts to align with multiple-choice formats, and double-check to avoid mixing up similar pairs."}
+{"uid": "arc-train-000971", "takeaway": "Anchor similar questions in conservation-of-energy reasoning."}
+{"uid": "arc-train-000977", "takeaway": "Anchor your choice in core ecosystem functions while briefly considering other plausible pathways to ensure your selected impact is the most direct and significant."}
+{"uid": "arc-train-000978", "takeaway": "Use a structured rubric to evaluate options based on general criteria, while acknowledging potential exceptions and regional variability."}
+{"uid": "arc-train-000987", "takeaway": "Weigh both intrinsic properties and scale when comparing energy storage among Earth systems."}
+{"uid": "arc-train-000989", "takeaway": "Anchor your choice in clear cause-and-effect ecological mechanisms and double-check wording to avoid ambiguity."}
+{"uid": "arc-train-000996", "takeaway": "Map each option to the correct body system and use elimination to avoid choices that describe different physiological processes."}
+{"uid": "arc-train-001003", "takeaway": "Use elimination grounded in first principles (e.g., medium requirement, speed, frequency ranges) when comparing different types of waves."}
+{"uid": "arc-train-001004", "takeaway": "Identify the primary driver being asked about and avoid conflating necessary conditions with the main source of nourishment."}
+{"uid": "arc-train-001012", "takeaway": "Clarify whether an option is too broad or specific rather than assuming it's incorrect."}
+{"uid": "arc-train-001016", "takeaway": "Match symptom patterns to the system responsible, while briefly considering overlapping roles of other systems to rule them out."}
+{"uid": "arc-train-001018", "takeaway": "Prioritize definitional attributes (source and replenishment timescale) over functional attributes like efficiency when categorizing energy sources."}
+{"uid": "arc-train-001019", "takeaway": "Continuously check each option against multiple core attributes (charge, location, role) to quickly rule out close-sounding but incorrect statements."}
+{"uid": "arc-train-001025", "takeaway": "When options span very different timescales, use rough, real-world benchmarks to compare orders of magnitude and state any assumptions explicitly."}
+{"uid": "arc-train-001026", "takeaway": "Anchor comparisons in core biological functions (e.g., reproduction and development) rather than superficial traits."}
+{"uid": "arc-train-001027", "takeaway": "Map each process to its energy flow (storage vs. release) to quickly eliminate distractors."}
+{"uid": "arc-train-001029", "takeaway": "Distinguish random error (which causes spread) from systematic error (which shifts all measurements) to justify why \"close but not exactly the same\" is the most realistic expectation."}
+{"uid": "arc-train-001033", "takeaway": "Connect a plant structure directly to its reproductive function while ruling out distractors that imply protection or inhibition."}
+{"uid": "arc-train-001043", "takeaway": "Identify the core physical relationship (single, central structural support vs. distributed or non-structural support) and use it to eliminate superficially similar but mechanically different options."}
+{"uid": "arc-train-001047", "takeaway": "Anchor your reasoning to the specific wording of the question and use elimination consistently."}
+{"uid": "arc-train-001050", "takeaway": "Double-check real-world magnitude estimates to avoid contradictory or inaccurate comparisons, even when the overall reasoning is sound."}
+{"uid": "arc-train-001051", "takeaway": "Anchor your reasoning in the given constraints and trace how resource changes ripple through each trophic level."}
+{"uid": "arc-train-001052", "takeaway": "Identify whether a process increases or decreases net energy retained by Earth, and distinguish energy conversions that don't appreciably change heat."}
+{"uid": "arc-train-001053", "takeaway": "Link anatomical features to their likely functions while staying alert to context-specific exceptions."}
+{"uid": "arc-train-001055", "takeaway": "Align safety gear with specific hazards present, rather than just location, while staying alert to exceptions."}
+{"uid": "arc-train-001057", "takeaway": "When exact figures aren't provided, comfortably round to the nearest given option."}
+{"uid": "arc-train-001067", "takeaway": "Distinguish between \"exists in any form\" and \"substantial, global presence\" when evaluating shared features, and note any exceptions or edge cases without letting them derail the main criterion."}
+{"uid": "arc-train-001069", "takeaway": "Carefully translate everyday descriptions into their corresponding energy forms when selecting the option that best matches the dominant energy conversion described."}
+{"uid": "arc-train-001074", "takeaway": "Evaluate each option by asking which reflects a fundamental scientific principle about resources and energy systems, and rule out distractors that address secondary or less plausible factors."}
+{"uid": "arc-train-001076", "takeaway": "Prioritize options that reduce combustion-related emissions."}
+{"uid": "arc-train-001078", "takeaway": "Clearly distinguish renewable from nonrenewable resources and focus on options that directly decrease the use of the latter."}
+{"uid": "arc-train-001081", "takeaway": "Anchor choices in precise ecological definitions, recognizing that coexistence simply means co-occurrence over time, which can encompass neutral, positive, or negative interactions depending on context."}
+{"uid": "arc-train-001082", "takeaway": "Distinguish between intrinsic properties (like mass) and context-dependent quantities (like weight) when comparing conditions across different environments."}
+{"uid": "arc-train-001085", "takeaway": "Center decisions on the dominant constraints (time, distance, cost, and size/weight) while being cautious about technical claims that may depend on specialized arrangements."}
+{"uid": "arc-train-001086", "takeaway": "Anchor your reasoning in ploidy levels and chromosome counts."}
+{"uid": "arc-train-001092", "takeaway": "Prioritize understanding instructions and safety protocols by methodically comparing options and asking clarifying questions if any directions are unclear."}
+{"uid": "arc-train-001094", "takeaway": "Link environmental stressors to the most directly exposed and physiologically vulnerable populations within the most affected habitats."}
+{"uid": "arc-train-001095", "takeaway": "Connect atmospheric conditions (like cloud cover and humidity) to energy balance and heat retention."}
+{"uid": "arc-train-001100", "takeaway": "Consistently separate natural resources and cultivated plants from items that require human fabrication or processing."}
+{"uid": "arc-train-001101", "takeaway": "Determine whether a scenario involves germline versus somatic changes, as this often decides whether traits in offspring can be affected."}
+{"uid": "arc-train-001105", "takeaway": "Prioritize direct, current evidence while considering the credibility and verification of that evidence."}
+{"uid": "arc-train-001111", "takeaway": "Translate biological or geological evidence into climate implications while acknowledging the range of tolerances organisms might have had and considering how dramatically climates can shift over geologic time."}
+{"uid": "arc-train-001116", "takeaway": "Compare not just macronutrient categories, but also the type and form of the carbohydrate and the digestive steps required."}
