@@ -276,9 +276,23 @@ _BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
 
 # "option D", "answer (B)", "chose C" — sempre letra MAIÚSCULA isolada, então
 # o artigo "a" e palavras comuns não são atingidos.
+#
+# O separador aceita vírgula e dois-pontos, não só espaço: as reflexões v2
+# escrevem "the correct answer, B, highlights..." e "the alternative option, A"
+# com uma frequência que a versão só-com-espaço deixava passar inteira. Medido
+# nas 12.436 reflexões de results/reflection_v2: 188 textos (1,5%) ganham pelo
+# menos uma neutralização a mais, e uma inspeção das 32 ocorrências com a letra
+# "A" — a única ambígua com o artigo — não achou nenhum falso positivo, porque
+# a palavra-gatilho ("option"/"answer"/...) tem de vir imediatamente antes.
+_LETTER_SEP = r"(?:\s*[,:]\s*|\s+)"
+# Cópula entre a palavra-gatilho e a letra: "the correct answer is C",
+# "the correct answer was D). Ainda case-sensitive em [A-H], então o artigo
+# minúsculo de "the correct answer was a direct reflection" não é atingido.
+_LETTER_COPULA = r"\s+(?:is|was|are|were|being|would\s+be|should\s+be|must\s+be)\s+"
 _LETTER_MENTIONS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\b((?:option|choice|answer|alternative|response)s?\s+)\(?([A-H])\)?(?![\w-])"),
-    re.compile(r"\b((?:chose|choose|chosen|selected|select|picked|pick|answered)\s+)\(?([A-H])\)?(?![\w-])"),
+    re.compile(r"\b((?:option|choice|answer|alternative|response)s?" + _LETTER_SEP + r")\(?([A-H])\)?(?![\w-])"),
+    re.compile(r"\b((?:option|choice|answer|alternative|response)s?" + _LETTER_COPULA + r")\(?([A-H])\)?(?![\w-])"),
+    re.compile(r"\b((?:chose|choose|chosen|selected|select|picked|pick|answered)" + _LETTER_SEP + r")\(?([A-H])\)?(?![\w-])"),
     re.compile(r"(\s)\(([A-H])\)(?![\w-])"),
 )
 
@@ -286,6 +300,28 @@ _LETTER_MENTIONS: tuple[re.Pattern[str], ...] = (
 # Continuação de enumeração: "options [letter], C, and D" — o primeiro é
 # pego pela palavra-gatilho, os seguintes só pelo que vem antes deles.
 _LETTER_ENUM = re.compile(r"(\[letter\])(,?\s+(?:and|or)\s+|,\s*)([A-H])(?![\w-])")
+
+# Enumeração SEM palavra-gatilho: "while A, B, and D are essential", "(A, C, D)".
+# Exige duas ou mais letras encadeadas, o que descarta o artigo "A" e a inicial
+# de uma frase — prosa não escreve "A, B" por acaso. A negativa de olhar para
+# trás protege símbolos de unidade (0°C, 32°F) e siglas coladas em número.
+_LETTER_TOKEN = r"(?:\[letter\]|[A-H])"
+_LETTER_RUN = re.compile(
+    r"(?<![\w\[°º])(" + _LETTER_TOKEN + r"(?:(?:\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+)" + _LETTER_TOKEN + r")+)(?![\w-])"
+)
+_LETTER_PAREN = re.compile(r"(?<![\w\[°º(])([A-H])(?=\)(?![\w-]))")
+
+
+def _neutralize_runs(text: str) -> str:
+    """Troca as letras de uma enumeração por [letter], se houver duas ou mais."""
+
+    def sub(match: re.Match[str]) -> str:
+        run = match.group(1)
+        if len(re.findall(r"(?<!\[letter)\b[A-H]\b", run)) + run.count("[letter]") < 2:
+            return run
+        return re.sub(r"(?<![\w\[])[A-H](?![\w-])", "[letter]", run)
+
+    return _LETTER_RUN.sub(sub, text)
 
 # Letra entre aspas: "A", “B”.
 _LETTER_QUOTED = re.compile(r"([\"“'])([A-H])([\"”'])")
@@ -309,10 +345,12 @@ def neutralize_option_letters(text: str) -> str:
     for pattern in _LETTER_MENTIONS:
         text = pattern.sub(r"\1[letter]", text)
     text = _LETTER_QUOTED.sub(r"\1[letter]\3", text)
+    text = _LETTER_PAREN.sub("[letter]", text)  # "B) was the most aligned"
     while True:
         text, n = _LETTER_ENUM.subn(r"\1\2[letter]", text)
         if not n:
-            return text
+            break
+    return _neutralize_runs(text)
 
 
 def _text_units(text: str) -> list[str]:
@@ -360,6 +398,51 @@ def compact_reflection(text: str, max_words: int | None = None) -> str:
         sep = "\n" if out and _BULLET.match(unit) else (" " if out else "")
         out += sep + unit
     return "(...) " + out
+
+
+# --- A "lição" da reflexão v2 ----------------------------------------------
+#
+# Os prompts de reflexão v2 (notebook 05) pedem que o texto termine com uma
+# linha "Lesson: <regra geral>". Medido em results/reflection_v2: 93-100% das
+# reflexões obedecem, e em 91-99% delas a lição é a ÚLTIMA frase.
+#
+# O detalhe que importa: vários modelos escrevem a lição no fim do MESMO
+# parágrafo, não numa linha própria. Uma checagem por linha
+# (text.splitlines()[-1].startswith("lesson:")) reporta 36% onde o valor real é
+# 100%. Por isso a busca aqui é pela ÚLTIMA ocorrência de "Lesson:" no texto,
+# não pela última linha.
+_LESSON = re.compile(r"(?:^|(?<=[\s.;:!?]))lesson\s*:\s*", re.IGNORECASE)
+
+
+def extract_lesson(text: str) -> str:
+    """
+    A regra geral no fim de uma reflexão v2, ou "" se o modelo não escreveu uma.
+
+    Devolve só o texto DEPOIS de "Lesson:", até o fim do parágrafo — é a parte
+    que se pretende transferível para outra questão. Usar isto (em vez de
+    `splitlines()[-1]`) é o que faz a métrica de adesão ao formato bater com a
+    realidade.
+    """
+    text = (text or "").strip()
+    hits = list(_LESSON.finditer(text))
+    if not hits:
+        return ""
+    tail = text[hits[-1].end():].strip()
+    # A lição é um parágrafo; o que vier depois de uma linha em branco é outra
+    # coisa (o modelo às vezes emenda um fecho genérico).
+    return tail.split("\n\n")[0].strip()
+
+
+def has_lesson(text: str, *, tail_words: int = 60) -> bool:
+    """A reflexão termina com a linha "Lesson:" pedida pelo prompt v2?
+
+    `tail_words` limita a busca à cauda do texto: uma reflexão que menciona
+    "lesson:" no meio e depois volta a narrar não cumpriu o formato, porque o
+    objetivo da instrução é que a lição sobreviva ao corte de
+    `compact_reflection()`, que preserva justamente a cauda.
+    """
+    words = (text or "").split()
+    return bool(_LESSON.search(" ".join(words[-tail_words:])))
 
 
 def format_source_question(text: str, max_chars: int | None = None) -> str:

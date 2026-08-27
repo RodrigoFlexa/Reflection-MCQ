@@ -493,6 +493,29 @@ HF_BATCH_SIZE = _env_int("RMCQ_HF_BATCH_SIZE", 16)
 VLLM_GPU_UTIL = _env_float("RMCQ_VLLM_GPU_UTIL", 0.90)
 MAX_MODEL_LEN = _env_opt_int("RMCQ_MAX_MODEL_LEN")
 
+# Modo determinístico do vLLM. Ligado por padrão.
+#
+# Por quê: com temperatura 0 a decodificação é greedy e "deveria" ser
+# reprodutível, mas o continuous batching torna a aritmética dependente da
+# COMPOSIÇÃO do lote — a ordem das reduções em ponto flutuante muda, e num
+# empate quase exato o argmax vira. Medido nesta base: 10.908 itens da grade do
+# notebook 05 caíram em fallback (prompt byte a byte idêntico ao do baseline,
+# conferido por hash) e mesmo assim só 94,44% reproduziram a letra do baseline.
+# Isso é ~5,6% de ruído puro, que com n=300 dá um desvio-padrão de utility de
+# ±0,0136 — do tamanho de praticamente todos os efeitos que a grade quer medir.
+#
+# O que cada flag faz: prefix caching reusa estados de KV entre prompts com
+# prefixo comum (e as notas criam justamente prefixos comuns), chunked prefill
+# parte o prefill em pedaços de tamanho variável, e os CUDA graphs fixam formas
+# de lote. Os três mudam a ordem das somas. max_num_seqs fixo tira a última
+# fonte de variação de composição de lote.
+#
+# Custo: perde-se throughput (estimar 1,5-3x mais lento). Vale a pena — sem
+# isso, nenhuma diferença entre configurações individuais da grade é
+# distinguível de ruído. Para voltar ao modo rápido: RMCQ_VLLM_DETERMINISTIC=0.
+VLLM_DETERMINISTIC = _env_str("RMCQ_VLLM_DETERMINISTIC", "1") in ("1", "true", "True")
+VLLM_MAX_NUM_SEQS = _env_opt_int("RMCQ_VLLM_MAX_NUM_SEQS") or 32
+
 EMBEDDER = _env_str("RMCQ_EMBEDDER", "BAAI/bge-large-en-v1.5")
 EMBED_BATCH_SIZE = _env_int("RMCQ_EMBED_BATCH_SIZE", 64)
 
@@ -634,6 +657,8 @@ def runtime_summary() -> dict[str, object]:
         "max_new_tokens": MAX_NEW_TOKENS,
         "hf_batch_size": HF_BATCH_SIZE,
         "vllm_gpu_util": VLLM_GPU_UTIL,
+        "vllm_deterministic": VLLM_DETERMINISTIC,
+        "vllm_max_num_seqs": VLLM_MAX_NUM_SEQS,
         "max_model_len": MAX_MODEL_LEN,
         "embedder": EMBEDDER,
         "selfcons_n": SELFCONS_N,
