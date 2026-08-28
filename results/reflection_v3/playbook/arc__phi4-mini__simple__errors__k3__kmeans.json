@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "phi4-mini",
+ "depth": "simple",
+ "pool": "errors",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 121,
+ "rules": [
+  "Always evaluate all relevant properties of materials, not just those immediately related to user interaction.",
+  "Always consider the broader implications of a model's focus, including ecological and environmental impacts, not just the immediate physical outcomes.",
+  "Differentiate between physical and chemical changes by focusing on the nature of the process involved."
+ ]
+}

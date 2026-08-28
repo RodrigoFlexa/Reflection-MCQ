@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1076,
+ "rules": [
+  "Always consider multiple plausible options and evaluate the evidence for each before making a judgment.",
+  "When evaluating a question, consider multiple possibilities and do not rely solely on a single assumption or property.",
+  "When evaluating complex phenomena, consider multiple factors and their potential interactions before arriving at a conclusion, rather than relying solely on prior knowledge or a single assumption."
+ ]
+}

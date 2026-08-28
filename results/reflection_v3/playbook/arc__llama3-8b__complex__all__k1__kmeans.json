@@ -1,0 +1,12 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "all",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1076,
+ "rules": [
+  "When evaluating a question about a complex phenomenon, consider multiple factors that might be relevant and weigh alternative options carefully, rather than relying on a single factor or oversimplified understanding."
+ ]
+}

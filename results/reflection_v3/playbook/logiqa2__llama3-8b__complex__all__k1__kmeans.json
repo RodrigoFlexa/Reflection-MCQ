@@ -1,0 +1,12 @@
+{
+ "dataset": "logiqa2",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "all",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1954,
+ "rules": [
+  "When analyzing an argument, it is essential to consider multiple options and weigh their plausibility carefully, rather than relying too heavily on a single supporting fact or assumption."
+ ]
+}

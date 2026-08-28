@@ -1,0 +1,12 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "errors",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 143,
+ "rules": [
+  "Consider multiple possibilities and potential outcomes, and avoid making assumptions about the question's focus based on your prior knowledge."
+ ]
+}

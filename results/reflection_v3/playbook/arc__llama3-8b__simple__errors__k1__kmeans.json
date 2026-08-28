@@ -1,0 +1,12 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "simple",
+ "pool": "errors",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 142,
+ "rules": [
+  "When analyzing a scenario, it's essential to consider multiple possible consequences and not focus solely on the most obvious or immediate effect."
+ ]
+}

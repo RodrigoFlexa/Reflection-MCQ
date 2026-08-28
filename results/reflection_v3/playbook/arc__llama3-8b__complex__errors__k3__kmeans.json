@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "errors",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 143,
+ "rules": [
+  "Consider multiple possibilities and potential outcomes, and avoid making assumptions about the question's focus based on your prior knowledge.",
+  "When evaluating properties indicative of a phenomenon, consider a broad range of relationships and avoid relying solely on a single aspect.",
+  "When evaluating the relationships between identical entities, consider the possibility that subtle differences in environmental factors, rather than differences in the entities themselves, could be responsible for observed variations."
+ ]
+}

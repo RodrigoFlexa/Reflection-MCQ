@@ -1,0 +1,12 @@
+{
+ "dataset": "logiqa2",
+ "student": "phi4-mini",
+ "depth": "simple",
+ "pool": "all",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1998,
+ "rules": [
+  "Always ensure that your interpretation of the argument's key point aligns with the primary focus of the reasoning provided, rather than inferring a secondary aspect that might not be directly supported."
+ ]
+}

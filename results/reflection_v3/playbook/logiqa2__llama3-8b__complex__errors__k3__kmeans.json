@@ -1,0 +1,14 @@
+{
+ "dataset": "logiqa2",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "errors",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 884,
+ "rules": [
+  "Always consider multiple possible interpretations of a question and weigh the evidence carefully before making a conclusion.",
+  "When analyzing a passage, prioritize considering the broader implications and context of the text's statements, rather than solely focusing on specific details.",
+  "When evaluating assumptions, prioritize identifying the relationships between the different parts of the conclusion and consider alternative options that could be required by the argument, rather than focusing on isolated pieces of information."
+ ]
+}
