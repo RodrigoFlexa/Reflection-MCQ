@@ -86,7 +86,11 @@ from rmcq.config import EMBED_BATCH_SIZE, EMBEDDER, HF_HOME, RESULTS_DIR, SEED, 
 from rmcq.stages.analyze import accuracy_block, utility
 from rmcq.store import JsonlStore, Timer, get_logger
 
-log = get_logger("run_grid_v3")
+# O nome PRECISA comecar com "rmcq.": `rmcq.store.get_logger` pendura o handler
+# no logger "rmcq" e marca propagate=False nele. Um logger chamado
+# "run_grid_v3" nao esta nessa hierarquia, entao propaga para o root -- que nao
+# tem handler e esta em WARNING -- e todo log.info() some sem erro nenhum.
+log = get_logger("rmcq.grid_v3")
 
 STUDENTS = ["phi4-mini", "llama3-8b"]
 DATASETS = ["arc", "logiqa2"]
@@ -459,6 +463,16 @@ def phase_plan(c: Corpus, paths, grid, limit=None, playbook_method="kmeans"):
 
     (paths["plan"] / "relatorio.json").write_text(
         json.dumps(relatorio, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # Em stdout, nao so no log: `plan` existe para ser lido por quem esta olhando
+    # o terminal antes de decidir se liga a GPU.
+    campos = ["student", "dataset", "condicoes", "itens", "pares (cond x item)",
+              "reusam o controle", "prompts distintos a gerar", "% economizado"]
+    larg = [max(len(c), max((len(str(r[c])) for r in relatorio), default=0)) for c in campos]
+    print()
+    print("  ".join(c.rjust(w) for c, w in zip(campos, larg)))
+    for r in relatorio:
+        print("  ".join(str(r[c]).rjust(w) for c, w in zip(campos, larg)))
     total_pares = sum(r["pares (cond x item)"] for r in relatorio)
     total_ger = sum(r["prompts distintos a gerar"] for r in relatorio)
     total_ctrl = sum(r["itens"] for r in relatorio)   # uma por (aluno, dataset, item)
@@ -467,6 +481,14 @@ def phase_plan(c: Corpus, paths, grid, limit=None, playbook_method="kmeans"):
              total_pares, total_ger, 100 * (total_pares - total_ger) / max(total_pares, 1))
     log.info("[plan] mais %d geracoes de controle -> %d geracoes no total, contra %d sem esta otimizacao",
              total_ctrl, total_ger + total_ctrl, total_pares + total_ctrl)
+    print(f"\n  pares condicao x item .......... {total_pares:,}")
+    print(f"  geracoes de grade ............. {total_ger:,}")
+    print(f"  geracoes de controle .......... {total_ctrl:,}")
+    print(f"  TOTAL a gerar ................. {total_ger + total_ctrl:,}")
+    print(f"  seria, sem reuso .............. {total_pares + total_ctrl:,}")
+    print(f"  economia ...................... "
+          f"{100 * (1 - (total_ger + total_ctrl) / max(total_pares + total_ctrl, 1)):.1f}%")
+    print(f"\n  plano gravado em {paths['plan']}")
     return relatorio
 
 
@@ -798,8 +820,11 @@ def main(argv=None):
              a.grid_stage, a.thresholds, len(grid), paths["root"])
 
     fases = ["plan", "control", "grid", "materialize", "summary"] if a.fase == "all" else [a.fase]
+    print(f"grid-stage={a.grid_stage}  thresholds={a.thresholds}  playbook={method}")
+    print(f"{len(grid)} condicoes  |  saida: {paths['root']}")
     for f in fases:
         log.info("========== fase %s ==========", f)
+        print(f"\n========== fase {f} ==========", flush=True)
         if f == "plan":
             phase_plan(c, paths, grid, a.limit, method)
         elif f == "control":
