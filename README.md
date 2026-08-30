@@ -3,7 +3,9 @@
 Camada de acesso a modelos de linguagem usada pelo Reflection-MCQ, isolada do
 resto do pipeline experimental. Uma interface (`Backend.generate`), quatro
 implementações — **vLLM**, **transformers (hf)**, **Azure OpenAI** e
-**Ollama** — mais um backend `stub` para testar sem GPU nem API.
+**Ollama** — mais um backend `stub` para testar sem GPU nem API. Junto vêm os
+três prompts congelados do notebook 07 (`rmcq/prompts.py`): baseline,
+reflexão e avaliação-com-reflexão.
 
 ## Início rápido
 
@@ -62,6 +64,29 @@ echo 'RMCQ_AZURE_DEPLOYMENTS=gpt-5-mini-petrobras' >> .env
 O nome do deployment vira a chave do modelo — sem apelido genérico escondendo
 qual deployment respondeu de fato.
 
+## Prompts
+
+`rmcq/prompts.py` traz os três prompts congelados usados no notebook 07:
+
+| função | o quê |
+|---|---|
+| `build_answer_prompt(item)` | **baseline** — responde a questão sem nenhuma reflexão |
+| `build_reflection_prompt(item, previous_answer, was_correct, depth, perspective)` | **reflexão** — comenta uma resposta anterior. `depth` é `simple`\|`complex`, `perspective` é `student` (autorreflexão) \|`teacher` (reflexão externa) |
+| `build_eval_prompt(item, reflections, source_questions=..., source_was_correct=...)` | **avaliação com reflexão** — injeta as k reflexões recuperadas (em similaridade crescente) antes da questão nova. Sem `reflections`, devolve `build_answer_prompt()` byte a byte |
+
+`RMCQ_EVAL_PROMPT=v1` volta ao layout antigo (reflexões antes do
+enquadramento); o padrão é `v2` (enquadramento primeiro, question por
+último, neutralização de letra). Ver o cabeçalho de cada seção do arquivo
+para o porquê de cada decisão.
+
+`example_reflection.py` exercita os três prompts de ponta a ponta contra um
+backend de verdade: baseline -> reflexão -> avaliação.
+
+```bash
+python example_reflection.py phi4-mini
+RMCQ_BACKEND=stub python example_reflection.py phi4-mini   # sem GPU
+```
+
 ## Estrutura
 
 ```
@@ -69,6 +94,7 @@ rmcq/
 ├── __init__.py           # carrega o .env antes de qualquer import de torch/vllm
 ├── config.py              # MODELS (registro central) + runtime de cada backend
 ├── store.py                # logger e barra de progresso
+├── prompts.py               # baseline, reflexão e avaliação-com-reflexão (notebook 07)
 └── backends/
     ├── base.py              # Backend (ABC), Generation, GenParams — o contrato
     ├── __init__.py          # get_backend(): resolve provider/kind para a implementação certa
@@ -78,7 +104,8 @@ rmcq/
     ├── ollama.py               # HTTP para `ollama serve`
     └── stub.py                 # determinístico, sem GPU nem rede — para testar a integração
 
-example.py                # uso mínimo de ponta a ponta
+example.py                # uso mínimo de ponta a ponta (um backend, um prompt solto)
+example_reflection.py     # ciclo completo: baseline -> reflexão -> avaliação
 ```
 
 ## O contrato `Backend`
