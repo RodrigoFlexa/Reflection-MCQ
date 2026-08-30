@@ -1,5 +1,5 @@
-# Segredos: o .env guarda o HF_TOKEN. Nunca versionar.
-# O .env.example fica versionado como referência.
+# Segredos: o .env guarda credenciais (HF_TOKEN, AZURE_OPENAI_API_KEY...).
+# Nunca versionar.
 .env
 .env.*
 !.env.example
@@ -14,9 +14,6 @@ __pycache__/
 venv/
 env/
 
-# Jupyter
-.ipynb_checkpoints/
-
 # VS Code
 .vscode/
 
@@ -24,18 +21,8 @@ env/
 Thumbs.db
 .DS_Store
 
-# Generated outputs
-results/
-
-# Datasets e pesos: grandes e reproduzíveis pelos scripts de setup.
-# Os manifestos ficam versionados, para que a proveniência dos dados esteja no git.
-data/*
-!data/manifest_datasets.json
-!data/splits/
-data/splits/*
-!data/splits/manifest_splits.json
+# Pesos e cache de modelos: grandes e reproduzíveis via `ollama pull` / Hub.
 models/
-results.zip
-requirements-lock.txt
-data/manifest_datasets.json
-data/splits/manifest_splits.json
+
+# Cache em disco das respostas de backends de API (Azure, Ollama).
+cache/

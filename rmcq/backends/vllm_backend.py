@@ -43,6 +43,7 @@ class VLLMBackend(Backend):
         gpu_util: float = VLLM_GPU_UTIL,
         max_model_len: int | None = MAX_MODEL_LEN,
         deterministic: bool = VLLM_DETERMINISTIC,
+        device: int | None = None,
     ) -> None:
         super().__init__(model_key)
 
@@ -52,9 +53,21 @@ class VLLMBackend(Backend):
             os.environ.setdefault("HF_TOKEN", hf_token())
         os.environ.setdefault("HF_HOME", str(HF_HOME))
 
-        # Uma GPU visível = sem paralelismo. Duas ou mais = tensor parallel.
-        # Quem controla isso é CUDA_VISIBLE_DEVICES no .env.
-        n_gpus = n_visible_gpus()
+        # device fixa este engine numa GPU específica (ex.: aluno na 4, juiz na 5),
+        # sobrescrevendo CUDA_VISIBLE_DEVICES só para o subprocesso do engine core que o
+        # LLM(...) abaixo dispara. Isto funciona apesar de o resto do projeto depender de
+        # CUDA_VISIBLE_DEVICES ser lido uma vez só, antes de qualquer import de torch (ver
+        # .env): quem inicializa CUDA de verdade é o subprocesso filho do vLLM, criado por
+        # multiprocessing DEPOIS desta atribuição, e ele herda o ambiente do momento em que
+        # nasce -- o processo pai (este) nunca toca CUDA diretamente.
+        prev_cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+        if device is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
+            n_gpus = 1
+        else:
+            # Uma GPU visível = sem paralelismo. Duas ou mais = tensor parallel.
+            # Quem controla isso é CUDA_VISIBLE_DEVICES no .env.
+            n_gpus = n_visible_gpus()
         tp_size = max(1, n_gpus) if n_gpus > 0 else 1
 
         log.info(
@@ -90,7 +103,14 @@ class VLLMBackend(Backend):
         # um run de horas por um kwarg que aquela versão não conhece -- e avisa qual
         # caiu, para não haver silêncio sobre determinismo que não está valendo.
         kwargs = self._supported_kwargs(LLM, kwargs)
-        self.llm = LLM(**kwargs)
+        try:
+            self.llm = LLM(**kwargs)
+        finally:
+            if device is not None:
+                if prev_cvd is None:
+                    os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+                else:
+                    os.environ["CUDA_VISIBLE_DEVICES"] = prev_cvd
         self.tokenizer = self.llm.get_tokenizer()
         self.max_len = max_model_len or getattr(
             self.llm.llm_engine.model_config, "max_model_len", None

@@ -1,5 +1,0 @@
-student,dataset,n,mesma_letra_pct,mesmo_acerto_pct,acc_controle_v3,acc_baseline_v2,piso_sd_utility
-llama3-8b,arc,298,96.31,97.32,0.8456,0.8456,0.0095
-llama3-8b,logiqa2,300,94.33,96.0,0.5567,0.55,0.0115
-phi4-mini,arc,298,93.62,93.62,0.8792,0.8624,0.0146
-phi4-mini,logiqa2,300,84.33,90.0,0.52,0.5333,0.0183

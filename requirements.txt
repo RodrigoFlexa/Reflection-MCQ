@@ -1,41 +1,28 @@
-# Instale o torch PRIMEIRO, com o índice da sua versão de CUDA:
+# Instale só o que o(s) backend(s) que você vai usar precisa(m). O núcleo
+# (rmcq/backends/base.py, config.py, store.py, o backend stub) não depende de
+# nada além da stdlib.
+
+# ---- Backend hf / vLLM: modelos com pesos locais ----
+# Instale torch primeiro, com o índice da sua versão de CUDA:
 #   pip install torch --index-url https://download.pytorch.org/whl/cu124
-# Depois:
-#   pip install -r requirements.txt
-
-# ---- Núcleo: dados ----
-datasets>=2.19.0
-huggingface_hub>=1.0.0         # já traz o hf-xet, que substituiu o hf_transfer
-pandas>=2.2.0
-pyarrow>=16.0.0
-numpy>=1.26.0
-
-# ---- Modelos ----
 torch>=2.4.0
 transformers>=4.51.0          # >=4.51 é o mínimo para Qwen3
 accelerate>=0.34.0
 tokenizers>=0.21.0
 safetensors>=0.4.5
+huggingface_hub>=1.0.0
 
-# ---- Backend de geração rápido ----
-# vLLM é o que torna a grade completa viável: ~22 h em vez de ~220 h.
-# Se a instalação falhar, o framework cai automaticamente para transformers
-# (defina RMCQ_BACKEND=hf no .env para deixar explícito).
+# vLLM: continuous batching, muito mais rápido para servir a grade inteira.
+# Se a instalação falhar, get_backend() cai automaticamente para transformers.
 vllm>=0.6.0
 
-# ---- Recuperação por similaridade ----
-sentence-transformers>=3.0.0  # BAAI/bge-large-en-v1.5
+# Quantização 4-bit opcional (RMCQ_LOAD_IN_4BIT=1)
+# bitsandbytes>=0.43.0
 
-# ---- Análise ----
-scikit-learn>=1.5.0
-matplotlib>=3.8.0
-seaborn>=0.13.0
+# ---- Backend Ollama: fala com `ollama serve` por HTTP ----
+requests>=2.31.0
 
-# ---- Notebooks ----
-jupyter>=1.1.0
-ipykernel>=6.29.0
-ipywidgets>=8.1.0
-tqdm>=4.66.0
+# ---- Backend Azure: ver requirements-azure.txt ----
 
-# ---- Opcionais ----
-# bitsandbytes>=0.43.0        # quantização 4-bit p/ GPU de 16-24 GB (RMCQ_LOAD_IN_4BIT=1)
+# ---- Utilitário ----
+tqdm>=4.66.0                  # barra de progresso (rmcq.store.progress)

@@ -1,20 +1,10 @@
-# Dependências da máquina que só gera reflexões pelos professores de API
-# (ambiente Petrobras). Deliberadamente enxuto.
-#
-# Não há torch, vllm, transformers nem sentence-transformers aqui, e isso é
-# intencional: a cadeia de import da etapa `reflect` vai de rmcq.backends para
-# base + config + store, e nenhum deles toca em torch. Aquela máquina não tem
-# GPU e não precisa dos pesos dos modelos pequenos — as respostas deles chegam
-# prontas, por git, dentro de exchange/to-azure/.
+# Dependências mínimas para usar só o backend Azure OpenAI (AzureBackend), sem
+# torch, vllm nem transformers — a cadeia de import de rmcq.backends.azure vai
+# só até base + config + store, e nenhum deles toca em torch.
 #
 #   python -m venv venv && source venv/bin/activate
 #   pip install -r requirements-azure.txt
-#
-# Depois disso, só estas etapas funcionam lá:
-#   python -m rmcq import-bundle --direction to-azure
-#   python -m rmcq reflect --teachers gpt5,gpt4 ...
-#   python -m rmcq export-bundle --direction from-azure
 
 openai>=1.40          # cliente AzureOpenAI
-tqdm>=4.66.0          # barra de progresso (rmcq.store.progress)
-tiktoken>=0.7.0       # contagem de tokens; sem ele a contagem vira estimativa
+tqdm>=4.66.0           # barra de progresso (rmcq.store.progress)
+tiktoken>=0.7.0        # contagem de tokens; sem ele a contagem vira estimativa

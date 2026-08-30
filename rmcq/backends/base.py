@@ -1,10 +1,10 @@
 """
-Interface de geração. Uma abstração, três implementações.
+Interface de geração. Uma abstração, várias implementações.
 
-Todo o pipeline fala só com `Backend.generate`. A diferença entre vLLM,
-transformers e o stub de teste fica confinada aqui, e a escolha é uma variável
-de ambiente. Isso permite desenvolver e depurar com transformers, rodar a grade
-com vLLM, e testar o pipeline inteiro sem GPU com o stub.
+Quem chama fala só com `Backend.generate`. A diferença entre vLLM,
+transformers, Azure OpenAI, Ollama e o stub de teste fica confinada a cada
+implementação em rmcq/backends/, e a escolha é uma variável de ambiente
+(RMCQ_BACKEND) ou o `provider` do ModelSpec — ver rmcq.backends.get_backend.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ class GenParams:
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any], **overrides: Any) -> "GenParams":
-        """Converte os dicts STUDENT_GEN / TEACHER_GEN / SELFCONS_GEN do config."""
+        """Converte um dict de parâmetros de decodificação (estilo transformers/vLLM)."""
         merged = {**cfg, **overrides}
         do_sample = merged.get("do_sample", False)
         temperature = merged.get("temperature") or 0.0

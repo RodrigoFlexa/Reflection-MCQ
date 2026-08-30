@@ -6,12 +6,12 @@ import os
 
 from rmcq.backends.base import Backend, Generation, GenParams
 from rmcq.config import (
-    API_ONLY,
     AZURE_API_KEY_VAR,
     AZURE_BASE_URL_VAR,
     AZURE_ENDPOINT_VAR,
     BACKEND,
     MODELS,
+    OLLAMA_BASE_URL,
 )
 from rmcq.store import get_logger
 
@@ -19,7 +19,7 @@ log = get_logger(__name__)
 
 __all__ = ["Backend", "Generation", "GenParams", "get_backend", "available_backends"]
 
-_BACKENDS = ("vllm", "hf", "stub", "azure")
+_BACKENDS = ("vllm", "hf", "stub", "azure", "ollama")
 
 
 def available_backends() -> dict[str, str]:
@@ -42,6 +42,21 @@ def available_backends() -> dict[str, str]:
         )
     except ImportError:
         status["azure"] = "indisponível: pip install -r requirements-azure.txt"
+
+    try:
+        import requests
+
+        try:
+            r = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=1.5)
+            n = len((r.json() or {}).get("models", [])) if r.ok else None
+            status["ollama"] = (
+                f"ok ({n} modelo(s) no servidor {OLLAMA_BASE_URL})" if r.ok
+                else f"servidor respondeu {r.status_code} em {OLLAMA_BASE_URL}"
+            )
+        except requests.RequestException as exc:
+            status["ollama"] = f"servidor inacessível em {OLLAMA_BASE_URL}: {type(exc).__name__}"
+    except ImportError:
+        status["ollama"] = "indisponível: pip install requests"
 
     try:
         import torch  # noqa: F401
@@ -67,46 +82,43 @@ def get_backend(model_key: str, kind: str | None = None, **kwargs) -> Backend:
     """
     Instancia o backend pedido.
 
-    Se o vLLM foi pedido mas não importa, caímos para transformers com um aviso
-    em vez de abortar: o pipeline continua correto, só mais lento. Um run de
-    dezenas de horas não deve morrer por uma dependência opcional.
+    Modelos com provider fixo (azure, ollama) ignoram `kind` e vão sempre para
+    o backend do seu provider — não faria sentido pedir um deployment Azure
+    via --backend vllm. A exceção deliberada é --backend stub: troca QUALQUER
+    modelo pelo stub, para testar a integração sem gastar GPU nem API.
 
-    Modelos de API (provider="azure") ignoram `kind`: numa mesma grade o aluno
-    roda em vLLM local e o professor roda no Azure, e `--backend vllm` não pode
-    desviar o professor para uma GPU onde não existem pesos dele. O `--backend
-    stub` é a exceção deliberada — é assim que se testa a plumbaria sem gastar
-    API.
+    Se o vLLM foi pedido para um modelo local (provider="hf") mas não importa,
+    caímos para transformers com um aviso em vez de abortar.
     """
     kind = (kind or BACKEND).lower()
     if kind not in _BACKENDS:
         raise ValueError(f"backend {kind!r} desconhecido. Válidos: {_BACKENDS}")
 
     spec = MODELS.get(model_key)
-    if spec is not None and spec.is_api and kind != "stub":
-        from rmcq.backends.azure import AzureBackend
-
-        return AzureBackend(model_key, **kwargs)
-
-    if API_ONLY and spec is not None and not spec.is_api and kind != "stub":
-        raise RuntimeError(
-            f"RMCQ_API_ONLY=1: esta máquina só roda modelos de API, e {model_key!r} "
-            f"exige pesos locais e GPU.\n"
-            f"Se a intenção era usar um professor de API, passe-o explicitamente "
-            f"(--teachers <nome-do-deployment>) ou fixe RMCQ_TEACHERS no .env.\n"
-            f"Deployments registrados: {[k for k, s in MODELS.items() if s.is_api] or 'nenhum — defina RMCQ_AZURE_DEPLOYMENTS'}"
-        )
-
-    if kind == "azure":
-        raise ValueError(
-            f"--backend azure vale só para modelos de API; {model_key!r} tem "
-            f"provider={getattr(spec, 'provider', '?')!r}. "
-            f"Modelos de API disponíveis: {[k for k, s in MODELS.items() if s.is_api]}"
-        )
+    if spec is None:
+        raise KeyError(f"modelo {model_key!r} não está em config.MODELS: {sorted(MODELS)}")
 
     if kind == "stub":
         from rmcq.backends.stub import StubBackend
 
         return StubBackend(model_key, **kwargs)
+
+    if spec.provider == "azure":
+        from rmcq.backends.azure import AzureBackend
+
+        return AzureBackend(model_key, **kwargs)
+
+    if spec.provider == "ollama":
+        from rmcq.backends.ollama import OllamaBackend
+
+        return OllamaBackend(model_key, **kwargs)
+
+    # A partir daqui, spec.provider == "hf": pesos locais, engine escolhido por `kind`.
+    if kind in ("azure", "ollama"):
+        raise ValueError(
+            f"--backend {kind} vale só para modelos provider={kind!r}; "
+            f"{model_key!r} é provider={spec.provider!r}."
+        )
 
     if kind == "vllm":
         try:
