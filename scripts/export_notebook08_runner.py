@@ -26,6 +26,7 @@ after changing the computational cells in notebook 08.
 from __future__ import annotations
 
 import argparse
+import multiprocessing
 import os
 
 
@@ -45,17 +46,19 @@ def parse_args():
     return parser.parse_args()
 
 
-ARGS = parse_args()
-os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
-os.environ.setdefault("MPLBACKEND", "Agg")
-
-
 def display(value):
     """Plain-text replacement for IPython display in tmux logs."""
     if hasattr(value, "to_string"):
         print(value.to_string(index=False), flush=True)
     else:
         print(value, flush=True)
+'''
+
+
+MAIN_PREFIX = r'''
+ARGS = parse_args()
+os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
+os.environ.setdefault("MPLBACKEND", "Agg")
 '''
 
 
@@ -93,6 +96,13 @@ print("Open notebooks/08_similarity_reflection_threshold_plots.ipynb to inspect 
 '''
 
 
+GUARD = r'''
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    main()
+'''
+
+
 def source(cell: dict) -> str:
     value = cell.get("source", "")
     return "".join(value) if isinstance(value, list) else value
@@ -104,12 +114,16 @@ notebook = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
 # presentation. The override is inserted after configuration cell 2 and before
 # prompt/signature cell 4.
 selected = [1, 2, 4, 6, 8, 10, 11, 13, 14]
-sections = [HEADER]
+body_sections = [MAIN_PREFIX]
 for index in selected:
     if index == 4:
-        sections.append(OVERRIDES)
-    sections.append(f"\n\n# %% [notebook cell {index}]\n" + source(notebook["cells"][index]).rstrip())
-sections.append(FOOTER)
+        body_sections.append(OVERRIDES)
+    body_sections.append(f"\n\n# %% [notebook cell {index}]\n" + source(notebook["cells"][index]).rstrip())
+body_sections.append(FOOTER)
+
+body = "\n".join(body_sections).strip()
+indented_body = "\n".join(("    " + line) if line else "" for line in body.splitlines())
+sections = [HEADER.rstrip(), "\n\ndef main():\n" + indented_body, "\n\n" + GUARD.strip()]
 
 TARGET.write_text("\n".join(sections).rstrip() + "\n", encoding="utf-8")
 print(f"exported {TARGET}")
