@@ -24,5 +24,12 @@ requests>=2.31.0
 
 # ---- Backend Azure: ver requirements-azure.txt ----
 
+# ---- Notebook 08: recuperação e análise do threshold ----
+numpy>=1.26.0
+pandas>=2.1.0
+matplotlib>=3.8.0
+scipy>=1.11.0
+sentence-transformers>=3.0.0
+
 # ---- Utilitário ----
 tqdm>=4.66.0                  # barra de progresso (rmcq.store.progress)

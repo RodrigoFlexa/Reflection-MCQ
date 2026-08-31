@@ -87,6 +87,43 @@ python example_reflection.py phi4-mini
 RMCQ_BACKEND=stub python example_reflection.py phi4-mini   # sem GPU
 ```
 
+## Experimento 08 em `tmux`
+
+O pipeline completo de threshold roda sem Jupyter em
+`run_similarity_threshold.py`. Ele salva um checkpoint depois de cada lote;
+depois de uma queda, execute novamente o mesmo comando para continuar.
+
+```bash
+mkdir -p logs
+tmux new -s threshold08
+python -u run_similarity_threshold.py --gpu 3 2>&1 | tee logs/threshold08.log
+```
+
+Use `Ctrl-b d` para sair do `tmux` sem interromper e depois:
+
+```bash
+tmux attach -t threshold08
+```
+
+Ensaio menor com um modelo e um dataset:
+
+```bash
+python -u run_similarity_threshold.py \
+  --gpu 3 \
+  --models phi4-mini \
+  --datasets aqua \
+  --validation-cap 100
+```
+
+Não use `--fresh` ao retomar: essa opção ignora os checkpoints. Veja todas as
+opções com `python run_similarity_threshold.py --help`.
+
+Depois que o runner terminar, abra
+`notebooks/08_similarity_reflection_threshold_plots.ipynb`. Esse notebook não
+carrega modelos: ele encontra a execução concluída mais recente e apenas lê os
+CSVs, recria as figuras e apresenta os resumos. Para abrir uma execução
+específica, preencha `EXPERIMENT_ID` na primeira célula de configuração.
+
 ## Estrutura
 
 ```
