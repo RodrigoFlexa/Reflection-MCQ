@@ -22,7 +22,11 @@ Thumbs.db
 .DS_Store
 
 # Pesos e cache de modelos: grandes e reproduzíveis via `ollama pull` / Hub.
-models/
+models/*
 
 # Cache em disco das respostas de backends de API (Azure, Ollama).
-cache/
+cache/*
+
+backups/*
+backup/*
+data/*

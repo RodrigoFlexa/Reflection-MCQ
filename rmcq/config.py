@@ -119,6 +119,20 @@ MODELS: dict[str, ModelSpec] = {
             "huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct e defina HF_TOKEN."
         ),
     ),
+    # Chave SEM dois-pontos, de propósito: "llama3.1:8b" (com ":") é a tag do
+    # MESMO modelo servido via Ollama (ver notebook 08) -- usar chaves iguais
+    # faria o registro automático de um provider pisar no do outro em
+    # get_backend(). Mantendo as duas, o aluno roda este (vLLM/GPU) e o juiz
+    # roda a tag Ollama, sem precisar duplicar pesos.
+    "llama3.1-8b": ModelSpec(
+        key="llama3.1-8b",
+        repo_id="meta-llama/Llama-3.1-8B-Instruct",
+        notes=(
+            "Licença Llama 3.1, aprovação manual: aceite os termos em "
+            "huggingface.co/meta-llama/Llama-3.1-8B-Instruct e defina HF_TOKEN. "
+            "Já em cache local (~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct)."
+        ),
+    ),
     "mistral-7b": ModelSpec(
         key="mistral-7b",
         repo_id="mistralai/Mistral-7B-Instruct-v0.3",

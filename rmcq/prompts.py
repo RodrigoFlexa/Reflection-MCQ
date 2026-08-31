@@ -468,3 +468,72 @@ def build_eval_prompt(
         question=format_question(item),
         options=format_options(item["choices"]),
     )
+
+
+# ===========================================================================
+# 4. JUIZ — grade uma resposta livre contra o gabarito
+# ===========================================================================
+#
+# Só decide qual LETRA o candidato escolheu, não a qualidade do raciocínio.
+# Formato igual ao usado nos experimentos anteriores (backup/*/judge/*.jsonl),
+# para manter is_correct comparável entre runs.
+
+JUDGE_PROMPT = """You are grading a multiple-choice answer.
+
+Question: {question}
+
+Options:
+{options}
+
+Correct option: {correct_label}) {correct_text}
+
+Candidate's response:
+{response}
+
+Does the candidate's response select the correct option ({correct_label})? Consider only which option the candidate ultimately selected, not the quality of their reasoning.
+
+End your reply with this exact line, and nothing after it:
+Verdict: <CORRECT or INCORRECT>"""
+
+_VERDICT_RE = re.compile(r"Verdict:\s*(CORRECT|INCORRECT)", re.IGNORECASE)
+
+
+def build_judge_prompt(item: dict[str, Any], response: str) -> str:
+    """Prompt do juiz para uma resposta livre a `item`."""
+    correct_label = item["answerKey"]
+    correct_text = next(c["text"] for c in item["choices"] if c["label"] == correct_label)
+    return JUDGE_PROMPT.format(
+        question=format_question(item),
+        options=format_options(item["choices"]),
+        correct_label=correct_label,
+        correct_text=correct_text,
+        response=(response or "").strip(),
+    )
+
+
+def parse_judge_verdict(judge_text: str) -> bool | None:
+    """True/False a partir da linha `Verdict: ...`; None se o juiz não a emitiu (abstenção)."""
+    match = _VERDICT_RE.search(judge_text or "")
+    if not match:
+        return None
+    return match.group(1).upper() == "CORRECT"
+
+
+# ===========================================================================
+# 5. EXTRAÇÃO DE LETRA — para controle interno (ex.: feedback da reflexão)
+# ===========================================================================
+#
+# Mais barata que o juiz e não precisa de outra chamada de modelo: o prompt
+# de baseline pede explicitamente "FINAL ANSWER: <letter>", então basta ler a
+# última ocorrência. Não substitui o juiz na métrica final — só decide, no
+# momento em que a reflexão é escrita, se o feedback é "CORRECT" ou
+# "INCORRECT" (o juiz sobre essa mesma resposta só roda no fim, depois de
+# toda a geração da grade).
+
+_FINAL_ANSWER_RE = re.compile(r"FINAL ANSWER:\s*\(?([A-H])\)?", re.IGNORECASE)
+
+
+def extract_final_answer(text: str) -> str | None:
+    """Última letra depois de "FINAL ANSWER:"; None se o modelo não a emitiu."""
+    matches = _FINAL_ANSWER_RE.findall(text or "")
+    return matches[-1].upper() if matches else None
