@@ -56,6 +56,7 @@ def display(value):
 
 
 MAIN_PREFIX = r'''
+import os
 ARGS = parse_args()
 os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
 os.environ.setdefault("MPLBACKEND", "Agg")
