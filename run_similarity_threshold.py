@@ -18,7 +18,7 @@ def parse_args():
     )
     parser.add_argument("--models", help="Comma-separated model keys; defaults to notebook config.")
     parser.add_argument("--datasets", help="Comma-separated dataset names; defaults to notebook config.")
-    parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "3"))
+    parser.add_argument("--gpu", default="0")
     parser.add_argument("--validation-cap", type=int, help="Maximum validation items per dataset.")
     parser.add_argument("--batch-size", type=int, help="Generation checkpoint batch size.")
     parser.add_argument("--bootstrap-curve", type=int, help="Bootstrap replicates for effect curves.")
@@ -38,9 +38,6 @@ def display(value):
 
 def main():
     ARGS = parse_args()
-    os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
-    os.environ.setdefault("MPLBACKEND", "Agg")
-
 
 
     # %% [notebook cell 1]
@@ -49,7 +46,7 @@ def main():
     from pathlib import Path
 
     # Precisa ser definido antes de importar rmcq/torch/vLLM.
-    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("RMCQ_NOTEBOOK_GPU", "3")
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(ARGS.gpu)
 
     for candidate in [Path.cwd(), *Path.cwd().parents]:
         if (candidate / "rmcq").is_dir():
