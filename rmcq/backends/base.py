@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from collections.abc import Mapping
 from typing import Any, Sequence
 
 
@@ -110,6 +111,7 @@ class Backend(ABC):
         return {}
 
     def render(self, tokenizer: Any, prompt: str, system: str | None = None) -> str:
+        """Render a chat prompt as text for APIs that explicitly need text."""
         messages = ([{"role": "system", "content": system}] if system else []) + [
             {"role": "user", "content": prompt}
         ]
@@ -119,6 +121,35 @@ class Backend(ABC):
             add_generation_prompt=True,
             **self.template_kwargs(),
         )
+
+    def render_token_ids(
+        self, tokenizer: Any, prompt: str, system: str | None = None
+    ) -> list[int]:
+        """Apply the chat template directly to tokens, without a text round-trip.
+
+        Some tokenizers (notably Transformers' MistralCommonBackend) warn that
+        ``apply_chat_template(tokenize=False)`` followed by a separate encode
+        can change or duplicate special tokens. Local backends consume token
+        ids, so they should use this lossless path instead.
+        """
+        messages = ([{"role": "system", "content": system}] if system else []) + [
+            {"role": "user", "content": prompt}
+        ]
+        encoded = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            **self.template_kwargs(),
+        )
+        if isinstance(encoded, Mapping):
+            encoded = encoded["input_ids"]
+        if hasattr(encoded, "tolist"):
+            encoded = encoded.tolist()
+        if encoded and isinstance(encoded[0], list):
+            if len(encoded) != 1:
+                raise ValueError("chat template returned an unexpected batched token structure")
+            encoded = encoded[0]
+        return [int(token_id) for token_id in encoded]
 
     def __enter__(self) -> "Backend":
         return self

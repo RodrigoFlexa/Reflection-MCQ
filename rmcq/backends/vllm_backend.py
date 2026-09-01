@@ -169,13 +169,11 @@ class VLLMBackend(Backend):
 
         from vllm import TokensPrompt
 
-        rendered = [self.render(self.tokenizer, p, system) for p in prompts]
-        # Tokenizamos aqui e entregamos ids ao engine, em vez de texto. Cortar em
-        # tokens, decodificar e deixar o vLLM re-tokenizar não preserva a
-        # contagem: o corte cai no meio de um caractere multibyte ou de um token
-        # especial e o texto volta com mais tokens do que o orçamento. Passando
-        # TokensPrompt, o que cortamos é exatamente o que o engine recebe.
-        token_ids = [self.tokenizer(r, add_special_tokens=False)["input_ids"] for r in rendered]
+        # Aplicamos o chat template já em tokens. Além de evitar um round-trip
+        # texto -> tokens que pode alterar tokens especiais, isto elimina o
+        # aviso do MistralCommonBackend sobre tokenize=False.
+        token_ids = [self.render_token_ids(self.tokenizer, p, system) for p in prompts]
+        n_prompts = len(token_ids)
 
         if self.max_len:
             budget = self.max_len - params.max_new_tokens
@@ -208,8 +206,8 @@ class VLLMBackend(Backend):
         # em vez de confiar: um resultado deslocado corromperia todo o JSONL.
         by_id = {out.request_id: out for out in outputs}
         ordered = (
-            [by_id[str(i)] for i in range(len(rendered))]
-            if all(str(i) in by_id for i in range(len(rendered)))
+            [by_id[str(i)] for i in range(n_prompts)]
+            if all(str(i) in by_id for i in range(n_prompts))
             else list(outputs)
         )
 

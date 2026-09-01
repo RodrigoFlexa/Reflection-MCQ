@@ -125,8 +125,8 @@ class HFBackend(Backend):
         torch = self._torch
         torch.manual_seed(params.seed if params.seed is not None else SEED)
 
-        rendered = [self.render(self.tokenizer, p, system) for p in prompts]
-        lengths = [len(self.tokenizer(r, add_special_tokens=False)["input_ids"]) for r in rendered]
+        token_ids = [self.render_token_ids(self.tokenizer, p, system) for p in prompts]
+        lengths = [len(ids) for ids in token_ids]
 
         budget = (self.max_len - params.max_new_tokens) if self.max_len else None
         if budget is not None:
@@ -145,19 +145,17 @@ class HFBackend(Backend):
 
         # Decrescente por tamanho: o primeiro lote é o mais caro, então um OOM
         # aparece imediatamente em vez de depois de meia hora de execução.
-        order = sorted(range(len(rendered)), key=lambda i: -lengths[i])
+        order = sorted(range(len(token_ids)), key=lambda i: -lengths[i])
 
-        results: list[Generation | None] = [None] * len(rendered)
+        results: list[Generation | None] = [None] * len(token_ids)
         batches = [order[i: i + self.batch_size] for i in range(0, len(order), self.batch_size)]
 
         for batch in progress(batches, desc=desc or f"{self.key} (hf)"):
-            texts = [rendered[i] for i in batch]
-            enc = self.tokenizer(
-                texts,
+            batch_ids = [token_ids[i][-budget:] if budget is not None else token_ids[i] for i in batch]
+            enc = self.tokenizer.pad(
+                {"input_ids": batch_ids},
                 return_tensors="pt",
                 padding=True,
-                truncation=budget is not None,
-                max_length=budget,
             ).to(self.model.device)
 
             n_prompt = int(enc["input_ids"].shape[-1])

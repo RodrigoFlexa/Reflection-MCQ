@@ -134,6 +134,9 @@ REFLECTION_MAX_NEW_TOKENS = 180
 JUDGE_MAX_NEW_TOKENS = 80
 GENERATION_BATCH_SIZE = 512
 RESUME = True
+# Faz parte do hash de cada geração. Mude quando a renderização/tokenização do
+# backend mudar, para nunca misturar respostas produzidas por pipelines distintos.
+GENERATION_CACHE_VERSION = "direct-chat-template-token-ids-v2"
 
 KERNEL_BANDWIDTH = 0.08
 N_BOOTSTRAP_CURVE = 1000
@@ -298,6 +301,7 @@ def parse_judge(text):
 
 signature_payload = {
     "pipeline_version": "single-memory-multisim-v2.1",
+    "generation_cache_version": GENERATION_CACHE_VERSION,
     "models": STUDENT_MODELS,
     "datasets": DATASETS,
     "validation_cap": N_VALIDATION_PER_DATASET,
@@ -563,7 +567,8 @@ def cache_key(*parts):
 
 
 def prompt_hash(prompt):
-    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
+    payload = f"{GENERATION_CACHE_VERSION}\0{prompt}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def load_cache(path):
