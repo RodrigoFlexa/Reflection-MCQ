@@ -68,6 +68,7 @@ def main():
     import hashlib
     import json
     import random
+    import shutil
     from collections import Counter
 
     import matplotlib.pyplot as plt
@@ -115,9 +116,12 @@ def main():
     JUDGE_MAX_NEW_TOKENS = 80
     GENERATION_BATCH_SIZE = 512
     RESUME = True
-    # Faz parte do hash de cada geração. Mude quando a renderização/tokenização do
-    # backend mudar, para nunca misturar respostas produzidas por pipelines distintos.
-    GENERATION_CACHE_VERSION = "direct-chat-template-token-ids-v2"
+    # Compatibilidade seletiva de checkpoints. O Phi mantém o hash legado e
+    # reaproveita tudo o que já foi salvo. Somente o Mistral recebe uma nova versão
+    # porque seu tokenizer emitiu o aviso sobre o round-trip tokenize=False.
+    GENERATION_CACHE_VERSION_BY_MODEL = {
+        "mistral-7b": "direct-chat-template-token-ids-v2",
+    }
 
     KERNEL_BANDWIDTH = 0.08
     N_BOOTSTRAP_CURVE = 1000
@@ -293,7 +297,6 @@ def main():
 
     signature_payload = {
         "pipeline_version": "single-memory-multisim-v2.1",
-        "generation_cache_version": GENERATION_CACHE_VERSION,
         "models": STUDENT_MODELS,
         "datasets": DATASETS,
         "validation_cap": N_VALIDATION_PER_DATASET,
@@ -517,8 +520,11 @@ def main():
         return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
 
 
-    def prompt_hash(prompt):
-        payload = f"{GENERATION_CACHE_VERSION}\0{prompt}"
+    def prompt_hash(prompt, model_key):
+        version = GENERATION_CACHE_VERSION_BY_MODEL.get(model_key)
+        # Sem versão explícita, reproduz byte a byte o hash usado pela execução
+        # anterior. Assim os checkpoints do Phi continuam válidos.
+        payload = prompt if version is None else f"{version}\0{prompt}"
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
@@ -531,9 +537,18 @@ def main():
 
     def cached_generate(backend, path, keyed_prompts, max_new_tokens, desc):
         cache = load_cache(path)
+        stale_keys = [
+            key for key, prompt in keyed_prompts.items()
+            if key in cache and cache[key].get("prompt_hash") != prompt_hash(prompt, backend.key)
+        ]
+        if stale_keys and path.exists() and backend.key in GENERATION_CACHE_VERSION_BY_MODEL:
+            legacy_path = path.with_name(path.stem + ".legacy_tokenize_false" + path.suffix)
+            if not legacy_path.exists():
+                shutil.copy2(path, legacy_path)
+                print(f"{desc}: cache antigo preservado em {legacy_path.name}")
         missing = [
             (key, prompt) for key, prompt in keyed_prompts.items()
-            if key not in cache or cache[key].get("prompt_hash") != prompt_hash(prompt)
+            if key not in cache or cache[key].get("prompt_hash") != prompt_hash(prompt, backend.key)
         ]
         print(f"{desc}: total={len(keyed_prompts)} cache={len(keyed_prompts)-len(missing)} faltando={len(missing)}")
         for start in range(0, len(missing), GENERATION_BATCH_SIZE):
@@ -546,7 +561,7 @@ def main():
             for (key, prompt), generation in zip(batch, generations):
                 cache[key] = {
                     "key": key,
-                    "prompt_hash": prompt_hash(prompt),
+                    "prompt_hash": prompt_hash(prompt, backend.key),
                     "text": generation.text,
                     "prompt_tokens": generation.prompt_tokens,
                     "completion_tokens": generation.completion_tokens,
