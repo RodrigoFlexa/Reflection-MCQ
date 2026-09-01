@@ -1,0 +1,41 @@
+{
+  "pipeline_version": "single-memory-multisim-v2.1",
+  "models": [
+    "phi4-mini",
+    "mistral-7b"
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "gsm8k",
+    "logiqa2",
+    "openbookqa"
+  ],
+  "validation_cap": 1565,
+  "gsm8k_holdout_size": 1000,
+  "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+  "targets": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "placebo_bottom_quantile": 0.2,
+  "calibration_fraction": 0.6,
+  "depths": [
+    "simple",
+    "complex"
+  ],
+  "answer_prompt": "You are answering a multiple-choice question.\n\n    Question: {question}\n\n    Options:\n    {options}\n\n    Instructions:\n    - Reason carefully before choosing.\n    - Choose exactly one option.\n    - End with this exact line and nothing after it:\n    FINAL ANSWER: <letter>",
+  "reflection_prompts": {
+    "simple": "You are reviewing your answer to a completed multiple-choice problem.\n    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.\n\n    Write exactly four lines and no more than 100 words total:\n    Approach: State the reasoning method you used.\n    Diagnosis: Identify the specific reasoning step that succeeded or failed.\n    Transfer rule: Give one general rule in the form \"If ..., then ...\" for similar problems.\n    Applicability: State when that rule should not be used.\n\n    Do not solve the problem again. Do not state or quote the correct answer, an option label, or an option text.\n    Focus on transferable reasoning. Do not give vague advice such as \"be careful\" or \"think harder\".",
+    "complex": "You are reviewing your answer to a completed multiple-choice problem.\n    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.\n\n    Write exactly six lines and no more than 140 words total:\n    Task type: Identify the general kind of reasoning required.\n    Strategy: Describe the reasoning strategy you used.\n    Evidence check: State the key evidence, relationship, or constraint that you used or missed.\n    Failure test: Give one check that would have exposed the mistake or confirmed the reasoning.\n    Transfer rule: Give a precise rule in the form \"If ..., then ...\" for future problems.\n    Boundary: State when that rule would not apply.\n\n    Do not solve the problem again. Do not state or quote the correct answer, an option label, or an option text.\n    Focus on transferable reasoning rather than source-specific conclusions. Do not give vague advice."
+  },
+  "memory_prompt": "The following is one memory written after solving a DIFFERENT multiple-choice problem.\n    Use it only if its reasoning rule applies. Do not copy its conclusion or assume that its option labels match this problem.\n    Solve the current problem independently, then use the memory as a check.\n\n    Memory:\n    {memory}\n\n    Question: {question}\n\n    Options:\n    {options}\n\n    Instructions:\n    - Reason carefully before choosing.\n    - Choose exactly one option.\n    - End with this exact line and nothing after it:\n    FINAL ANSWER: <letter>",
+  "kernel_bandwidth": 0.08,
+  "bootstrap_curve": 1000,
+  "bootstrap_policy": 2000,
+  "min_effective_n": 20,
+  "sustained_grid_points": 5,
+  "seed": 42,
+  "experiment_id": "f87779b723d5"
+}

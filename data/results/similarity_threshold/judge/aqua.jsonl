@@ -1,0 +1,1006 @@
+{"group": "train", "uid": "aqua-train-000058", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-001015", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-001073", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-001603", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-001913", "judge_raw_output": "The candidate's response ultimately selected option C) 10C6 *6!, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-002313", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-002348", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-002869", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-003767", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-003803", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-003831", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-003931", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-004313", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-004700", "judge_raw_output": "The candidate's response ultimately selected option B) 1820, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-005069", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-005115", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-005506", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-005598", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-005752", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-006236", "judge_raw_output": "The candidate's response ultimately selected option C) 16!/(4!)^4, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-006682", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-006896", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-007475", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-007682", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-008574", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-008706", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-008852", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-010269", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-011286", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-011839", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-012079", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-012138", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-012290", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-012855", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-013909", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-014964", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-014975", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-015218", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-015220", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-015433", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-016411", "judge_raw_output": "The candidate's response ultimately selects option D) 120 kms.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-016476", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-016589", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-017025", "judge_raw_output": "The candidate's response ultimately selected option A) 3:1, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-017168", "judge_raw_output": "The candidate's response ultimately selected option B) 101.011, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-017194", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-017350", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-017475", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-017939", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-018543", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-018935", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-019263", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-019365", "judge_raw_output": "The candidate's response ultimately selected option A) 300, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-019835", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-020083", "judge_raw_output": "The candidate's response ultimately concludes that the area of the triangle could be 10, which corresponds to option C) III only. Therefore, the candidate's response selects the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-020414", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-020783", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-021932", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-022492", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-022557", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-022883", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-023108", "judge_raw_output": "The candidate's response ultimately selected option D) 23, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-023623", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-025435", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-025471", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-025920", "judge_raw_output": "The candidate's response ultimately selected option A) approx 15%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-026571", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-026793", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-026988", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-027647", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-027953", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-028623", "judge_raw_output": "The candidate's response ultimately selected option D) after 9 hours from start, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-028982", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-029438", "judge_raw_output": "The candidate's response ultimately selected option C) 44.44%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-029461", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-029517", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-029716", "judge_raw_output": "The candidate's response ultimately selected option B) 4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-030280", "judge_raw_output": "The candidate's response ultimately selected option C) 1/5, which is the correct option. However, their reasoning and calculations led to a different answer, 2/3, which is not among the options. Despite this, they correctly selected the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-030575", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-030910", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-031563", "judge_raw_output": "The candidate's response ultimately selected option A) 25, which is the correct answer according to their reasoning.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-031862", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-032150", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-032840", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-033108", "judge_raw_output": "The candidate's response ultimately selected option B) 36000, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-033800", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-033973", "judge_raw_output": "The candidate's response ultimately selected option D) 5%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-034290", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-034498", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-036401", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-036595", "judge_raw_output": "The candidate ultimately selected option A) 3, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-036918", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-037340", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-037459", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-037742", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-037778", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-037840", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038009", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038352", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038414", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038501", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038667", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038772", "judge_raw_output": "The candidate's response ultimately selected option E) 125, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-038797", "judge_raw_output": "The candidate's response ultimately selected option C, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-039101", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-039173", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-039816", "judge_raw_output": "The candidate's response ultimately selected option C) 6, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-040311", "judge_raw_output": "The candidate's response ultimately selected option D) 14, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-041008", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-041152", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-041554", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-041855", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-042159", "judge_raw_output": "The candidate's response ultimately selected option B) 2 x 10!, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-042470", "judge_raw_output": "The candidate's response ultimately selected option B) 28, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-042601", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-043130", "judge_raw_output": "The candidate's response selected option D) 13 : 4, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-043442", "judge_raw_output": "The candidate's response ultimately selected option D) 6%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-043736", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-043908", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-044607", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-044874", "judge_raw_output": "The candidate's response ultimately selected option B) 49, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-045163", "judge_raw_output": "The candidate's response ultimately selected option B) 85, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-045192", "judge_raw_output": "The candidate's response ultimately selected option D) 102.5 kmph, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-045858", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-045899", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-046400", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-046719", "judge_raw_output": "The candidate's response ultimately selected option C) 10.25, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-046805", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-046902", "judge_raw_output": "The candidate's response ultimately selected option A) 2816, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-047297", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-047620", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-047769", "judge_raw_output": "The candidate's response ultimately selected option B) 51, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-047843", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-049221", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-049683", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-050054", "judge_raw_output": "The candidate's response ultimately selected option E) 480, which is the correct option. However, the candidate's reasoning was incorrect, as they did not arrive at the correct answer through their method.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-050184", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-050216", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-050449", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-050857", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-051274", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-051476", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-051683", "judge_raw_output": "The candidate's response ultimately selects option E) 86.4% as the correct answer.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-051799", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-052021", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-052358", "judge_raw_output": "The candidate's response ultimately selected option B) $500, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-052737", "judge_raw_output": "The candidate's response ultimately selected option D) 2, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-053313", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-053848", "judge_raw_output": "The candidate's response ultimately selected option C) 12.5%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-053849", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-054165", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-054314", "judge_raw_output": "The candidate's response ultimately selected option A) 333$, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-054850", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-055134", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-056891", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-057287", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-057964", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-058213", "judge_raw_output": "The candidate's response ultimately selected option C) 8:10, 7:10, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-058752", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-059065", "judge_raw_output": "The candidate's response ultimately selected option E) None of these, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-059237", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-059583", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-060600", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-060832", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-061228", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-061900", "judge_raw_output": "The candidate's response ultimately selected option B) Either ;35:1, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-062205", "judge_raw_output": "The candidate's response ultimately selected option B) $10, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-063087", "judge_raw_output": "The candidate's response ultimately selected option C) 3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-063217", "judge_raw_output": "The candidate's response ultimately selected option C) 5/9 as the correct answer. Since this is the correct option, the candidate's response is correct.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-063600", "judge_raw_output": "The candidate's response ultimately selected option A) 12000,20000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-063834", "judge_raw_output": "The candidate's response ultimately selected option B) 12, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-063858", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-064253", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-064736", "judge_raw_output": "The candidate's response ultimately selected option C) 210, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-064747", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-065067", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-065421", "judge_raw_output": "The candidate's response ultimately selected option C) 194, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-065586", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-066960", "judge_raw_output": "The candidate's response ultimately selected option E) 10,560, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-069230", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-069591", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-071376", "judge_raw_output": "The candidate's response ultimately selects option C) 55% of the children have an apple, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-071569", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-071680", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-072257", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-072294", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-073527", "judge_raw_output": "The candidate's response ultimately selected option A) 30, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-073674", "judge_raw_output": "The candidate's response ultimately selected option C) (3x \u2013 7) / 7x, which matches the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-074784", "judge_raw_output": "The candidate's response ultimately selected option E) 3, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-074920", "judge_raw_output": "The candidate's response ultimately selected option C) XZ-PYZ-QMZ, which is the correct option.", "is_correct": null}
+{"group": "train", "uid": "aqua-train-075246", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-076308", "judge_raw_output": "The candidate's response ultimately selected option C) 11 o'clock, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-076340", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-076546", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-076811", "judge_raw_output": "The candidate's response ultimately selected option C) 18,000,000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-077267", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-077778", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-077784", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-077898", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-077982", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-079014", "judge_raw_output": "The candidate's response shows that they have calculated the man's earnings and expenses up to Day 15, and have not yet reached Rs 60. However, they do not provide a detailed calculation for Day 16, but based on their previous calculations, it is likely that they would have continued to earn Rs 20 and spend Rs 15 on Day 16, resulting in a balance of Rs 55 + Rs 20 - Rs 15 = Rs 60. Therefore, it is likely that the candidate's ultimate selection would have been option E) 60Rs.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-079674", "judge_raw_output": "The candidate's response ultimately selected option A, which is incorrect. The correct option is D) 66.67.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-079962", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-080142", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-080369", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-080581", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-081078", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-081508", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-082525", "judge_raw_output": "The candidate's response ultimately selected option A) 155, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-082537", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-083550", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-083668", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-083761", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-083843", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-083860", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-083925", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-084555", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-084640", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-085093", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-085218", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-085329", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-085538", "judge_raw_output": "The candidate's response ultimately selected option D) 14%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-086208", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-086230", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-086539", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-088200", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-088327", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-088727", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-089806", "judge_raw_output": "The candidate's response ultimately selected option A) 216, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-090207", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-090222", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-090337", "judge_raw_output": "The candidate's response ultimately selected option A) 5%, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-091131", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-091880", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-092086", "judge_raw_output": "The candidate's response ultimately selected option E) 32, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-092518", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-092649", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-092702", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-092844", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-094086", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-094099", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-094396", "judge_raw_output": "The candidate's response ultimately selected option C, which is the middle finger, but the correct option is A, the thumb. Therefore:\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-094532", "judge_raw_output": "The candidate's response does not explicitly state the final answer, but based on the context, it appears that the candidate is trying to calculate the total time taken to arrange the books. However, the candidate's response is incomplete and does not provide a clear final answer.\n\nHowever, since the correct option is B) 180 minutes, and the candidate's response is trying to calculate the total time taken, it is likely that the candidate intended to select option B) 180 minutes.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-094632", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-095307", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-095352", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-095698", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-095803", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "train", "uid": "aqua-train-096119", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "train", "uid": "aqua-train-096296", "judge_raw_output": "The candidate's response ultimately selected option A) 1 Hour, which is the correct option.", "is_correct": null}
+{"group": "baseline", "uid": "aqua-validation-000000", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000000", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000000", "judge_raw_output": "The candidate's response does not select the correct option (A). They ultimately selected option E) 10, which is incorrect.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000001", "judge_raw_output": "The candidate's response ultimately selected option D) 250 m, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000001", "judge_raw_output": "The candidate's response ultimately selected option D) 250 m, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000001", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000002", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000002", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000002", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000003", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000003", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000003", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000004", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000004", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000004", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000005", "judge_raw_output": "The candidate's response ultimately selected option B) $905, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000005", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000005", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000006", "judge_raw_output": "The candidate's response ultimately selected option E) $204, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000006", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000006", "judge_raw_output": "The candidate's response ultimately selected option E) $204, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000007", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000007", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000007", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000008", "judge_raw_output": "The candidate's response ultimately selected option D) 1340, which is the correct answer. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000008", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000008", "judge_raw_output": "The candidate's response ultimately selected option D) 1340, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000009", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000009", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000009", "judge_raw_output": "The candidate's response ultimately selected option D) 22.5 litres, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000010", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000010", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000010", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000011", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000011", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000011", "judge_raw_output": "The candidate's response ultimately selected option D) 72, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000012", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000012", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000012", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000013", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000013", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000013", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000014", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000014", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000014", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000015", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000015", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000015", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000016", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000016", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000016", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000017", "judge_raw_output": "The candidate's response ultimately selected option E) 10,800, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000017", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000017", "judge_raw_output": "The candidate's response ultimately selected option E) 10,800, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000018", "judge_raw_output": "The candidate's response ultimately selects option B) 50.25%, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000018", "judge_raw_output": "The candidate's response ultimately selected option D) 51%, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000018", "judge_raw_output": "The candidate's response ultimately selected option C) 50.5%, which is not the correct option. The correct option is B) 50.25%.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000019", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000019", "judge_raw_output": "The candidate's response ultimately selected option B) 4.5%, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000019", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000020", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000020", "judge_raw_output": "The candidate's response ultimately selected option A) 180, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000020", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000021", "judge_raw_output": "The candidate's response ultimately selected option B) $400, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000021", "judge_raw_output": "The candidate's response ultimately selected option B) $400, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000021", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000022", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000022", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000022", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000023", "judge_raw_output": "The candidate's response is incorrect because they listed out the multiples of 6, but did not actually find the least common multiple (LCM) of 6 and 9, which is the correct method to solve the problem. However, the correct option is B) once every 15 years, which is the LCM of 6 and 9. The candidate did not select this option.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000023", "judge_raw_output": "The candidate's response is incorrect because they listed out the multiples of 6, but did not actually find the least common multiple (LCM) of 6 and 9, which is the correct method to solve the problem. However, the correct option is B) once every 15 years, which is the LCM of 6 and 9. The candidate did not select this option.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000023", "judge_raw_output": "The candidate's response is incorrect because they listed out the multiples of 6, but did not actually find the least common multiple (LCM) of 6 and 9, which is the correct method to solve the problem. However, the correct option is B) once every 15 years, which is the LCM of 6 and 9. The candidate did not select this option.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000024", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000024", "judge_raw_output": "The candidate's response ultimately selected option C) 36, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000024", "judge_raw_output": "The candidate's response ultimately calculates 142,506 * 6 = 855,036, which is not among the options. However, the candidate mentions that they need to multiply 30C5 by 6 to account for the 6 categories, which is the correct approach. The correct calculation is 30C5 = 142,506, and multiplying this by 6 gives 855,036, which is not among the options. However, the candidate's reasoning is flawed, but they are on the right track. The correct option is C) 36, which is the result of 30C5 = 142,506, and multiplying this by 6 gives 855,036, but the candidate's calculation is incorrect", "is_correct": null, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000025", "judge_raw_output": "The candidate's response ultimately selected option C) 3hours, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000025", "judge_raw_output": "The candidate's response ultimately selected option C) 3hours, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000025", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000026", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000026", "judge_raw_output": "The candidate's response ultimately selected option A) 5 and 3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000026", "judge_raw_output": "The candidate's response ultimately selected option A) 5 and 3, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000027", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000027", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000027", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000028", "judge_raw_output": "The candidate's response ultimately selected option E) 100, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000028", "judge_raw_output": "The candidate's response selected option D) 80, not the correct option E) 100. \n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000028", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000029", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000029", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000029", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000030", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000030", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000030", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000031", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000031", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000031", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000032", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000032", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000032", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000033", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000033", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000033", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000034", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000034", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000034", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000035", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000035", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000035", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000036", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000036", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000036", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000037", "judge_raw_output": "The candidate's response ultimately selected option A) on the 17th day, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000037", "judge_raw_output": "The candidate's response ultimately selected option A) on the 17th day, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000037", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000038", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000038", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000038", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000039", "judge_raw_output": "The candidate's response ultimately selected option A) 14, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000039", "judge_raw_output": "The candidate's response ultimately selected option A) 14, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000039", "judge_raw_output": "The candidate's response does not select the correct option (A). They selected option C, which is incorrect.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000040", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000040", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000040", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000041", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000041", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000041", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000042", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000042", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000042", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000043", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000043", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000043", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000044", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000044", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000044", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000045", "judge_raw_output": "The candidate's response ultimately selected option D) t/25, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000045", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000045", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000046", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000046", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000046", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000047", "judge_raw_output": "The candidate's response ultimately selected option C) 10000, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000047", "judge_raw_output": "The candidate's response ultimately selected option C) 10000, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000047", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000048", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000048", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000048", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000049", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000049", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000049", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000050", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000050", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000050", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000051", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000051", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000051", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000052", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000052", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000052", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000053", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000053", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000053", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000054", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000054", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000054", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000055", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000055", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000055", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000056", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000056", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000056", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000057", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000057", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000057", "judge_raw_output": "The candidate ultimately selected option A) 7, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000058", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000058", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000058", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000059", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000059", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000059", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000060", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000060", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000060", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000061", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000061", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000061", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000062", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000062", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000062", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000063", "judge_raw_output": "The candidate's response ultimately selected option D) 10, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000063", "judge_raw_output": "The candidate's response ultimately selected option D) 10, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000063", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000064", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000064", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000064", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000065", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000065", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000065", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000066", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000066", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000066", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000067", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000067", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000067", "judge_raw_output": "The candidate's response ultimately selected option A) 15 years, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000068", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000068", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000068", "judge_raw_output": "The candidate's response ultimately selected option D) 13.5, which is the correct option.", "is_correct": null, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000069", "judge_raw_output": "The candidate's response ultimately selected option C) 11:53, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000069", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000069", "judge_raw_output": "The candidate's response ultimately selected option C) 11:53.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000070", "judge_raw_output": "The candidate's response ultimately selected option B) 10, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000070", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000070", "judge_raw_output": "The candidate's response does not explicitly state which option they selected, but based on the reasoning provided, it appears that they are trying to find the value of a that minimizes the distance between 89 and 9a. However, their reasoning is flawed, and they do not arrive at the correct answer.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000071", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000071", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000071", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000072", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000072", "judge_raw_output": "The candidate's response ultimately selected option E) None of these, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000072", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000073", "judge_raw_output": "The candidate's response ultimately selected option B, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000073", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000073", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000074", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000074", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000074", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000075", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000075", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000075", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000076", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000076", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000076", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000077", "judge_raw_output": "The candidate's response ultimately selected option A) 1947, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000077", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000077", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000078", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000078", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000078", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000079", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000079", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000079", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000080", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000080", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000080", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000081", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000081", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000081", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000082", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000082", "judge_raw_output": "The candidate's response ultimately selected option D) 2, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000082", "judge_raw_output": "The candidate's response ultimately selected option D) 2, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000083", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000083", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000083", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000084", "judge_raw_output": "The candidate's response ultimately selected option D) 3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000084", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000084", "judge_raw_output": "The candidate's response ultimately selected option D) 3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000085", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000085", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000085", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000086", "judge_raw_output": "The candidate's response does not explicitly state which option they selected, but based on the fact that the correct option is E) 12, and the candidate's response does not mention any calculations or reasoning that would lead to a different answer, it is likely that the candidate selected option E) 12.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000086", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000086", "judge_raw_output": "The candidate's response ultimately selected option E) 12, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000087", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000087", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000087", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000088", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000088", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000088", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000089", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000089", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000089", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000090", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000090", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000090", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000091", "judge_raw_output": "The candidate's response does not show the final result after 30 iterations, but it does show that they selected option B) 77 as their answer. However, the correct option is indeed B) 77, as the final result after 30 iterations is 77. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000091", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000091", "judge_raw_output": "The candidate's response ultimately selected option B) 77, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000093", "judge_raw_output": "The candidate's response ultimately selected option C) 4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000093", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000093", "judge_raw_output": "The candidate's response ultimately selected option C) 4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000094", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000094", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000094", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000095", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000095", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000095", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000096", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000096", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000096", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000097", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000097", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000097", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000098", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000098", "judge_raw_output": "The candidate's response selected option B) 25*pi, which is not the correct option. The correct option is E) 40*pi.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000098", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000099", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000099", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000099", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000100", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000100", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000100", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000101", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000101", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000101", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000102", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000102", "judge_raw_output": "The candidate's response ultimately selected option A) 13:4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000102", "judge_raw_output": "The candidate's response ultimately selected option A) 13:4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000103", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000103", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000103", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000104", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000104", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000104", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000105", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000105", "judge_raw_output": "The candidate's response ultimately selected option A) $32.3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000105", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000106", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000106", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000106", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000107", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000107", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000107", "judge_raw_output": "The candidate's response ultimately selected option D) 19, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000108", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000108", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000108", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000109", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000109", "judge_raw_output": "The candidate's response ultimately selected option C) 360, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000109", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000110", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000110", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000110", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000111", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000111", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000111", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000112", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000112", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000112", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000113", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000113", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000113", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000114", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000114", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000114", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000115", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000115", "judge_raw_output": "The candidate's response ultimately selected option A) $4100, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000115", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000116", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000116", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000116", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000117", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000117", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000117", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000118", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000118", "judge_raw_output": "The candidate's response ultimately selected option C) 4 h, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000118", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000119", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000119", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000119", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000120", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000120", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000120", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000121", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000121", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000121", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000122", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000122", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000122", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000123", "judge_raw_output": "The candidate's response ultimately selected option D) Ring finger, which is incorrect according to the correct option B) Index finger.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000123", "judge_raw_output": "The candidate's response ultimately selects option B) Index finger, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000123", "judge_raw_output": "The candidate's response ultimately selected option D) Ring finger, which is incorrect. The correct option is B) Index finger.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000124", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000124", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000124", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000125", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000125", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000125", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000126", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000126", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000126", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000127", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000127", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000127", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000128", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000128", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000128", "judge_raw_output": "The candidate's response ultimately selected option B) 25300, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000129", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000129", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000129", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000130", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000130", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000130", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000131", "judge_raw_output": "The candidate's response ultimately selected option E) 3.5, which is not the correct option. The correct option is B) 3.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000131", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000131", "judge_raw_output": "The candidate's response ultimately selected option B) 3, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000132", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000132", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000132", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000133", "judge_raw_output": "The candidate's response ultimately selected option E) II and III, which is incorrect because none of the options I, II, or III are correct. The correct option is A) None. \n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000133", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000133", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000134", "judge_raw_output": "The candidate's response ultimately selected option A) 208m, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000134", "judge_raw_output": "The candidate's response ultimately selected option C) 120m 3cm, which is incorrect. The correct option is A) 208m.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000134", "judge_raw_output": "The candidate's response ultimately selected option A) 208m, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000135", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000135", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000135", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000136", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000136", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000136", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000137", "judge_raw_output": "The candidate's response ultimately selected option B) 20, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000137", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000137", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000138", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000138", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000138", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000139", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000139", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000139", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000140", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000140", "judge_raw_output": "The candidate's response ultimately selected option C) 4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000140", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000141", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000141", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000141", "judge_raw_output": "The candidate's response does not select the correct option (B) 360. They mention that the LCM of 40 and 120 is 1200, which is not relevant to the question. They do not provide a clear answer to the question, but based on the options provided, it seems they are trying to find the minimum length of the wire. However, their reasoning is incorrect and they do not arrive at the correct answer.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000142", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000142", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000142", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000143", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000143", "judge_raw_output": "The candidate's response ultimately selected option D) 4.5, which is the correct answer based on their calculation. However, the correct option according to the question is E) 6, which is not the candidate's selection.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000143", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000144", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000144", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000144", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000145", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000145", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000145", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000146", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000146", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000146", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000147", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000147", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000147", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000148", "judge_raw_output": "The candidate's response ultimately selected option D) 160, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000148", "judge_raw_output": "The candidate's response does not provide a clear calculation for the number of committees that do not include any married couples, but they mention that they are trying to find the complement. However, they do not provide a valid calculation for the number of committees that include at least one married couple. Despite this, the candidate ultimately selected option D) 160, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000148", "judge_raw_output": "The candidate's response ultimately selected option D) 160, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000149", "judge_raw_output": "The candidate's response ultimately selected option D) 8000, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000149", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000149", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000150", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000150", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000150", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000151", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000151", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000151", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000152", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000152", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000152", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000153", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000153", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000153", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000154", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000154", "judge_raw_output": "The candidate's response ultimately selected option C) 15 hours, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000154", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000155", "judge_raw_output": "The candidate's response ultimately selected option E) $100, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000155", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000155", "judge_raw_output": "The candidate's response ultimately selected option E) $100, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000156", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000156", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000156", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000157", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000157", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000157", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000158", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000158", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000158", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000159", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000159", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000159", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000160", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000160", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000160", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000161", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000161", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000161", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000162", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000162", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000162", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000163", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000163", "judge_raw_output": "The candidate's response ultimately selected option B) 1011, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000163", "judge_raw_output": "The candidate's response ultimately selected option B) 1011, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000164", "judge_raw_output": "The candidate's response ultimately selected option A) 200, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000164", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000164", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000165", "judge_raw_output": "The candidate's response ultimately selected option C) 12th, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000165", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000165", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000166", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000166", "judge_raw_output": "The candidate's response ultimately selected option B) 1168.333, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000166", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000167", "judge_raw_output": "The candidate's response ultimately selected option D) 34, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000167", "judge_raw_output": "The candidate's response ultimately selected option D) 34, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000167", "judge_raw_output": "The candidate's response does not explicitly state the total number of tokens, but based on the provided solution, it appears that the candidate is trying to find a combination of 'r' and 'g' that satisfies the equation. However, the candidate's solution is incomplete and does not directly lead to the correct answer.\n\nUpon reviewing the candidate's work, it seems that the candidate is trying to find a combination of 'r' and 'g' that results in a total cost of $2.00, but this approach is not leading to the correct answer. The candidate's solution is not directly related to the correct answer, which is option D) 34.\n\nHowever, the candidate's response does not explicitly state that they selected option D) ", "is_correct": null, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000168", "judge_raw_output": "The candidate's response ultimately selected option B) 10 o'clock, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000168", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000168", "judge_raw_output": "The candidate's response ultimately selected option B) 10 o'clock, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000169", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000169", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000169", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000170", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000170", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000170", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000171", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000171", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000171", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000172", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000172", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000172", "judge_raw_output": "The candidate's response ultimately selected option B) 5%, which is the correct option.", "is_correct": null, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000173", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000173", "judge_raw_output": "The candidate's response ultimately selected option C) 3 as the correct answer. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000173", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000174", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000174", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000174", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000175", "judge_raw_output": "The candidate's response selects option B) 12, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000175", "judge_raw_output": "The candidate's response ultimately selected option B) 12, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000175", "judge_raw_output": "The candidate's response selects option B) 12, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000176", "judge_raw_output": "The candidate's response ultimately selected option A, which is incorrect. The correct option is D) 2.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000176", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000176", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000177", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000177", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000177", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000178", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000178", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000178", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000179", "judge_raw_output": "The candidate's response ultimately selected option B) 2.4 cubic meter, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000179", "judge_raw_output": "The candidate's response ultimately selected option B) 2.4 cubic meter, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000179", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000180", "judge_raw_output": "The candidate's response ultimately selected option B) gains Rs. 50, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000180", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000180", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000181", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000181", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000181", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000182", "judge_raw_output": "The candidate's response ultimately selected option E) 4, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000182", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000182", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000183", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000183", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000183", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000184", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000184", "judge_raw_output": "The candidate's response ultimately selected option C) 8!, which is not the correct option. The correct option is D) 10!/2, but the candidate's reasoning was focused on finding the smallest number of combinations that guarantees access to the database, which led them to consider 8 digits, 9 digits, and 10 digits, but not to select the correct option.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000184", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000185", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000185", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000185", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000186", "judge_raw_output": "The candidate's response ultimately selected option A) 78741, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000186", "judge_raw_output": "The candidate's response ultimately selected option A) 78741, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000186", "judge_raw_output": "The candidate's response ultimately selected option A) 78741, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000187", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000187", "judge_raw_output": "The candidate's response ultimately selected option C) 12.5 %, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000187", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000188", "judge_raw_output": "The candidate's response ultimately selected option C) 8.4 %, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000188", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000188", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000189", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000189", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000189", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000191", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000191", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000191", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000192", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000192", "judge_raw_output": "The candidate's response ultimately selects option A) 4.5, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000192", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000193", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000193", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000193", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000194", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000194", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000194", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000195", "judge_raw_output": "The candidate's response ultimately selected option B) 98, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000195", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000195", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000196", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000196", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000196", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000197", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000197", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000197", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000198", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000198", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000198", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000199", "judge_raw_output": "The candidate's response ultimately selected option A) 40 %, which is the correct option.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000199", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000199", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000200", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000200", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000200", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000201", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000201", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000201", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000202", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000202", "judge_raw_output": "The candidate's response ultimately simplifies to T + 46, but they don't provide a numerical value for T. However, they do mention that the correct option is A) 46, which implies that they are aware of the correct answer. Since the candidate's response does not provide a clear numerical value for the difference between Gina's and Tina's grades, but they select the correct option, it is likely that they are trying to convey that the difference is indeed 46.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000202", "judge_raw_output": "The candidate's response ultimately selected option A) 46, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000203", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000203", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000203", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000204", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000204", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000204", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000205", "judge_raw_output": "The candidate ultimately selected option D) 300, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000205", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000205", "judge_raw_output": "The candidate's response ultimately selected option D) 300, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000206", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000206", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000206", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000207", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000207", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000207", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000208", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000208", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000208", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000209", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000209", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000209", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000210", "judge_raw_output": "The candidate's response ultimately selected option C) 125, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000210", "judge_raw_output": "The candidate's response ultimately selected option C) 125, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000210", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000211", "judge_raw_output": "The candidate ultimately selected option A) 6, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000211", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000211", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000212", "judge_raw_output": "The candidate's response ultimately selected option A) 17.456 m/sec, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000212", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000212", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000213", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000213", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000213", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000214", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000214", "judge_raw_output": "The candidate's response ultimately selected option A) 17 min, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000214", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000215", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000215", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000215", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000216", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000216", "judge_raw_output": "The candidate's response ultimately selected option A) 20.0, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000216", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000217", "judge_raw_output": "The candidate's response ultimately selected option A) 12000,20000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000217", "judge_raw_output": "The candidate's response ultimately selected option E, which is 20000,12000. This does not match the correct option A, which is 12000,20000.\n\nVerdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000217", "judge_raw_output": "The candidate's response ultimately selected option A) 12000,20000, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000218", "judge_raw_output": "The candidate's response ultimately selected option C, which is the correct answer according to their calculation. However, the correct option is actually A) 35.07, not C) 35.52.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000218", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000218", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000219", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000219", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000219", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000220", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000220", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000220", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000221", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000221", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000221", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000222", "judge_raw_output": "The candidate's response ultimately selects option A) 12, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000222", "judge_raw_output": "The candidate's response ultimately selects option A) 12, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000222", "judge_raw_output": "The candidate's response ultimately selects option A) 12, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000223", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000223", "judge_raw_output": "The candidate's response ultimately selected option D) 122:193, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000223", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000224", "judge_raw_output": "The candidate's response ultimately selected option A) $10,000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000224", "judge_raw_output": "The candidate's response ultimately selected option A) $10,000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000224", "judge_raw_output": "The candidate's response ultimately selected option A) $10,000, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000225", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000225", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000225", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000226", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000226", "judge_raw_output": "The candidate's response ultimately selected option B) Rs. 1934.40, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000226", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000227", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000227", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000227", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000228", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000228", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000228", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000229", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000229", "judge_raw_output": "The candidate's response ultimately selected option A) 11, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000229", "judge_raw_output": "The candidate's response does not explicitly state which option they selected, but based on the fact that the correct option is A) 11, and the candidate's response does not mention any other option, it can be inferred that the candidate likely selected option A) 11.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000230", "judge_raw_output": "The candidate's response ultimately selected option E) 50%, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000230", "judge_raw_output": "The candidate's response ultimately selected option E) 50%, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000230", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000231", "judge_raw_output": "The candidate's response ultimately selected option A, which is incorrect. The correct option is E) 7.\n\nVerdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000231", "judge_raw_output": "The candidate's response ultimately selected option E) 7, which is the correct option.", "is_correct": null, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000231", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000232", "judge_raw_output": "The candidate's response ultimately selected option A) 2.16 hr, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000232", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000232", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000233", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000233", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000233", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000234", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000234", "judge_raw_output": "The candidate's response ultimately selected option D) 150, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000234", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000235", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000235", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000235", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000236", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000236", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000236", "judge_raw_output": "The candidate's response ultimately selected option D) $6, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000237", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000237", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000237", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000238", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000238", "judge_raw_output": "The candidate's response ultimately selected option C) 11/23, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000238", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000239", "judge_raw_output": "The candidate's response ultimately selected option C) 7, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000239", "judge_raw_output": "The candidate's response ultimately selected option C, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000239", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000240", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000240", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000240", "judge_raw_output": "The candidate's response ultimately selected option E) 6, which is the correct option.", "is_correct": null, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000241", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000241", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000241", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000242", "judge_raw_output": "The candidate's response ultimately selected option C) 28, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000242", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000242", "judge_raw_output": "The candidate's response ultimately selected option C) 28, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000243", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000243", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000243", "judge_raw_output": "The candidate's response ultimately selected option D) 42, not option A) 27, which is the correct option. \n\nVerdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000244", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000244", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000244", "judge_raw_output": "The candidate's response ultimately selected option E) 132, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000245", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000245", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000245", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000246", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000246", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000246", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000247", "judge_raw_output": "The candidate's response is INCORRECT.", "is_correct": null}
+{"group": "reflection", "uid": "aqua-validation-000247", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000247", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000248", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000248", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000248", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000249", "judge_raw_output": "The candidate's response ultimately selected option A) 7, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000249", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000249", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000250", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000250", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000250", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000251", "judge_raw_output": "Verdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000251", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000251", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000252", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false}
+{"group": "reflection", "uid": "aqua-validation-000252", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000252", "judge_raw_output": "Verdict: CORRECT", "is_correct": true, "depth": "complex"}
+{"group": "baseline", "uid": "aqua-validation-000253", "judge_raw_output": "The candidate's response ultimately selected option A) $5, which is the correct option. \n\nVerdict: CORRECT", "is_correct": true}
+{"group": "reflection", "uid": "aqua-validation-000253", "judge_raw_output": "Verdict: INCORRECT", "is_correct": false, "depth": "simple"}
+{"group": "reflection", "uid": "aqua-validation-000253", "judge_raw_output": "The candidate's response ultimately selected option A) $5, which is the correct option.\n\nVerdict: CORRECT", "is_correct": true, "depth": "complex"}

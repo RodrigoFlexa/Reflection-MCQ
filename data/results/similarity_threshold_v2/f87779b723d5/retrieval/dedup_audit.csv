@@ -1,0 +1,6 @@
+dataset,source,train,validation,train_internal_duplicates_removed,validation_internal_duplicates_removed,cross_split_stems_removed_from_train
+aqua,validation.jsonl,79041,252,15888,0,10
+arc,validation.jsonl,1116,298,1,0,0
+gsm8k,holdout determinístico do train,6473,1000,0,0,0
+logiqa2,validation.jsonl,11394,1551,926,14,217
+openbookqa,validation.jsonl,4816,499,126,1,12
