@@ -18,7 +18,7 @@ def parse_args():
     )
     parser.add_argument("--models", help="Comma-separated model keys; defaults to notebook config.")
     parser.add_argument("--datasets", help="Comma-separated dataset names; defaults to notebook config.")
-    parser.add_argument("--gpu", default="0")
+    parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "3"))
     parser.add_argument("--validation-cap", type=int, help="Maximum validation items per dataset.")
     parser.add_argument("--batch-size", type=int, help="Generation checkpoint batch size.")
     parser.add_argument("--bootstrap-curve", type=int, help="Bootstrap replicates for effect curves.")
@@ -38,6 +38,9 @@ def display(value):
 
 def main():
     ARGS = parse_args()
+    os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
+    os.environ.setdefault("MPLBACKEND", "Agg")
+
 
 
     # %% [notebook cell 1]
@@ -46,7 +49,7 @@ def main():
     from pathlib import Path
 
     # Precisa ser definido antes de importar rmcq/torch/vLLM.
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(ARGS.gpu)
+    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("RMCQ_NOTEBOOK_GPU", "3")
 
     for candidate in [Path.cwd(), *Path.cwd().parents]:
         if (candidate / "rmcq").is_dir():
@@ -89,7 +92,7 @@ def main():
     DATA_DIR = ROOT / "data" / "processed"
     RESULTS_ROOT = ROOT / "data" / "results" / "similarity_threshold_v2"
 
-    DATASETS = ["aqua", "arc", "gsm8k", "logiqa2", "openbookqa"]
+    DATASETS = ["aqua", "arc", "logiqa2", "openbookqa"]
 
     # Todos têm estritamente menos de 8B parâmetros. Para um ensaio rápido, deixe
     # somente um; o threshold final deve ser replicado nos dois.
@@ -105,11 +108,16 @@ def main():
     # somente UMA delas. Os valores realizados, e não os alvos, entram na análise.
     SIMILARITY_TARGETS = [0.30, 0.50, 0.70]
     PLACEBO_BOTTOM_QUANTILE = 0.20
-    REFLECTION_DEPTHS = ["simple", "complex"]
+    REFLECTION_DEPTHS = ["simple", "complex", "compact", "diagnostic"]
     SOURCE_POOLS = ["all", "errors", "correct"]
 
     ANSWER_MAX_NEW_TOKENS = 400
-    REFLECTION_MAX_NEW_TOKENS = 180
+    REFLECTION_MAX_NEW_TOKENS = {
+        "simple": 150,
+        "complex": 200,
+        "compact": 100,
+        "diagnostic": 180,
+    }
     JUDGE_MAX_NEW_TOKENS = 80
     GENERATION_BATCH_SIZE = 512
     RESUME = True
@@ -158,7 +166,10 @@ def main():
 
 
     # %% [notebook cell 4]
-    ANSWER_PROMPT = """You are answering a multiple-choice question.
+    from textwrap import dedent
+
+
+    ANSWER_PROMPT = dedent("""You are answering a multiple-choice question.
 
     Question: {question}
 
@@ -169,40 +180,70 @@ def main():
     - Reason carefully before choosing.
     - Choose exactly one option.
     - End with this exact line and nothing after it:
-    FINAL ANSWER: <letter>"""
+    FINAL ANSWER: <letter>""").strip()
 
-    SIMPLE_REFLECTION_PROMPT = """You are reviewing your answer to a completed multiple-choice problem.
+    SIMPLE_REFLECTION_PROMPT = dedent("""You are turning feedback from a completed multiple-choice problem into one reusable reasoning memory.
     You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
 
-    Write exactly four lines and no more than 100 words total:
-    Approach: State the reasoning method you used.
-    Diagnosis: Identify the specific reasoning step that succeeded or failed.
-    Transfer rule: Give one general rule in the form "If ..., then ..." for similar problems.
-    Applicability: State when that rule should not be used.
+    Write exactly four lines and no more than 90 words total:
+    Transfer rule: Give one actionable general rule in the form "If ..., then ...".
+    Use when: State the kind of problem or clue that activates this rule.
+    Avoid: State the specific reasoning mistake this rule prevents.
+    Reason: Briefly explain why the rule works.
 
     Do not solve the problem again. Do not state or quote the correct answer, an option label, or an option text.
-    Focus on transferable reasoning. Do not give vague advice such as "be careful" or "think harder"."""
+    Do not copy names, numbers, or conclusions from the source problem.
+    Write an operational rule, not vague advice such as "be careful" or "think harder".""").strip()
 
-    COMPLEX_REFLECTION_PROMPT = """You are reviewing your answer to a completed multiple-choice problem.
+    COMPLEX_REFLECTION_PROMPT = dedent("""You are turning feedback from a completed multiple-choice problem into one detailed but reusable reasoning memory.
     You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
 
-    Write exactly six lines and no more than 140 words total:
-    Task type: Identify the general kind of reasoning required.
-    Strategy: Describe the reasoning strategy you used.
-    Evidence check: State the key evidence, relationship, or constraint that you used or missed.
-    Failure test: Give one check that would have exposed the mistake or confirmed the reasoning.
-    Transfer rule: Give a precise rule in the form "If ..., then ..." for future problems.
-    Boundary: State when that rule would not apply.
+    Write exactly six lines and no more than 120 words total:
+    Transfer rule: Give the most important actionable rule in the form "If ..., then ...".
+    Task type: Identify the general reasoning pattern for which the rule is useful.
+    Use when: State the evidence, relationship, or constraint that activates the rule.
+    Failure test: Give a concrete check that would expose a wrong application.
+    Boundary: State when the rule should not be applied.
+    Reason: Explain briefly why this reasoning procedure is reliable.
 
     Do not solve the problem again. Do not state or quote the correct answer, an option label, or an option text.
-    Focus on transferable reasoning rather than source-specific conclusions. Do not give vague advice."""
+    Do not copy names, numbers, or conclusions from the source problem.
+    Focus on a procedure that transfers to new problems. Do not give vague advice.""").strip()
+
+    COMPACT_REFLECTION_PROMPT = dedent("""Convert feedback from a completed multiple-choice problem into a minimal reusable memory.
+    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
+
+    Write exactly three lines and no more than 60 words total:
+    Rule: Give one actionable rule in the form "If ..., then ...".
+    Trigger: State the clue that tells you to use the rule.
+    Avoid: State the concrete mistake the rule prevents.
+
+    Do not solve the problem again or reveal the correct answer.
+    Do not copy names, numbers, option labels, option texts, or conclusions from the source problem.
+    Do not give generic advice.""").strip()
+
+    DIAGNOSTIC_REFLECTION_PROMPT = dedent("""Turn feedback from a completed multiple-choice problem into a reusable diagnostic memory.
+    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
+
+    Write exactly five lines and no more than 110 words total:
+    Transfer rule: Give one actionable rule in the form "If ..., then ...".
+    Error pattern: Identify the general reasoning failure or success pattern.
+    Diagnostic check: Give a concrete test to run before committing to an answer.
+    Use when: State the problem features that make this diagnostic relevant.
+    Boundary: State when the diagnostic should be ignored.
+
+    Do not solve the problem again or reveal the correct answer.
+    Do not copy names, numbers, option labels, option texts, or conclusions from the source problem.
+    Describe a repeatable check, not vague advice.""").strip()
 
     REFLECTION_PROMPTS = {
         "simple": SIMPLE_REFLECTION_PROMPT,
         "complex": COMPLEX_REFLECTION_PROMPT,
+        "compact": COMPACT_REFLECTION_PROMPT,
+        "diagnostic": DIAGNOSTIC_REFLECTION_PROMPT,
     }
 
-    MEMORY_PROMPT = """The following is one memory written after solving a DIFFERENT multiple-choice problem.
+    MEMORY_PROMPT = dedent("""The following is one memory written after solving a DIFFERENT multiple-choice problem.
     Use it only if its reasoning rule applies. Do not copy its conclusion or assume that its option labels match this problem.
     Solve the current problem independently, then use the memory as a check.
 
@@ -218,9 +259,9 @@ def main():
     - Reason carefully before choosing.
     - Choose exactly one option.
     - End with this exact line and nothing after it:
-    FINAL ANSWER: <letter>"""
+    FINAL ANSWER: <letter>""").strip()
 
-    JUDGE_PROMPT = """You are grading a multiple-choice response.
+    JUDGE_PROMPT = dedent("""You are grading a multiple-choice response.
 
     Question: {question}
 
@@ -234,7 +275,7 @@ def main():
 
     Decide only which option the candidate ultimately selected.
     End with this exact line and nothing after it:
-    Verdict: <CORRECT or INCORRECT>"""
+    Verdict: <CORRECT or INCORRECT>""").strip()
 
 
     def format_options(choices):
@@ -305,6 +346,7 @@ def main():
         "depths": REFLECTION_DEPTHS,
         "answer_prompt": ANSWER_PROMPT,
         "reflection_prompts": REFLECTION_PROMPTS,
+        "reflection_max_new_tokens": REFLECTION_MAX_NEW_TOKENS,
         "memory_prompt": MEMORY_PROMPT,
         "kernel_bandwidth": KERNEL_BANDWIDTH,
         "bootstrap_curve": N_BOOTSTRAP_CURVE,
@@ -634,7 +676,7 @@ def main():
                 }
                 outputs = cached_generate(
                     backend, model_dir / f"reflections_{depth}.jsonl", prompts,
-                    REFLECTION_MAX_NEW_TOKENS, f"reflexões {depth}",
+                    REFLECTION_MAX_NEW_TOKENS[depth], f"reflexões {depth}",
                 )
                 for key, text in outputs.items():
                     _, _, dataset, uid = json.loads(key)
