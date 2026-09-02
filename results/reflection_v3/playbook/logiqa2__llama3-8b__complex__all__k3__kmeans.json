@@ -1,0 +1,14 @@
+{
+ "dataset": "logiqa2",
+ "student": "llama3-8b",
+ "depth": "complex",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1954,
+ "rules": [
+  "Always evaluate multiple scenarios and consider alternative possibilities before making a conclusion.",
+  "When analyzing a passage, prioritize considering the broader implications and context of the text's statements, rather than solely focusing on specific details.",
+  "When evaluating an argument, consider alternative explanations and weigh multiple options carefully, rather than relying on a single assumption."
+ ]
+}

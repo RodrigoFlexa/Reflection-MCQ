@@ -28,7 +28,7 @@ from collections import defaultdict
 from typing import Any, Sequence
 
 from rmcq.backends import GenParams, get_backend
-from rmcq.common import build_eval_prompt, make_record
+from rmcq.common import EVAL_PROMPT_VERSION, build_eval_prompt, format_question, make_record
 from rmcq.config import EMBEDDER, SEED, STUDENT_GEN, condition_for, ensure_dirs
 from rmcq.data import (
     eval_path,
@@ -156,17 +156,24 @@ def run(
 
                 prompts, metas = [], []
                 for uid in pending:
-                    texts, src_questions, used_uids, sims = [], [], [], []
+                    texts, src_questions, src_correct, used_uids, sims = [], [], [], [], []
                     for train_uid, sim in ranked.get(uid, []):
                         row = refl.get(train_uid)
                         if not row or not row.get("reflection_text"):
                             continue
                         texts.append(row["reflection_text"])
-                        src_questions.append(train_items[train_uid]["question"])
+                        # format_question, não item["question"]: a similaridade
+                        # é calculada sobre contexto + pergunta, e no LogiQA2 a
+                        # pergunta sozinha ("Which of the following can be
+                        # inferred?") não identifica questão nenhuma.
+                        src_questions.append(format_question(train_items[train_uid]))
+                        src_correct.append((row.get("extra") or {}).get("source_was_correct"))
                         used_uids.append(train_uid)
                         sims.append(sim)
 
-                    prompts.append(build_eval_prompt(items[uid], texts, src_questions))
+                    prompts.append(
+                        build_eval_prompt(items[uid], texts, src_questions, src_correct)
+                    )
                     metas.append((items[uid], used_uids, sims))
 
                 gens = backend.generate(
@@ -201,6 +208,7 @@ def run(
                             "top1_similarity": max(sims) if sims else None,
                             "mean_similarity": (sum(sims) / len(sims)) if sims else None,
                             "n_reflections_injected": len(used_uids),
+                            "eval_prompt_version": EVAL_PROMPT_VERSION,
                         },
                     )
                     for (item, used_uids, sims), prompt, gen in zip(metas, prompts, gens)

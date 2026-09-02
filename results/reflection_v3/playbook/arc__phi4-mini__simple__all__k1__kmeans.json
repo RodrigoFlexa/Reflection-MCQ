@@ -1,0 +1,12 @@
+{
+ "dataset": "arc",
+ "student": "phi4-mini",
+ "depth": "simple",
+ "pool": "all",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1109,
+ "rules": [
+  "Always consider direct physical relationships when determining how different conditions affect measurable quantities."
+ ]
+}

@@ -1,0 +1,9 @@
+student,teacher,depth,k,threshold,n_shared,mean_retrieved,pct_fallback_baseline,baseline_accuracy,condition_accuracy,delta_accuracy,utility,wrong_to_right,right_to_wrong,mcnemar_p
+phi4-mini,phi4-mini,complex,1,0.52,298,0.9966,0.0034,0.8624,0.8725,0.0101,0.0101,26,23,0.7754
+phi4-mini,phi4-mini,simple,2,0.6,298,1.2651,0.2852,0.8624,0.8691,0.0067,0.0067,16,14,0.8555
+llama3-8b,llama3-8b,complex,1,0.6,298,0.7148,0.2852,0.8423,0.849,0.0067,0.0067,17,15,0.8601
+llama3-8b,llama3-8b,simple,3,0.52,298,2.9396,0.0034,0.8423,0.849,0.0067,0.0067,19,17,0.8679
+phi4-mini,phi4-mini,complex,1,0.64,298,0.4664,0.5336,0.8624,0.8658,0.0034,0.0034,16,15,1.0
+phi4-mini,phi4-mini,simple,2,0.52,298,1.9832,0.0034,0.8624,0.8658,0.0034,0.0034,21,20,1.0
+phi4-mini,phi4-mini,complex,2,0.6,298,1.2651,0.2852,0.8624,0.8658,0.0034,0.0034,20,19,1.0
+llama3-8b,llama3-8b,complex,2,0.6,298,1.2651,0.2852,0.8423,0.8456,0.0034,0.0034,17,16,1.0

@@ -1,0 +1,14 @@
+{
+ "dataset": "logiqa2",
+ "student": "phi4-mini",
+ "depth": "complex",
+ "pool": "errors",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 931,
+ "rules": [
+  "Always consider both direct and indirect implications when analyzing conditions and their relationships to ensure comprehensive understanding and correct conclusions.",
+  "When evaluating conclusions, consider the underlying motivations and broader context rather than just the outcomes.",
+  "Align your interpretation with the specific focus of the question, especially when dealing with nuanced arguments, and ensure you consider all relevant aspects presented in the passage."
+ ]
+}

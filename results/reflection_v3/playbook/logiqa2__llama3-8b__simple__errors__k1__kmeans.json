@@ -1,0 +1,12 @@
+{
+ "dataset": "logiqa2",
+ "student": "llama3-8b",
+ "depth": "simple",
+ "pool": "errors",
+ "k": 1,
+ "method": "kmeans",
+ "n_licoes_no_pool": 876,
+ "rules": [
+  "When analyzing an argument, it's essential to avoid relying too heavily on a single assumption or scenario, and instead consider multiple possibilities and their interactions to gain a more comprehensive understanding of the issue."
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "dataset": "logiqa2",
+ "student": "phi4-mini",
+ "depth": "complex",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1995,
+ "rules": [
+  "When interpreting statements and forming conclusions, consider multiple potential influences and relationships, not just the most obvious direct cause-and-effect scenario.",
+  "Always align your interpretation closely with the stated conditions and implications in the given context before drawing conclusions.",
+  "When interpreting a passage, ensure to consider all relevant aspects and implications mentioned, and how they relate to the answer options provided, rather than focusing on a single element."
+ ]
+}

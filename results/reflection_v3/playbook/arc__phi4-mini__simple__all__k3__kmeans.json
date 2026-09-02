@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "phi4-mini",
+ "depth": "simple",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1109,
+ "rules": [
+  "Always consider direct physical relationships when determining how different conditions affect measurable quantities.",
+  "Prioritize observable physical characteristics when identifying different items.",
+  "Consider the specific environmental conditions and their impact on biological processes when choosing an option."
+ ]
+}

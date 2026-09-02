@@ -5,7 +5,7 @@
 
 # ---- Núcleo: dados ----
 datasets>=2.19.0
-huggingface_hub[hf_transfer]>=0.26.0
+huggingface_hub>=1.0.0         # já traz o hf-xet, que substituiu o hf_transfer
 pandas>=2.2.0
 pyarrow>=16.0.0
 numpy>=1.26.0
@@ -39,4 +39,3 @@ tqdm>=4.66.0
 
 # ---- Opcionais ----
 # bitsandbytes>=0.43.0        # quantização 4-bit p/ GPU de 16-24 GB (RMCQ_LOAD_IN_4BIT=1)
-# hf_xet>=1.0.0               # acelera download de repos com Xet Storage

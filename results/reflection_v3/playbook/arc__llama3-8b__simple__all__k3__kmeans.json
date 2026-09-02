@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "llama3-8b",
+ "depth": "simple",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1030,
+ "rules": [
+  "When evaluating a question, prioritize recognizing and applying specific, relevant details about the subject, rather than relying on general assumptions or vague connections.",
+  "When evaluating options, I should strive to consider multiple possible explanations and explanations, rather than relying on a single, superficial impression.",
+  "When evaluating the relationships between organisms or systems, it is crucial to consider multiple factors and potential interactions, rather than relying on a single apparent connection or assumption."
+ ]
+}

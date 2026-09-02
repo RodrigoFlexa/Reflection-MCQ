@@ -24,7 +24,9 @@ from rmcq.config import (
     MAX_MODEL_LEN,
     SEED,
     TORCH_DTYPE,
+    VLLM_DETERMINISTIC,
     VLLM_GPU_UTIL,
+    VLLM_MAX_NUM_SEQS,
     hf_token,
     n_visible_gpus,
 )
@@ -40,6 +42,7 @@ class VLLMBackend(Backend):
         dtype: str = TORCH_DTYPE,
         gpu_util: float = VLLM_GPU_UTIL,
         max_model_len: int | None = MAX_MODEL_LEN,
+        deterministic: bool = VLLM_DETERMINISTIC,
     ) -> None:
         super().__init__(model_key)
 
@@ -55,11 +58,11 @@ class VLLMBackend(Backend):
         tp_size = max(1, n_gpus) if n_gpus > 0 else 1
 
         log.info(
-            "carregando %s (%s) via vLLM  tp=%d  gpu_util=%.2f",
-            model_key, self.spec.repo_id, tp_size, gpu_util,
+            "carregando %s (%s) via vLLM  tp=%d  gpu_util=%.2f  deterministic=%s",
+            model_key, self.spec.repo_id, tp_size, gpu_util, deterministic,
         )
 
-        self.llm = LLM(
+        kwargs: dict[str, Any] = dict(
             model=self.spec.repo_id,
             tokenizer=self.spec.repo_id,
             dtype=dtype,
@@ -70,6 +73,24 @@ class VLLMBackend(Backend):
             seed=SEED,
             download_dir=str(HF_HOME),
         )
+        self.deterministic = deterministic
+        if deterministic:
+            # Ver o comentário de VLLM_DETERMINISTIC em rmcq/config.py. Estas
+            # quatro flags tiram as fontes de variação numérica que dependem da
+            # composição do lote; sem elas a mesma pergunta, com temperatura 0,
+            # responde diferente em ~5,6% dos casos entre execuções.
+            kwargs.update(
+                enable_prefix_caching=False,
+                enable_chunked_prefill=False,
+                enforce_eager=True,
+                max_num_seqs=VLLM_MAX_NUM_SEQS,
+            )
+        # O conjunto de kwargs do LLM muda entre versões do vLLM (enable_chunked_prefill
+        # saiu do construtor em algumas builds). Filtrar pela assinatura evita quebrar
+        # um run de horas por um kwarg que aquela versão não conhece -- e avisa qual
+        # caiu, para não haver silêncio sobre determinismo que não está valendo.
+        kwargs = self._supported_kwargs(LLM, kwargs)
+        self.llm = LLM(**kwargs)
         self.tokenizer = self.llm.get_tokenizer()
         self.max_len = max_model_len or getattr(
             self.llm.llm_engine.model_config, "max_model_len", None
@@ -77,6 +98,27 @@ class VLLMBackend(Backend):
         log.info("  max_model_len=%s", self.max_len)
 
     # -- utilidades ---------------------------------------------------------
+
+    @staticmethod
+    def _supported_kwargs(cls: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Descarta kwargs que esta versão do vLLM não aceita, avisando quais."""
+        import inspect
+
+        try:
+            sig = inspect.signature(cls.__init__)
+        except (TypeError, ValueError):
+            return kwargs
+        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+            return kwargs
+        known = set(sig.parameters)
+        dropped = sorted(k for k in kwargs if k not in known)
+        if dropped:
+            log.warning(
+                "vLLM desta versão não aceita %s -- ignorado. Se estiver em modo "
+                "determinístico, confira se o efeito equivalente está desligado por "
+                "variável de ambiente.", ", ".join(dropped),
+            )
+        return {k: v for k, v in kwargs.items() if k in known}
 
     def count_tokens(self, text: str) -> int:
         return len(self.tokenizer(text, add_special_tokens=False)["input_ids"])

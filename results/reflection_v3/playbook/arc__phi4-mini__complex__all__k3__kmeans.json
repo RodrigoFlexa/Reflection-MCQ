@@ -1,0 +1,14 @@
+{
+ "dataset": "arc",
+ "student": "phi4-mini",
+ "depth": "complex",
+ "pool": "all",
+ "k": 3,
+ "method": "kmeans",
+ "n_licoes_no_pool": 1107,
+ "rules": [
+  "Always ensure to interpret the problem's requirements clearly and consider the context before proceeding with calculations.",
+  "When answering questions, ensure that you interpret the context fully and evaluate each option specifically in relation to that context, not just in general terms.",
+  "When interpreting a question, consider both the direct and indirect ecological effects of an event, and evaluate all possible impacts on the system in question, not just the most observable ones."
+ ]
+}
