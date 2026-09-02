@@ -28,9 +28,9 @@ cells = [
         r"""
 # 08 — Análise comparativa do threshold de similaridade
 
-Este notebook **só lê os resultados** de `run_similarity_threshold.py`: não carrega
-modelos, não gera reflexões e não refaz bootstrap. A análise foi organizada para
-comparar `compact`, `simple`, `diagnostic` e `complex` sob o limite de **uma memória**.
+Este notebook **só lê os resultados**: não carrega modelos, não gera reflexões e
+não refaz bootstrap. A análise compara `compact`, `simple`, `diagnostic`, `complex`
+e `external_reflection` (quando disponível), sempre com **uma única memória**.
 
 Além das curvas individuais, os painéis abaixo respondem quatro perguntas:
 
@@ -94,13 +94,16 @@ PLOT_DIR = OUT_DIR / "plots_comparison_v2"
 PLOT_DIR.mkdir(parents=True, exist_ok=True)
 manifest = json.loads((OUT_DIR / "manifest.json").read_text(encoding="utf-8"))
 
-preferred_depths = ["compact", "simple", "diagnostic", "complex"]
-available_depths = list(manifest.get("depths", []))
+preferred_depths = ["compact", "simple", "diagnostic", "complex", "external_reflection"]
+available_depths = list(manifest.get("analysis_depths", manifest.get("depths", [])))
 DEPTH_ORDER = [d for d in preferred_depths if d in available_depths]
 DEPTH_ORDER += [d for d in available_depths if d not in DEPTH_ORDER]
 MODELS = list(manifest["models"])
 DATASETS = list(manifest["datasets"])
 DEPTH_COLORS = dict(zip(DEPTH_ORDER, plt.cm.viridis(np.linspace(0.12, 0.88, len(DEPTH_ORDER)))))
+if "external_reflection" in DEPTH_COLORS:
+    DEPTH_COLORS["external_reflection"] = "tab:purple"
+DEPTH_LABELS = {"external_reflection": "external (GPT)"}
 
 plt.rcParams.update({"figure.dpi": 110, "axes.grid": True, "grid.alpha": 0.2})
 
@@ -194,7 +197,7 @@ else:
     axes[0].set(title="Comprimento médio", ylabel="tokens de saída")
     axes[1].set(title="Término por limite", ylabel="reflexões truncadas (%)")
     for ax in axes:
-        ax.set_xticks(x, DEPTH_ORDER, rotation=20)
+        ax.set_xticks(x, [DEPTH_LABELS.get(d, d) for d in DEPTH_ORDER], rotation=20)
         ax.legend()
     finish(fig, "01_reflection_generation_audit.png")
     display(quality_df.sort_values(["model", "depth"]))
@@ -225,9 +228,11 @@ if not optional["pairs"].empty:
     ),
     md(
         r"""
-## 3. Curvas de calibração — quatro reflexões na mesma escala
+## 3. Curvas de calibração — reflexões na mesma escala
 
-Cada figura fixa modelo, dataset e origem da memória. Os quatro painéis usam os
+mesmos limites, tornando diferenças de formato e estabilidade visíveis. A linha
+Cada figura fixa modelo, dataset e origem da memória. Todos os painéis usam os
+mesmos limites, tornando diferenças de formato, gerador e estabilidade visíveis. A linha
 mesmos limites, tornando diferenças de formato e estabilidade visíveis. A linha
 vertical é o threshold aprendido; a faixa é o IC 95% do efeito pareado.
 """
@@ -235,7 +240,10 @@ vertical é o threshold aprendido; a faixa é o IC 95% do efeito pareado.
     code(
         r"""
 def plot_calibration_dashboard(model, dataset, pool):
-    fig, axes = plt.subplots(2, 2, figsize=(13, 9), sharex=True, sharey=True)
+    ncols = 2
+    nrows = int(np.ceil(len(DEPTH_ORDER) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(13, 4.4 * nrows), sharex=True,
+                             sharey=True, squeeze=False)
     axes = axes.ravel()
     selected = curves_df[
         (curves_df.model == model) & (curves_df.dataset == dataset)
@@ -268,7 +276,7 @@ def plot_calibration_dashboard(model, dataset, pool):
             ax.axvline(t, color="tab:red", ls="--", lw=1.5)
             ax.text(0.03, 0.95, f"t={t:.3f} | ident.={rate:.0%}", transform=ax.transAxes,
                     va="top", fontsize=9)
-        ax.set_title(depth)
+        ax.set_title(DEPTH_LABELS.get(depth, depth))
         ax.set_ylim(-y_limit, y_limit)
         ax.set_xlabel("similaridade")
         ax.set_ylabel("efeito na acurácia")
@@ -306,7 +314,7 @@ def threshold_heatmap(model, pool):
     fig, ax = plt.subplots(figsize=(max(7, 1.8 * len(DEPTH_ORDER)), max(4, 0.8 * len(DATASETS))))
     masked = np.ma.masked_invalid(values.to_numpy(float))
     image = ax.imshow(masked, cmap="viridis", vmin=0, vmax=1, aspect="auto")
-    ax.set_xticks(range(len(DEPTH_ORDER)), DEPTH_ORDER, rotation=20)
+    ax.set_xticks(range(len(DEPTH_ORDER)), [DEPTH_LABELS.get(d, d) for d in DEPTH_ORDER], rotation=20)
     ax.set_yticks(range(len(DATASETS)), DATASETS)
     for i in range(len(DATASETS)):
         for j in range(len(DEPTH_ORDER)):
@@ -382,7 +390,7 @@ def holdout_heatmap(model, pool):
     limit = max(1, np.max(np.abs(finite))) if len(finite) else 1
     fig, ax = plt.subplots(figsize=(max(7, 1.8 * len(DEPTH_ORDER)), max(4, 0.8 * len(DATASETS))))
     image = ax.imshow(np.ma.masked_invalid(arr), cmap="RdBu", vmin=-limit, vmax=limit, aspect="auto")
-    ax.set_xticks(range(len(DEPTH_ORDER)), DEPTH_ORDER, rotation=20)
+    ax.set_xticks(range(len(DEPTH_ORDER)), [DEPTH_LABELS.get(d, d) for d in DEPTH_ORDER], rotation=20)
     ax.set_yticks(range(len(DATASETS)), DATASETS)
     for i in range(len(DATASETS)):
         for j in range(len(DEPTH_ORDER)):
@@ -442,7 +450,48 @@ for pool in COMPARISON_POOLS:
     ),
     md(
         r"""
-## 7. Como a reflexão ajuda ou atrapalha
+## 7. GPT externo versus a reflexão diagnóstica do próprio estudante
+
+O prompt de `external_reflection` é propositalmente o mesmo de `diagnostic`.
+Assim, este painel compara principalmente **quem escreveu a memória**: no eixo
+horizontal, o próprio modelo pequeno; no vertical, o GPT externo. Pontos acima
+da diagonal favorecem a reflexão externa naquela combinação.
+"""
+    ),
+    code(
+        r"""
+direct = policy_df[
+    (policy_df.policy == "threshold_top")
+    & (policy_df.depth.isin(["diagnostic", "external_reflection"]))
+].pivot_table(
+    index=["model", "dataset", "pool"], columns="depth", values="difference"
+).dropna(subset=["diagnostic", "external_reflection"], how="any")
+
+for pool in COMPARISON_POOLS:
+    sub_pool = direct.reset_index()
+    sub_pool = sub_pool[sub_pool.pool == pool]
+    if sub_pool.empty:
+        continue
+    fig, axes = plt.subplots(1, len(MODELS), figsize=(7 * len(MODELS), 6), squeeze=False)
+    values = 100 * sub_pool[["diagnostic", "external_reflection"]].to_numpy(float)
+    limit = max(3, np.max(np.abs(values)) * 1.12)
+    for ax, model in zip(axes.ravel(), MODELS):
+        sub = sub_pool[sub_pool.model == model]
+        ax.plot([-limit, limit], [-limit, limit], color="black", ls="--", lw=1)
+        ax.axhline(0, color="gray", lw=0.8); ax.axvline(0, color="gray", lw=0.8)
+        for row in sub.itertuples():
+            x, y = 100 * row.diagnostic, 100 * row.external_reflection
+            ax.scatter(x, y, color="tab:purple", s=55)
+            ax.annotate(row.dataset, (x, y), xytext=(4, 3), textcoords="offset points", fontsize=8)
+        ax.set(xlim=(-limit, limit), ylim=(-limit, limit), title=model,
+               xlabel="diagnostic do estudante (pp)", ylabel="external GPT (pp)")
+    fig.suptitle(f"Mesmo prompt: estudante versus GPT externo | pool={pool}", fontsize=14)
+    finish(fig, f"07_external_vs_diagnostic__{pool}.png")
+"""
+    ),
+    md(
+        r"""
+## 8. Como a reflexão ajuda ou atrapalha
 
 O eixo vertical é a fração de respostas corrigidas; o horizontal é a fração de
 respostas corretas que foram estragadas. Acima da diagonal há saldo positivo.
@@ -472,12 +521,12 @@ for pool in COMPARISON_POOLS:
         ax.set(xlim=(0, limit), ylim=(0, limit), title=model,
                xlabel="fração prejudicada", ylabel="fração corrigida")
     fig.suptitle(f"Respostas corrigidas versus prejudicadas | pool={pool}", fontsize=14)
-    finish(fig, f"07_helped_vs_harmed__{pool}.png")
+    finish(fig, f"08_helped_vs_harmed__{pool}.png")
 """
     ),
     md(
         r"""
-## 8. Tabela final com controle de comparações múltiplas
+## 9. Tabela final com controle de comparações múltiplas
 
 Como há vários modelos, datasets e reflexões, também reportamos `q_bh`, o
 p-valor de McNemar corrigido por Benjamini–Hochberg dentro de cada pool. A

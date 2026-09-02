@@ -186,3 +186,11 @@ print(available_backends())
 #  'azure': 'indisponível: falta AZURE_OPENAI_API_KEY no .env',
 #  'ollama': 'ok (6 modelo(s) no servidor http://localhost:11434)'}
 ```
+
+## Experimento 08 com reflexão externa via Azure
+
+Para gerar `external_reflection` com um deployment Azure em outro servidor e
+depois concluir a avaliação nos estudantes locais, siga o fluxo versionado em
+[docs/external_reflection_workflow.md](docs/external_reflection_workflow.md).
+O Git transporta apenas pedidos e reflexões com hashes; credenciais e a pasta
+local `data/results` não são versionadas.
