@@ -143,6 +143,7 @@ for name, relative in {
     "dedup": "retrieval/dedup_audit.csv",
     "truncation": "retrieval/embedding_truncation.csv",
     "pairs": "retrieval/pairs.csv",
+    "external_coverage": "analysis/external_reflection_coverage.csv",
 }.items():
     path = OUT_DIR / relative
     optional[name] = pd.read_csv(path) if path.exists() else pd.DataFrame()
@@ -201,6 +202,32 @@ else:
         ax.legend()
     finish(fig, "01_reflection_generation_audit.png")
     display(quality_df.sort_values(["model", "depth"]))
+
+external_coverage_df = optional["external_coverage"]
+if not external_coverage_df.empty:
+    coverage = external_coverage_df.pivot(index="dataset", columns="model", values="coverage").reindex(
+        index=DATASETS, columns=MODELS
+    )
+    usable = external_coverage_df.pivot(index="dataset", columns="model", values="usable").reindex(
+        index=DATASETS, columns=MODELS
+    )
+    requested = external_coverage_df.pivot(index="dataset", columns="model", values="requested").reindex(
+        index=DATASETS, columns=MODELS
+    )
+    fig, ax = plt.subplots(figsize=(max(6, 1.8 * len(MODELS)), max(4, 0.75 * len(DATASETS))))
+    image = ax.imshow(np.ma.masked_invalid(coverage.to_numpy(float)), cmap="YlGn", vmin=0, vmax=1,
+                      aspect="auto")
+    ax.set_xticks(range(len(MODELS)), MODELS, rotation=20)
+    ax.set_yticks(range(len(DATASETS)), DATASETS)
+    for i in range(len(DATASETS)):
+        for j in range(len(MODELS)):
+            value = coverage.iloc[i, j]
+            label = "—" if pd.isna(value) else f"{value:.1%}\n{int(usable.iloc[i, j])}/{int(requested.iloc[i, j])}"
+            ax.text(j, i, label, ha="center", va="center", fontsize=9)
+    ax.set_title("Cobertura das reflexões externas utilizáveis")
+    fig.colorbar(image, ax=ax, label="reflexões utilizáveis / solicitadas")
+    finish(fig, "01b_external_reflection_coverage.png")
+    display(external_coverage_df.sort_values(["model", "dataset"]))
 """
     ),
     md(
@@ -586,6 +613,18 @@ if not quality_df.empty:
     else:
         for row in high_truncation.itertuples():
             print(f"- {row.model}/{row.depth}: {row.truncation_rate:.1%}")
+
+if not external_coverage_df.empty:
+    low_coverage = external_coverage_df[external_coverage_df.coverage < 0.95]
+    print("\nCobertura externa abaixo de 95% (possível viés de seleção):")
+    if low_coverage.empty:
+        print("- Nenhuma.")
+    else:
+        for row in low_coverage.itertuples():
+            print(
+                f"- {row.model}/{row.dataset}: {row.coverage:.1%} utilizável; "
+                f"missing={row.missing}, empty={row.empty}, hash_mismatch={row.hash_mismatch}"
+            )
 
 print("\nPlots salvos em:", short_path(PLOT_DIR))
 """
