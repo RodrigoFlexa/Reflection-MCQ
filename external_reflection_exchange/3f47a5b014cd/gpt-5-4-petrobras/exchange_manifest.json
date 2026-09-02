@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "experiment_id": "3f47a5b014cd",
+  "reflection_model": "gpt-5-4-petrobras",
+  "reflection_depth": "external_reflection",
+  "prompt_reference": "diagnostic (same instruction; generator is the experimental change)",
+  "instruction_sha256": "49b61335a1f859aad8c5c55565984368b08442dfba6229417ccc0f2837d7d9f9",
+  "students": [
+    "phi4-mini",
+    "mistral-7b"
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa"
+  ],
+  "request_counts": {
+    "phi4-mini": {
+      "aqua": 1228,
+      "arc": 742,
+      "logiqa2": 4781,
+      "openbookqa": 1805
+    },
+    "mistral-7b": {
+      "aqua": 1244,
+      "arc": 790,
+      "logiqa2": 5320,
+      "openbookqa": 1874
+    }
+  }
+}
