@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "experiment_id": "3f47a5b014cd",
+  "reflection_model": "gpt-5-4-petrobras",
+  "counts": {
+    "phi4-mini": {
+      "aqua": {
+        "requested": 1228,
+        "completed": 1228
+      },
+      "arc": {
+        "requested": 742,
+        "completed": 742
+      },
+      "logiqa2": {
+        "requested": 4781,
+        "completed": 4781
+      },
+      "openbookqa": {
+        "requested": 1805,
+        "completed": 1805
+      }
+    },
+    "mistral-7b": {
+      "aqua": {
+        "requested": 1244,
+        "completed": 1244
+      },
+      "arc": {
+        "requested": 790,
+        "completed": 790
+      },
+      "logiqa2": {
+        "requested": 5320,
+        "completed": 5320
+      },
+      "openbookqa": {
+        "requested": 1874,
+        "completed": 1874
+      }
+    }
+  },
+  "complete": true
+}
