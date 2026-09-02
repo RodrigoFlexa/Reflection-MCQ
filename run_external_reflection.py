@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Add an Azure-generated reflection condition to a completed experiment 08.
+"""Add Azure-generated simple/complex reflections to a completed experiment 08.
 
 The workflow intentionally separates machines:
 
 1. ``export`` (GPU server) creates Git-friendly reflection requests.
 2. ``generate`` (Petrobras server) calls the Azure deployment and checkpoints replies.
 3. ``finish`` (GPU server) evaluates those replies with each original student and
-   rebuilds the threshold analysis with ``depth=external_reflection``.
+   rebuilds the analysis with self/external simple and complex conditions.
 """
 
 from __future__ import annotations
@@ -21,7 +21,11 @@ from pathlib import Path
 from typing import Any
 
 
-EXTERNAL_DEPTH = "external_reflection"
+BASE_DEPTHS = ("simple", "complex")
+EXTERNAL_BY_BASE = {"simple": "external_simple", "complex": "external_complex"}
+EXTERNAL_DEPTHS = tuple(EXTERNAL_BY_BASE.values())
+ANALYSIS_DEPTHS = ("simple", "external_simple", "complex", "external_complex")
+EXCHANGE_VARIANT = "simple_complex_v2"
 DEFAULT_RESULTS_SUBDIR = Path("data/results/similarity_threshold_v2")
 DEFAULT_EXCHANGE_SUBDIR = Path("external_reflection_exchange")
 
@@ -85,6 +89,17 @@ def cache_key(*parts: Any) -> str:
 
 def text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def is_content_filter_error(exc: BaseException) -> bool:
+    """Recognize Azure/gateway prompt-policy failures without hiding config errors."""
+    message = f"{type(exc).__name__}: {exc}".lower()
+    markers = (
+        "content_filter", "content filter", "content management", "content policy",
+        "responsibleaipolicyviolation", "jailbreak", "malicious prompt",
+        "conteúdo malicioso", "filtro de conteúdo",
+    )
+    return any(marker in message for marker in markers)
 
 
 def read_manifest(experiment_dir: Path) -> dict[str, Any]:
@@ -177,12 +192,15 @@ def load_item_maps(root: Path, datasets: list[str]) -> dict[str, dict[str, dict[
     return maps
 
 
-def exchange_paths(exchange_dir: Path, student: str, dataset: str) -> tuple[Path, Path]:
-    filename = safe_name(dataset) + ".jsonl"
+def exchange_paths(
+    exchange_dir: Path, student: str, dataset: str, external_depth: str,
+) -> tuple[Path, Path]:
+    filename = safe_name(external_depth) + ".jsonl"
     student_dir = safe_name(student)
+    dataset_dir = safe_name(dataset)
     return (
-        exchange_dir / "requests" / student_dir / filename,
-        exchange_dir / "responses" / student_dir / filename,
+        exchange_dir / "requests" / student_dir / dataset_dir / filename,
+        exchange_dir / "responses" / student_dir / dataset_dir / filename,
     )
 
 
@@ -193,16 +211,16 @@ def export_requests(root: Path, experiment_dir: Path, exchange_dir: Path, args: 
     models = list(manifest["models"])
     datasets = list(manifest["datasets"])
     prompts = manifest.get("reflection_prompts", {})
-    if "diagnostic" not in prompts:
-        raise RuntimeError("This experiment has no diagnostic reflection prompt to match externally.")
-    instruction = prompts["diagnostic"]
+    missing_prompts = [depth for depth in BASE_DEPTHS if depth not in prompts]
+    if missing_prompts:
+        raise RuntimeError(f"Experiment is missing reflection prompts: {missing_prompts}")
     item_maps = load_item_maps(root, datasets)
     outcomes_path = experiment_dir / "analysis" / "all_outcomes.csv"
     if not outcomes_path.exists():
         raise FileNotFoundError("Run experiment 08 through completion before exporting external reflections.")
     outcomes = pd.read_csv(outcomes_path, low_memory=False)
 
-    counts: dict[str, dict[str, int]] = {}
+    counts: dict[str, dict[str, dict[str, int]]] = {}
     for student in models:
         source_path = experiment_dir / "generations" / student / "source_answers.jsonl"
         source_rows = load_jsonl(source_path)
@@ -213,7 +231,10 @@ def export_requests(root: Path, experiment_dir: Path, exchange_dir: Path, args: 
             .set_index(["dataset", "source_uid"])["source_correct"]
             .to_dict()
         )
-        requests_by_dataset: dict[str, list[dict[str, Any]]] = {dataset: [] for dataset in datasets}
+        requests_by_depth_dataset = {
+            external_depth: {dataset: [] for dataset in datasets}
+            for external_depth in EXTERNAL_DEPTHS
+        }
         for source in source_rows:
             parts = json.loads(source["key"])
             if len(parts) != 3 or parts[0] != "source":
@@ -223,35 +244,54 @@ def export_requests(root: Path, experiment_dir: Path, exchange_dir: Path, args: 
             item = item_maps.get(dataset, {}).get(uid)
             if item is None or was_correct is None:
                 continue
-            prompt = build_reflection_prompt(instruction, item, source["text"], bool(was_correct))
-            key = cache_key("reflection", EXTERNAL_DEPTH, dataset, uid)
-            requests_by_dataset[dataset].append({
-                "key": key,
-                "experiment_id": args.experiment_id,
-                "student_model": student,
-                "reflection_model": args.reflection_model,
-                "dataset": dataset,
-                "source_uid": uid,
-                "prompt_sha256": text_hash(prompt),
-                "prompt": prompt,
-            })
+            for base_depth, external_depth in EXTERNAL_BY_BASE.items():
+                prompt = build_reflection_prompt(
+                    prompts[base_depth], item, source["text"], bool(was_correct)
+                )
+                key = cache_key("reflection", external_depth, dataset, uid)
+                requests_by_depth_dataset[external_depth][dataset].append({
+                    "key": key,
+                    "experiment_id": args.experiment_id,
+                    "student_model": student,
+                    "reflection_model": args.reflection_model,
+                    "base_depth": base_depth,
+                    "external_depth": external_depth,
+                    "dataset": dataset,
+                    "source_uid": uid,
+                    "max_new_tokens": int(
+                        manifest.get("external_reflection_max_new_tokens", {}).get(
+                            base_depth,
+                            manifest.get("reflection_max_new_tokens", {}).get(base_depth, 384),
+                        )
+                    ),
+                    "prompt_sha256": text_hash(prompt),
+                    "prompt": prompt,
+                })
         counts[student] = {}
         for dataset in datasets:
-            request_path, _ = exchange_paths(exchange_dir, student, dataset)
-            save_jsonl(request_path, requests_by_dataset[dataset])
-            counts[student][dataset] = len(requests_by_dataset[dataset])
-            print(
-                f"{student}/{dataset}: exported {len(requests_by_dataset[dataset]):,} "
-                f"requests -> {request_path}", flush=True,
-            )
+            counts[student][dataset] = {}
+            for external_depth in EXTERNAL_DEPTHS:
+                request_path, _ = exchange_paths(
+                    exchange_dir, student, dataset, external_depth
+                )
+                rows = requests_by_depth_dataset[external_depth][dataset]
+                save_jsonl(request_path, rows)
+                counts[student][dataset][external_depth] = len(rows)
+                print(
+                    f"{student}/{dataset}/{external_depth}: exported {len(rows):,} "
+                    f"requests -> {request_path}", flush=True,
+                )
 
     exchange_manifest = {
-        "format_version": 1,
+        "format_version": 2,
+        "exchange_variant": EXCHANGE_VARIANT,
         "experiment_id": args.experiment_id,
         "reflection_model": args.reflection_model,
-        "reflection_depth": EXTERNAL_DEPTH,
-        "prompt_reference": "diagnostic (same instruction; generator is the experimental change)",
-        "instruction_sha256": text_hash(instruction),
+        "reflection_depths": EXTERNAL_BY_BASE,
+        "prompt_reference": "same simple/complex instructions; generator is the experimental change",
+        "instruction_sha256": {
+            depth: text_hash(prompts[depth]) for depth in BASE_DEPTHS
+        },
         "students": models,
         "datasets": datasets,
         "request_counts": counts,
@@ -263,68 +303,128 @@ def export_requests(root: Path, experiment_dir: Path, exchange_dir: Path, args: 
 def generate_reflections(exchange_dir: Path, args: argparse.Namespace) -> None:
     import rmcq  # noqa: F401 - loads .env before backend configuration
     from rmcq.backends import get_backend
-    from rmcq.backends.base import GenParams
+    from rmcq.backends.base import Generation, GenParams
+
+    def generate_batch_tolerating_policy(backend: Any, batch: list[dict[str, Any]],
+                                         max_tokens: int, desc: str) -> list[Generation]:
+        """Keep batch speed, then isolate only a content-policy failure."""
+        prompts = [row["prompt"] for row in batch]
+        params = GenParams(max_new_tokens=max_tokens)
+        try:
+            return backend.generate(prompts, params, desc=desc)
+        except Exception as batch_exc:
+            print(
+                f"WARNING: batch failed ({type(batch_exc).__name__}); "
+                "retrying its prompts individually to isolate content filters.",
+                flush=True,
+            )
+            isolated: list[Generation] = []
+            for offset, prompt in enumerate(prompts):
+                try:
+                    isolated.append(
+                        backend.generate([prompt], params, desc=f"{desc} isolate {offset + 1}")[0]
+                    )
+                except Exception as exc:
+                    if not is_content_filter_error(exc):
+                        raise
+                    print(
+                        f"WARNING: skipped prompt {offset + 1}/{len(prompts)} "
+                        f"because the gateway content policy blocked it: {type(exc).__name__}",
+                        flush=True,
+                    )
+                    isolated.append(Generation(
+                        text="", finish_reason="content_filter_skipped",
+                    ))
+            return isolated
 
     exchange_manifest = json.loads((exchange_dir / "exchange_manifest.json").read_text(encoding="utf-8"))
     if exchange_manifest["experiment_id"] != args.experiment_id:
         raise RuntimeError("Exchange belongs to another experiment.")
     if exchange_manifest["reflection_model"] != args.reflection_model:
         raise RuntimeError("Exchange belongs to another reflection model.")
+    if exchange_manifest.get("format_version") != 2:
+        raise RuntimeError("Expected the simple/complex exchange format v2; export again on GPU.")
 
-    counts: dict[str, dict[str, dict[str, int]]] = {}
+    external_depths = list(exchange_manifest["reflection_depths"].values())
+    counts: dict[str, dict[str, dict[str, dict[str, int]]]] = {}
     with get_backend(args.reflection_model, kind=args.reflection_backend) as backend:
         for student in exchange_manifest["students"]:
             counts[student] = {}
             for dataset in exchange_manifest["datasets"]:
-                request_path, response_path = exchange_paths(exchange_dir, student, dataset)
-                requests = load_jsonl(request_path)
-                existing_rows = [] if args.fresh or not response_path.exists() else load_jsonl(response_path)
-                cache = {row["key"]: row for row in existing_rows}
-                missing = [
-                    row for row in requests
-                    if row["key"] not in cache
-                    or cache[row["key"]].get("prompt_sha256") != row["prompt_sha256"]
-                ]
-                print(
-                    f"{student}/{dataset}: total={len(requests):,} "
-                    f"cache={len(requests)-len(missing):,} missing={len(missing):,}", flush=True,
-                )
-                for start in range(0, len(missing), args.batch_size):
-                    batch = missing[start:start + args.batch_size]
-                    generated = backend.generate(
-                        [row["prompt"] for row in batch],
-                        GenParams(max_new_tokens=180),
-                        desc=(f"external reflections {student}/{dataset} "
-                              f"[{start + 1}-{start + len(batch)}]"),
+                counts[student][dataset] = {}
+                for external_depth in external_depths:
+                    request_path, response_path = exchange_paths(
+                        exchange_dir, student, dataset, external_depth
                     )
-                    for request, generation in zip(batch, generated):
-                        cache[request["key"]] = {
-                            "key": request["key"],
-                            "experiment_id": args.experiment_id,
-                            "student_model": student,
-                            "reflection_model": args.reflection_model,
-                            "prompt_sha256": request["prompt_sha256"],
-                            "text": generation.text,
-                            "prompt_tokens": generation.prompt_tokens,
-                            "completion_tokens": generation.completion_tokens,
-                            "finish_reason": generation.finish_reason,
-                        }
-                    ordered = [cache[row["key"]] for row in requests if row["key"] in cache]
+                    requests = load_jsonl(request_path)
+                    existing_rows = (
+                        [] if args.fresh or not response_path.exists()
+                        else load_jsonl(response_path)
+                    )
+                    cache = {
+                        row["key"]: row for row in existing_rows
+                        if isinstance(row, dict) and row.get("key")
+                    }
+                    missing = [
+                        row for row in requests
+                        if row["key"] not in cache
+                        or cache[row["key"]].get("prompt_sha256") != row["prompt_sha256"]
+                    ]
+                    print(
+                        f"{student}/{dataset}/{external_depth}: total={len(requests):,} "
+                        f"cache={len(requests)-len(missing):,} missing={len(missing):,}",
+                        flush=True,
+                    )
+                    for start in range(0, len(missing), args.batch_size):
+                        batch = missing[start:start + args.batch_size]
+                        max_tokens = max(
+                            (int(row.get("max_new_tokens", 200)) for row in batch),
+                            default=200,
+                        )
+                        generated = generate_batch_tolerating_policy(
+                            backend, batch, max_tokens,
+                            desc=(f"external reflections {student}/{dataset}/{external_depth} "
+                                  f"[{start + 1}-{start + len(batch)}]"),
+                        )
+                        for request, generation in zip(batch, generated):
+                            cache[request["key"]] = {
+                                "key": request["key"],
+                                "experiment_id": args.experiment_id,
+                                "student_model": student,
+                                "reflection_model": args.reflection_model,
+                                "base_depth": request["base_depth"],
+                                "external_depth": external_depth,
+                                "prompt_sha256": request["prompt_sha256"],
+                                "text": generation.text,
+                                "prompt_tokens": generation.prompt_tokens,
+                                "completion_tokens": generation.completion_tokens,
+                                "finish_reason": generation.finish_reason,
+                                "skip_reason": (
+                                    "content_filter" if generation.finish_reason
+                                    == "content_filter_skipped" else None
+                                ),
+                            }
+                        ordered = [cache[row["key"]] for row in requests if row["key"] in cache]
+                        save_jsonl(response_path, ordered)
+                    ordered = [
+                        cache[row["key"]] for row in requests
+                        if row["key"] in cache
+                        and cache[row["key"]].get("prompt_sha256") == row["prompt_sha256"]
+                    ]
                     save_jsonl(response_path, ordered)
-                ordered = [
-                    cache[row["key"]] for row in requests
-                    if row["key"] in cache
-                    and cache[row["key"]].get("prompt_sha256") == row["prompt_sha256"]
-                ]
-                save_jsonl(response_path, ordered)
-                counts[student][dataset] = {"requested": len(requests), "completed": len(ordered)}
+                    counts[student][dataset][external_depth] = {
+                        "requested": len(requests), "completed": len(ordered),
+                    }
 
     complete = all(
         value["requested"] == value["completed"]
-        for student_counts in counts.values() for value in student_counts.values()
+        for student_counts in counts.values()
+        for dataset_counts in student_counts.values()
+        for value in dataset_counts.values()
     )
     receipt = {
-        "format_version": 1,
+        "format_version": 2,
+        "exchange_variant": EXCHANGE_VARIANT,
         "experiment_id": args.experiment_id,
         "reflection_model": args.reflection_model,
         "counts": counts,
@@ -367,7 +467,8 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
 
 def resolve_correctness(backend: Any, path: Path, texts: dict[str, str],
                         items: dict[str, dict[str, Any]], batch_size: int,
-                        fresh: bool) -> tuple[dict[str, bool | None], dict[str, str]]:
+                        fresh: bool, judge_max_tokens: int = 256,
+                        ) -> tuple[dict[str, bool | None], dict[str, str]]:
     from rmcq.thresholds import extract_final_answer
 
     correctness: dict[str, bool | None] = {}
@@ -381,7 +482,10 @@ def resolve_correctness(backend: Any, path: Path, texts: dict[str, str],
             correctness[key] = answer == items[key]["answerKey"]
             method[key] = "parser"
     if fallback:
-        judged = cached_generate(backend, path, fallback, 80, batch_size, fresh, "external judge fallback")
+        judged = cached_generate(
+            backend, path, fallback, judge_max_tokens, batch_size, fresh,
+            "external judge fallback",
+        )
         for key, text in judged.items():
             match = re.search(r"Verdict:\s*(CORRECT|INCORRECT)", text or "", re.I)
             correctness[key] = None if not match else match.group(1).upper() == "CORRECT"
@@ -409,7 +513,7 @@ def rebuild_analysis(experiment_dir: Path, manifest: dict[str, Any]) -> None:
     )
 
     results = pd.read_csv(experiment_dir / "analysis" / "all_outcomes.csv", low_memory=False)
-    pools = ["all", "errors", "correct"]
+    pools = list(manifest.get("source_pools", ["all"]))
     bandwidth = float(manifest["kernel_bandwidth"])
     n_curve = int(manifest["bootstrap_curve"])
     n_policy = int(manifest["bootstrap_policy"])
@@ -440,10 +544,20 @@ def rebuild_analysis(experiment_dir: Path, manifest: dict[str, Any]) -> None:
                 continue
             lo, hi = np.quantile(sub.similarity, [0.02, 0.98])
             grid = np.linspace(lo, hi, 81)
-            records = sub[["val_uid", "similarity", "delta"]].to_dict("records")
+            records = sub[[
+                "val_uid", "similarity", "delta", "baseline_correct", "memory_correct"
+            ]].to_dict("records")
+            curve_seed = seed + sum(ord(c) for c in f"{model}{dataset}{depth}{pool}")
             curve = clustered_bootstrap_curve(
                 records, grid, bandwidth=bandwidth, n_boot=n_curve,
-                seed=seed + sum(ord(c) for c in f"{model}{dataset}{depth}{pool}"),
+                seed=curve_seed,
+            )
+            memory_curve = clustered_bootstrap_curve(
+                records, grid, value_key="memory_correct", bandwidth=bandwidth,
+                n_boot=n_curve, seed=curve_seed + 100003,
+            )
+            baseline_accuracy = float(
+                sub.drop_duplicates("val_uid").baseline_correct.astype(float).mean()
             )
             threshold = sustained_threshold(
                 grid, curve["estimate"], curve["effective_n"],
@@ -474,6 +588,10 @@ def rebuild_analysis(experiment_dir: Path, manifest: dict[str, Any]) -> None:
                     "similarity": similarity, "effect": curve["estimate"][index],
                     "ci_low": curve["low"][index], "ci_high": curve["high"][index],
                     "effective_n": curve["effective_n"][index],
+                    "memory_accuracy": memory_curve["estimate"][index],
+                    "memory_ci_low": memory_curve["low"][index],
+                    "memory_ci_high": memory_curve["high"][index],
+                    "baseline_accuracy": baseline_accuracy,
                 })
 
     threshold_frame = pd.DataFrame(threshold_rows)
@@ -565,83 +683,26 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
     if exchange_manifest["experiment_id"] != args.experiment_id:
         raise RuntimeError("Exchange belongs to another experiment.")
 
+    if exchange_manifest.get("format_version") != 2:
+        raise RuntimeError("Expected simple/complex exchange format v2; export and generate again.")
+    if exchange_manifest.get("reflection_depths") != EXTERNAL_BY_BASE:
+        raise RuntimeError("Exchange does not contain the expected external_simple/external_complex mapping.")
+
     datasets = list(manifest["datasets"])
     item_maps = load_item_maps(root, datasets)
     pairs = pd.read_csv(experiment_dir / "retrieval" / "pairs.csv", low_memory=False)
     existing = pd.read_csv(experiment_dir / "analysis" / "all_outcomes.csv", low_memory=False)
-    existing = existing[existing.depth != EXTERNAL_DEPTH].copy()
+    # Compact/diagnostic remain in their raw generation caches, but leave the
+    # comparison dataset and every rebuilt analysis table.
+    existing = existing[existing.depth.isin(BASE_DEPTHS)].copy()
     memory_template = manifest["memory_prompt"]
+    answer_budgets = manifest.get("answer_max_new_tokens_by_model", {})
+    judge_budgets = manifest.get("judge_max_new_tokens_by_model", {})
     external_rows: list[dict[str, Any]] = []
     coverage_rows: list[dict[str, Any]] = []
 
     for student in manifest["models"]:
         print(f"\nSTUDENT {student} | reflection {args.reflection_model}", flush=True)
-        request_rows: list[dict[str, Any]] = []
-        response_rows: list[dict[str, Any]] = []
-        for dataset in datasets:
-            request_path, response_path = exchange_paths(exchange_dir, student, dataset)
-            dataset_requests = load_jsonl(request_path)
-            raw_responses = load_jsonl(response_path) if response_path.exists() else []
-            dataset_responses = {
-                row.get("key"): row for row in raw_responses
-                if isinstance(row, dict) and row.get("key")
-            }
-            dataset_request_map = {row["key"]: row for row in dataset_requests}
-            requested_keys = set(dataset_request_map)
-            missing_keys = requested_keys - set(dataset_responses)
-            mismatched_keys = {
-                key for key in requested_keys & set(dataset_responses)
-                if dataset_responses[key].get("prompt_sha256")
-                != dataset_request_map[key]["prompt_sha256"]
-            }
-            usable_keys = {
-                key for key in requested_keys & set(dataset_responses)
-                if key not in mismatched_keys
-                and str(dataset_responses[key].get("text") or "").strip()
-            }
-            empty_keys = (requested_keys & set(dataset_responses)) - mismatched_keys - usable_keys
-            extra_keys = set(dataset_responses) - requested_keys
-            requested_n = len(requested_keys)
-            usable_n = len(usable_keys)
-            dataset_coverage = usable_n / requested_n if requested_n else 0.0
-            coverage_rows.append({
-                "model": student,
-                "dataset": dataset,
-                "reflection_model": args.reflection_model,
-                "requested": requested_n,
-                "response_records": len(requested_keys & set(dataset_responses)),
-                "usable": usable_n,
-                "missing": len(missing_keys),
-                "empty": len(empty_keys),
-                "hash_mismatch": len(mismatched_keys),
-                "extra_records": len(extra_keys),
-                "coverage": dataset_coverage,
-            })
-            problems = len(missing_keys) + len(empty_keys) + len(mismatched_keys)
-            print(
-                f"{student}/{dataset}: external usable={usable_n:,}/{requested_n:,} "
-                f"({dataset_coverage:.1%}); "
-                f"missing={len(missing_keys):,} empty={len(empty_keys):,} "
-                f"hash_mismatch={len(mismatched_keys):,}",
-                flush=True,
-            )
-            if args.strict_external and problems:
-                raise RuntimeError(
-                    f"{student}/{dataset}: strict external validation failed "
-                    f"({len(missing_keys)=}, {len(empty_keys)=}, {len(mismatched_keys)=})."
-                )
-            request_rows.extend(dataset_requests)
-            response_rows.extend(dataset_responses[key] for key in usable_keys)
-        requests = {row["key"]: row for row in request_rows}
-        responses = {row["key"]: row for row in response_rows}
-        imported = [responses[key] for key in requests if key in responses]
-        reflection_cache = experiment_dir / "generations" / student / f"reflections_{EXTERNAL_DEPTH}.jsonl"
-        save_jsonl(reflection_cache, imported)
-        memories = {}
-        for row in imported:
-            _, _, dataset, uid = json.loads(row["key"])
-            memories[(dataset, uid)] = row["text"]
-
         old_student = existing[existing.model == student]
         baseline = (
             old_student.dropna(subset=["baseline_correct"])
@@ -653,52 +714,129 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
             .drop_duplicates(["dataset", "source_uid"])
             .set_index(["dataset", "source_uid"])
         )
-        prompts: dict[str, str] = {}
-        items: dict[str, dict[str, Any]] = {}
-        pair_by_key: dict[str, dict[str, Any]] = {}
-        for pair in pairs.to_dict("records"):
-            memory = memories.get((pair["dataset"], pair["source_uid"]))
-            item = item_maps.get(pair["dataset"], {}).get(pair["val_uid"])
-            if memory is None or item is None:
-                continue
-            key = cache_key(
-                "memory", pair["dataset"], pair["val_uid"], EXTERNAL_DEPTH,
-                pair["arm"], pair["level"], pair["source_uid"],
-            )
-            prompts[key] = build_memory_prompt(memory_template, item, memory)
-            items[key] = item
-            pair_by_key[key] = pair
-
         model_dir = experiment_dir / "generations" / student
         with get_backend(student, kind=args.student_backend) as backend:
-            answers = cached_generate(
-                backend, model_dir / f"validation_with_memory_{EXTERNAL_DEPTH}.jsonl",
-                prompts, 400, args.batch_size, args.fresh, "validation with external reflection",
-            )
-            correct, method = resolve_correctness(
-                backend, model_dir / f"judge_fallback_memory_{EXTERNAL_DEPTH}.jsonl",
-                answers, items, args.batch_size, args.fresh,
-            )
+            for base_depth, external_depth in EXTERNAL_BY_BASE.items():
+                request_rows: list[dict[str, Any]] = []
+                response_rows: list[dict[str, Any]] = []
+                for dataset in datasets:
+                    request_path, response_path = exchange_paths(
+                        exchange_dir, student, dataset, external_depth
+                    )
+                    dataset_requests = load_jsonl(request_path)
+                    raw_responses = load_jsonl(response_path) if response_path.exists() else []
+                    dataset_responses = {
+                        row.get("key"): row for row in raw_responses
+                        if isinstance(row, dict) and row.get("key")
+                    }
+                    request_map = {row["key"]: row for row in dataset_requests}
+                    requested_keys = set(request_map)
+                    response_keys = set(dataset_responses)
+                    missing_keys = requested_keys - response_keys
+                    mismatched_keys = {
+                        key for key in requested_keys & response_keys
+                        if dataset_responses[key].get("prompt_sha256")
+                        != request_map[key]["prompt_sha256"]
+                    }
+                    usable_keys = {
+                        key for key in requested_keys & response_keys
+                        if key not in mismatched_keys
+                        and str(dataset_responses[key].get("text") or "").strip()
+                    }
+                    empty_keys = (requested_keys & response_keys) - mismatched_keys - usable_keys
+                    requested_n, usable_n = len(requested_keys), len(usable_keys)
+                    dataset_coverage = usable_n / requested_n if requested_n else 0.0
+                    coverage_rows.append({
+                        "model": student, "dataset": dataset,
+                        "base_depth": base_depth, "depth": external_depth,
+                        "reflection_model": args.reflection_model,
+                        "requested": requested_n,
+                        "response_records": len(requested_keys & response_keys),
+                        "usable": usable_n, "missing": len(missing_keys),
+                        "empty": len(empty_keys), "hash_mismatch": len(mismatched_keys),
+                        "extra_records": len(response_keys - requested_keys),
+                        "coverage": dataset_coverage,
+                    })
+                    problems = len(missing_keys) + len(empty_keys) + len(mismatched_keys)
+                    print(
+                        f"{student}/{dataset}/{external_depth}: "
+                        f"usable={usable_n:,}/{requested_n:,} ({dataset_coverage:.1%}); "
+                        f"missing={len(missing_keys):,} empty={len(empty_keys):,} "
+                        f"hash_mismatch={len(mismatched_keys):,}", flush=True,
+                    )
+                    if args.strict_external and problems:
+                        raise RuntimeError(
+                            f"{student}/{dataset}/{external_depth}: strict validation failed."
+                        )
+                    request_rows.extend(dataset_requests)
+                    response_rows.extend(dataset_responses[key] for key in usable_keys)
 
-        for key, pair in pair_by_key.items():
-            baseline_index = (pair["dataset"], pair["val_uid"])
-            source_index = (pair["dataset"], pair["source_uid"])
-            b = None if baseline_index not in baseline.index else bool(baseline.loc[baseline_index, "baseline_correct"])
-            s = None if source_index not in source.index else bool(source.loc[source_index, "source_correct"])
-            m = correct.get(key)
-            external_rows.append({
-                "model": student,
-                "reflection_model": args.reflection_model,
-                "dataset": pair["dataset"], "val_uid": pair["val_uid"],
-                "source_uid": pair["source_uid"], "analysis_split": pair["analysis_split"],
-                "depth": EXTERNAL_DEPTH, "arm": pair["arm"], "level": pair["level"],
-                "requested_similarity": pair["requested_similarity"], "similarity": pair["similarity"],
-                "source_correct": s, "baseline_correct": b, "memory_correct": m,
-                "delta": None if b is None or m is None else int(m) - int(b),
-                "baseline_eval_method": None if baseline_index not in baseline.index else baseline.loc[baseline_index].get("baseline_eval_method"),
-                "memory_eval_method": method.get(key),
-                "source_eval_method": None if source_index not in source.index else source.loc[source_index].get("source_eval_method"),
-            })
+                requests = {row["key"]: row for row in request_rows}
+                responses = {row["key"]: row for row in response_rows}
+                imported = [responses[key] for key in requests if key in responses]
+                save_jsonl(
+                    model_dir / f"reflections_{external_depth}.jsonl", imported,
+                )
+                memories: dict[tuple[str, str], str] = {}
+                for row in imported:
+                    _, _, dataset, uid = json.loads(row["key"])
+                    memories[(dataset, uid)] = row["text"]
+
+                prompts: dict[str, str] = {}
+                items: dict[str, dict[str, Any]] = {}
+                pair_by_key: dict[str, dict[str, Any]] = {}
+                for pair in pairs.to_dict("records"):
+                    memory = memories.get((pair["dataset"], pair["source_uid"]))
+                    item = item_maps.get(pair["dataset"], {}).get(pair["val_uid"])
+                    if memory is None or item is None:
+                        continue
+                    key = cache_key(
+                        "memory", pair["dataset"], pair["val_uid"], external_depth,
+                        pair["arm"], pair["level"], pair["source_uid"],
+                    )
+                    prompts[key] = build_memory_prompt(memory_template, item, memory)
+                    items[key] = item
+                    pair_by_key[key] = pair
+
+                answers = cached_generate(
+                    backend, model_dir / f"validation_with_memory_{external_depth}.jsonl",
+                    prompts, int(answer_budgets.get(student, 400)),
+                    args.batch_size, args.fresh,
+                    f"validation with {external_depth}",
+                )
+                correct, method = resolve_correctness(
+                    backend, model_dir / f"judge_fallback_memory_{external_depth}.jsonl",
+                    answers, items, args.batch_size, args.fresh,
+                    int(judge_budgets.get(student, 256)),
+                )
+
+                for key, pair in pair_by_key.items():
+                    baseline_index = (pair["dataset"], pair["val_uid"])
+                    source_index = (pair["dataset"], pair["source_uid"])
+                    b = None if baseline_index not in baseline.index else bool(
+                        baseline.loc[baseline_index, "baseline_correct"]
+                    )
+                    s = None if source_index not in source.index else bool(
+                        source.loc[source_index, "source_correct"]
+                    )
+                    m = correct.get(key)
+                    external_rows.append({
+                        "model": student, "reflection_model": args.reflection_model,
+                        "dataset": pair["dataset"], "val_uid": pair["val_uid"],
+                        "source_uid": pair["source_uid"],
+                        "analysis_split": pair["analysis_split"],
+                        "depth": external_depth, "base_depth": base_depth,
+                        "arm": pair["arm"], "level": pair["level"],
+                        "requested_similarity": pair["requested_similarity"],
+                        "similarity": pair["similarity"], "source_correct": s,
+                        "baseline_correct": b, "memory_correct": m,
+                        "delta": None if b is None or m is None else int(m) - int(b),
+                        "baseline_eval_method": None if baseline_index not in baseline.index
+                        else baseline.loc[baseline_index].get("baseline_eval_method"),
+                        "memory_eval_method": method.get(key),
+                        "source_eval_method": None if source_index not in source.index
+                        else source.loc[source_index].get("source_eval_method"),
+                    })
 
         student_rows = pd.concat(
             [old_student, pd.DataFrame([r for r in external_rows if r["model"] == student])],
@@ -717,15 +855,27 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
     requested_total = int(coverage_frame.requested.sum()) if not coverage_frame.empty else 0
     usable_total = int(coverage_frame.usable.sum()) if not coverage_frame.empty else 0
     overall_coverage = usable_total / requested_total if requested_total else 0.0
-    manifest["analysis_depths"] = list(dict.fromkeys(list(manifest.get("depths", [])) + [EXTERNAL_DEPTH]))
-    manifest["external_reflection"] = {
+    manifest["analysis_depths"] = list(ANALYSIS_DEPTHS)
+    manifest.pop("external_reflection", None)
+    per_depth = {}
+    if not coverage_frame.empty:
+        for depth, group in coverage_frame.groupby("depth"):
+            requested = int(group.requested.sum())
+            usable = int(group.usable.sum())
+            per_depth[depth] = {
+                "requested": requested, "usable": usable,
+                "coverage": usable / requested if requested else 0.0,
+            }
+    manifest["external_reflections"] = {
         "reflection_model": args.reflection_model,
-        "prompt_reference": "diagnostic",
+        "prompt_reference": {"external_simple": "simple", "external_complex": "complex"},
         "exchange_format_version": exchange_manifest["format_version"],
+        "exchange_variant": EXCHANGE_VARIANT,
         "exchange_relative_path": str(exchange_dir.relative_to(root)) if exchange_dir.is_relative_to(root) else str(exchange_dir),
         "requested_reflections": requested_total,
         "usable_reflections": usable_total,
         "coverage": overall_coverage,
+        "coverage_by_depth": per_depth,
         "incomplete_inputs_allowed": not args.strict_external,
     }
     save_json(experiment_dir / "manifest.json", manifest)
@@ -746,20 +896,24 @@ def show_status(experiment_dir: Path, exchange_dir: Path, args: argparse.Namespa
         print(name, "ok" if path.exists() else "missing")
     if (exchange_dir / "exchange_manifest.json").exists():
         manifest = json.loads((exchange_dir / "exchange_manifest.json").read_text(encoding="utf-8"))
+        external_depths = list(manifest.get("reflection_depths", {}).values())
         for student in manifest["students"]:
             for dataset in manifest["datasets"]:
-                request_path, response_path = exchange_paths(exchange_dir, student, dataset)
-                requested = len(load_jsonl(request_path)) if request_path.exists() else 0
-                response_rows = load_jsonl(response_path) if response_path.exists() else []
-                completed = len(response_rows)
-                usable = sum(
-                    bool(str(row.get("text") or "").strip())
-                    for row in response_rows if isinstance(row, dict)
-                )
-                print(
-                    f"{student}/{dataset}: requests={requested:,} "
-                    f"responses={completed:,} usable_text={usable:,}"
-                )
+                for external_depth in external_depths:
+                    request_path, response_path = exchange_paths(
+                        exchange_dir, student, dataset, external_depth
+                    )
+                    requested = len(load_jsonl(request_path)) if request_path.exists() else 0
+                    response_rows = load_jsonl(response_path) if response_path.exists() else []
+                    completed = len(response_rows)
+                    usable = sum(
+                        bool(str(row.get("text") or "").strip())
+                        for row in response_rows if isinstance(row, dict)
+                    )
+                    print(
+                        f"{student}/{dataset}/{external_depth}: requests={requested:,} "
+                        f"responses={completed:,} usable_text={usable:,}"
+                    )
     if (experiment_dir / "manifest.json").exists():
         result_manifest = read_manifest(experiment_dir)
         print("analysis_depths:", result_manifest.get("analysis_depths", result_manifest.get("depths")))
@@ -775,7 +929,9 @@ def main() -> None:
     results_root = Path(args.results_root).expanduser().resolve() if args.results_root else root / DEFAULT_RESULTS_SUBDIR
     exchange_root = Path(args.exchange_root).expanduser().resolve() if args.exchange_root else root / DEFAULT_EXCHANGE_SUBDIR
     experiment_dir = results_root / args.experiment_id
-    exchange_dir = exchange_root / args.experiment_id / safe_name(args.reflection_model)
+    exchange_dir = (
+        exchange_root / args.experiment_id / safe_name(args.reflection_model) / EXCHANGE_VARIANT
+    )
 
     if args.stage == "export":
         export_requests(root, experiment_dir, exchange_dir, args)

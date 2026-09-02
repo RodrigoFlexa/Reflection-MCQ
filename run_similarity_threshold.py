@@ -95,9 +95,13 @@ def main():
 
     DATASETS = ["aqua", "arc", "logiqa2", "openbookqa"]
 
-    # Todos têm estritamente menos de 8B parâmetros. Para um ensaio rápido, deixe
-    # somente um; o threshold final deve ser replicado nos dois.
-    STUDENT_MODELS = ["phi4-mini", "mistral-7b"]
+    # Três arquiteturas distintas, até 8B parâmetros. DeepSeek é servido pelo
+    # Ollama; Phi-2 e Llama 3.1 Instruct usam vLLM.
+    STUDENT_MODELS = [
+        "phi2",
+        "deepseek-r1-distill-llama-8b-ollama",
+        "llama3.1-8b",
+    ]
 
     EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
     SEED = 42
@@ -109,25 +113,31 @@ def main():
     # somente UMA delas. Os valores realizados, e não os alvos, entram na análise.
     SIMILARITY_TARGETS = [0.30, 0.50, 0.70]
     PLACEBO_BOTTOM_QUANTILE = 0.20
-    REFLECTION_DEPTHS = ["simple", "complex", "compact", "diagnostic"]
-    SOURCE_POOLS = ["all", "errors", "correct"]
+    REFLECTION_DEPTHS = ["simple", "complex"]
+    SOURCE_POOLS = ["all"]
 
-    ANSWER_MAX_NEW_TOKENS = 400
-    REFLECTION_MAX_NEW_TOKENS = {
-        "simple": 150,
-        "complex": 200,
-        "compact": 100,
-        "diagnostic": 180,
+    # Orçamentos por modelo: Phi-2 tem contexto nativo de apenas 2048 tokens;
+    # DeepSeek-R1 precisa de espaço amplo para raciocínio antes da resposta final.
+    ANSWER_MAX_NEW_TOKENS_BY_MODEL = {
+        "phi2": 384,
+        "deepseek-r1-distill-llama-8b-ollama": 4096,
+        "llama3.1-8b": 1024,
     }
-    JUDGE_MAX_NEW_TOKENS = 80
+    REFLECTION_MAX_NEW_TOKENS_BY_MODEL = {
+        "phi2": {"simple": 256, "complex": 384},
+        "deepseek-r1-distill-llama-8b-ollama": {"simple": 2048, "complex": 2048},
+        "llama3.1-8b": {"simple": 384, "complex": 512},
+    }
+    EXTERNAL_REFLECTION_MAX_NEW_TOKENS = {"simple": 256, "complex": 384}
+    JUDGE_MAX_NEW_TOKENS_BY_MODEL = {
+        "phi2": 192,
+        "deepseek-r1-distill-llama-8b-ollama": 2048,
+        "llama3.1-8b": 256,
+    }
     GENERATION_BATCH_SIZE = 512
+    OLLAMA_CHECKPOINT_BATCH_SIZE = 8
     RESUME = True
-    # Compatibilidade seletiva de checkpoints. O Phi mantém o hash legado e
-    # reaproveita tudo o que já foi salvo. Somente o Mistral recebe uma nova versão
-    # porque seu tokenizer emitiu o aviso sobre o round-trip tokenize=False.
-    GENERATION_CACHE_VERSION_BY_MODEL = {
-        "mistral-7b": "direct-chat-template-token-ids-v2",
-    }
+    GENERATION_CACHE_VERSION_BY_MODEL = {}
 
     KERNEL_BANDWIDTH = 0.08
     N_BOOTSTRAP_CURVE = 1000
@@ -136,7 +146,7 @@ def main():
     SUSTAINED_GRID_POINTS = 5
 
     print("datasets:", DATASETS)
-    print("modelos <8B:", STUDENT_MODELS)
+    print("modelos até 8B:", STUDENT_MODELS)
     print("similaridades-alvo:", SIMILARITY_TARGETS, "+ top-1 + placebo")
     print("uma memória por prompt experimental")
 
@@ -211,37 +221,9 @@ def main():
     Do not copy names, numbers, or conclusions from the source problem.
     Focus on a procedure that transfers to new problems. Do not give vague advice.""").strip()
 
-    COMPACT_REFLECTION_PROMPT = dedent("""Convert feedback from a completed multiple-choice problem into a minimal reusable memory.
-    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
-
-    Write exactly three lines and no more than 60 words total:
-    Rule: Give one actionable rule in the form "If ..., then ...".
-    Trigger: State the clue that tells you to use the rule.
-    Avoid: State the concrete mistake the rule prevents.
-
-    Do not solve the problem again or reveal the correct answer.
-    Do not copy names, numbers, option labels, option texts, or conclusions from the source problem.
-    Do not give generic advice.""").strip()
-
-    DIAGNOSTIC_REFLECTION_PROMPT = dedent("""Turn feedback from a completed multiple-choice problem into a reusable diagnostic memory.
-    You are given the problem, your previous response, whether it was correct, and the correct answer as private feedback.
-
-    Write exactly five lines and no more than 110 words total:
-    Transfer rule: Give one actionable rule in the form "If ..., then ...".
-    Error pattern: Identify the general reasoning failure or success pattern.
-    Diagnostic check: Give a concrete test to run before committing to an answer.
-    Use when: State the problem features that make this diagnostic relevant.
-    Boundary: State when the diagnostic should be ignored.
-
-    Do not solve the problem again or reveal the correct answer.
-    Do not copy names, numbers, option labels, option texts, or conclusions from the source problem.
-    Describe a repeatable check, not vague advice.""").strip()
-
     REFLECTION_PROMPTS = {
         "simple": SIMPLE_REFLECTION_PROMPT,
         "complex": COMPLEX_REFLECTION_PROMPT,
-        "compact": COMPACT_REFLECTION_PROMPT,
-        "diagnostic": DIAGNOSTIC_REFLECTION_PROMPT,
     }
 
     MEMORY_PROMPT = dedent("""The following is one memory written after solving a DIFFERENT multiple-choice problem.
@@ -335,7 +317,7 @@ def main():
 
 
     signature_payload = {
-        "pipeline_version": "single-memory-multisim-v2.1",
+        "pipeline_version": "single-memory-accuracy-curves-v3",
         "models": STUDENT_MODELS,
         "datasets": DATASETS,
         "validation_cap": N_VALIDATION_PER_DATASET,
@@ -345,9 +327,14 @@ def main():
         "placebo_bottom_quantile": PLACEBO_BOTTOM_QUANTILE,
         "calibration_fraction": CALIBRATION_FRACTION,
         "depths": REFLECTION_DEPTHS,
+        "source_pools": SOURCE_POOLS,
         "answer_prompt": ANSWER_PROMPT,
         "reflection_prompts": REFLECTION_PROMPTS,
-        "reflection_max_new_tokens": REFLECTION_MAX_NEW_TOKENS,
+        "answer_max_new_tokens_by_model": ANSWER_MAX_NEW_TOKENS_BY_MODEL,
+        "reflection_max_new_tokens_by_model": REFLECTION_MAX_NEW_TOKENS_BY_MODEL,
+        "external_reflection_max_new_tokens": EXTERNAL_REFLECTION_MAX_NEW_TOKENS,
+        "judge_max_new_tokens_by_model": JUDGE_MAX_NEW_TOKENS_BY_MODEL,
+        "ollama_checkpoint_batch_size": OLLAMA_CHECKPOINT_BATCH_SIZE,
         "memory_prompt": MEMORY_PROMPT,
         "kernel_bandwidth": KERNEL_BANDWIDTH,
         "bootstrap_curve": N_BOOTSTRAP_CURVE,
@@ -562,8 +549,7 @@ def main():
 
     def prompt_hash(prompt, model_key):
         version = GENERATION_CACHE_VERSION_BY_MODEL.get(model_key)
-        # Sem versão explícita, reproduz byte a byte o hash usado pela execução
-        # anterior. Assim os checkpoints do Phi continuam válidos.
+        # Uma versão explícita invalida seletivamente o cache quando a renderização muda.
         payload = prompt if version is None else f"{version}\0{prompt}"
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
@@ -591,8 +577,12 @@ def main():
             if key not in cache or cache[key].get("prompt_hash") != prompt_hash(prompt, backend.key)
         ]
         print(f"{desc}: total={len(keyed_prompts)} cache={len(keyed_prompts)-len(missing)} faltando={len(missing)}")
-        for start in range(0, len(missing), GENERATION_BATCH_SIZE):
-            batch = missing[start:start + GENERATION_BATCH_SIZE]
+        checkpoint_batch_size = (
+            min(GENERATION_BATCH_SIZE, OLLAMA_CHECKPOINT_BATCH_SIZE)
+            if backend.spec.provider == "ollama" else GENERATION_BATCH_SIZE
+        )
+        for start in range(0, len(missing), checkpoint_batch_size):
+            batch = missing[start:start + checkpoint_batch_size]
             generations = backend.generate(
                 [prompt for _, prompt in batch],
                 GenParams(max_new_tokens=max_new_tokens),
@@ -627,7 +617,8 @@ def main():
         if fallback_prompts:
             judged = cached_generate(
                 backend, model_dir / f"judge_fallback_{stage}.jsonl",
-                fallback_prompts, JUDGE_MAX_NEW_TOKENS, f"juiz fallback: {stage}",
+                fallback_prompts, JUDGE_MAX_NEW_TOKENS_BY_MODEL[backend.key],
+                f"juiz fallback: {stage}",
             )
             for key, text in judged.items():
                 correctness[key] = parse_judge(text)
@@ -661,7 +652,7 @@ def main():
             source_prompts = {key: build_answer_prompt(item) for key, item in source_items.items()}
             source_answers = cached_generate(
                 backend, model_dir / "source_answers.jsonl", source_prompts,
-                ANSWER_MAX_NEW_TOKENS, "respostas das fontes",
+                ANSWER_MAX_NEW_TOKENS_BY_MODEL[model], "respostas das fontes",
             )
             source_correct, source_method = resolve_correctness(
                 backend, model_dir, "sources", source_answers, source_items
@@ -677,7 +668,7 @@ def main():
                 }
                 outputs = cached_generate(
                     backend, model_dir / f"reflections_{depth}.jsonl", prompts,
-                    REFLECTION_MAX_NEW_TOKENS[depth], f"reflexões {depth}",
+                    REFLECTION_MAX_NEW_TOKENS_BY_MODEL[model][depth], f"reflexões {depth}",
                 )
                 for key, text in outputs.items():
                     _, _, dataset, uid = json.loads(key)
@@ -686,7 +677,7 @@ def main():
             baseline_prompts = {key: build_answer_prompt(item) for key, item in val_items.items()}
             baseline_answers = cached_generate(
                 backend, model_dir / "validation_baseline.jsonl", baseline_prompts,
-                ANSWER_MAX_NEW_TOKENS, "baseline de validação",
+                ANSWER_MAX_NEW_TOKENS_BY_MODEL[model], "baseline de validação",
             )
             baseline_correct, baseline_method = resolve_correctness(
                 backend, model_dir, "baseline", baseline_answers, val_items
@@ -711,7 +702,7 @@ def main():
 
                 condition_answers = cached_generate(
                     backend, model_dir / f"validation_with_memory_{depth}.jsonl",
-                    condition_prompts, ANSWER_MAX_NEW_TOKENS,
+                    condition_prompts, ANSWER_MAX_NEW_TOKENS_BY_MODEL[model],
                     f"validação com uma memória {depth}",
                 )
                 condition_correct, condition_method = resolve_correctness(
@@ -789,11 +780,21 @@ def main():
 
             lo, hi = np.quantile(sub["similarity"], [0.02, 0.98])
             grid = np.linspace(lo, hi, 81)
-            records = sub[["val_uid", "similarity", "delta"]].to_dict("records")
+            records = sub[[
+                "val_uid", "similarity", "delta", "baseline_correct", "memory_correct"
+            ]].to_dict("records")
+            curve_seed = SEED + sum(ord(c) for c in f"{model}{dataset}{depth}{pool}")
             curve = clustered_bootstrap_curve(
                 records, grid, bandwidth=KERNEL_BANDWIDTH,
                 n_boot=N_BOOTSTRAP_CURVE,
-                seed=SEED + sum(ord(c) for c in f"{model}{dataset}{depth}{pool}"),
+                seed=curve_seed,
+            )
+            memory_curve = clustered_bootstrap_curve(
+                records, grid, value_key="memory_correct", bandwidth=KERNEL_BANDWIDTH,
+                n_boot=N_BOOTSTRAP_CURVE, seed=curve_seed + 100003,
+            )
+            baseline_accuracy = float(
+                sub.drop_duplicates("val_uid")["baseline_correct"].astype(float).mean()
             )
             threshold = sustained_threshold(
                 grid, curve["estimate"], curve["effective_n"],
@@ -830,6 +831,10 @@ def main():
                     "similarity": similarity, "effect": curve["estimate"][i],
                     "ci_low": curve["low"][i], "ci_high": curve["high"][i],
                     "effective_n": curve["effective_n"][i],
+                    "memory_accuracy": memory_curve["estimate"][i],
+                    "memory_ci_low": memory_curve["low"][i],
+                    "memory_ci_high": memory_curve["high"][i],
+                    "baseline_accuracy": baseline_accuracy,
                 })
 
     threshold_df = pd.DataFrame(threshold_rows)

@@ -1,90 +1,112 @@
-# External reflection via Azure — fluxo entre dois servidores
+# Reflexões simple/complex via Azure — fluxo entre dois servidores
 
-Este fluxo acrescenta `external_reflection` a uma execução **já concluída** do
-experimento 08. O modelo pequeno continua sendo o estudante que responde às
-questões; `gpt-5-4-petrobras` apenas escreve a memória de reflexão.
+Este fluxo acrescenta duas condições externas a uma execução concluída do
+experimento 08:
 
-O prompt externo é idêntico ao prompt `diagnostic`. Isso permite interpretar a
-comparação `diagnostic` × `external_reflection` principalmente como uma mudança
-do autor da reflexão: estudante pequeno versus GPT externo.
+| Formato | Autor da memória | `depth` na análise |
+|---|---|---|
+| simple | próprio estudante | `simple` |
+| simple | GPT-5-4 Petrobras | `external_simple` |
+| complex | próprio estudante | `complex` |
+| complex | GPT-5-4 Petrobras | `external_complex` |
 
-## O que passa pelo GitHub
+`external_simple` usa exatamente a mesma instrução e estrutura de `simple`; o
+mesmo vale para `complex`. Os tetos de geração são dimensionados por backend
+para não truncar raciocínio, mas o formato comparado permanece o mesmo.
 
-`data/` continua local e ignorado pelo Git. O transporte usa somente:
+`compact` e `diagnostic` não entram nos novos outcomes, thresholds ou plots. Os
+caches brutos antigos não são apagados.
+
+## Pacote Git novo
+
+A rodada anterior baseada apenas em `diagnostic` não é reutilizada. A versão
+correta usa um diretório separado:
 
 ```text
-external_reflection_exchange/
-└── <experiment_id>/
-    └── gpt-5-4-petrobras/
-        ├── exchange_manifest.json
-        ├── requests/
-        │   ├── phi4-mini/<dataset>.jsonl
-        │   └── mistral-7b/<dataset>.jsonl
-        ├── responses/
-        │   ├── phi4-mini/<dataset>.jsonl
-        │   └── mistral-7b/<dataset>.jsonl
-        └── generation_receipt.json
+external_reflection_exchange/<experiment_id>/gpt-5-4-petrobras/simple_complex_v2/
+├── exchange_manifest.json
+├── requests/<student>/<dataset>/
+│   ├── external_simple.jsonl
+│   └── external_complex.jsonl
+├── responses/<student>/<dataset>/
+│   ├── external_simple.jsonl
+│   └── external_complex.jsonl
+└── generation_receipt.json
 ```
 
-Os arquivos são divididos também por dataset para permanecerem abaixo do limite
-de tamanho do GitHub. Eles possuem `experiment_id`, modelo, hashes e contagens.
-O estágio final recusa respostas ausentes, alteradas ou pertencentes a outra
-execução. O `.env` e a chave Azure nunca entram nesse diretório.
+Os arquivos são divididos para respeitar o limite de tamanho do GitHub. Cada
+registro carrega ID do experimento, formato, modelo e hash do prompt.
 
-## 0. Pré-condições
+## 0. Servidor GPU — executar a nova rodada-base
 
-- O servidor de GPU possui a execução-base completa em
-  `data/results/similarity_threshold_v2/<experiment_id>`.
-- Os dois servidores usam o mesmo commit do código.
-- A árvore de trabalho está limpa antes de cada `git pull`.
-- Substitua `<ID>` nos comandos pelo ID exibido no log do experimento 08.
-
-Para conferir o ID no servidor de GPU:
+Prepare o modelo exato no servidor em que o Ollama está rodando:
 
 ```bash
-ls -1 data/results/similarity_threshold_v2/*/manifest.json
+ollama pull deepseek-r1:8b-llama-distill-fp16
 ```
 
-## 1. Servidor de GPU — exportar os pedidos
-
-Atualize o código e crie o pacote Git sem copiar os resultados completos:
+No `.env`, use `RMCQ_OLLAMA_NUM_CTX=16384`, `RMCQ_OLLAMA_TIMEOUT=1800` e
+`RMCQ_OLLAMA_KEEP_ALIVE=30m`. Então rode do zero a configuração atual: Phi-2,
+DeepSeek-R1 Distill Llama 8B via Ollama e Llama 3.1 8B Instruct, somente com
+`pool=all`.
 
 ```bash
 git pull --ff-only
+mkdir -p logs
+tmux new -s threshold08-v3
+python -u run_similarity_threshold.py --gpu 3 --fresh \
+  2>&1 | tee logs/threshold08-v3.log
+```
+
+`--fresh` é usado somente nessa primeira inicialização deliberada. Se o servidor
+cair, repita o comando **sem** `--fresh`; o Ollama grava checkpoint a cada oito
+respostas e os backends vLLM a cada lote.
+
+O último componente do diretório impresso ao final é o novo ID. Defina-o nos
+dois servidores antes dos comandos seguintes:
+
+```bash
+export EXPERIMENT_ID=<NOVO_ID_IMPRESSO_NO_LOG>
+```
+
+Não reutilize `3f47a5b014cd`: esse ID representa modelos e pools antigos.
+
+## 1. Servidor GPU — exportar as solicitações externas
+
+```bash
+git pull --ff-only
+
 python run_external_reflection.py export \
-  --experiment-id <ID> \
+  --experiment-id "$EXPERIMENT_ID" \
   --reflection-model gpt-5-4-petrobras
 
 python run_external_reflection.py status \
-  --experiment-id <ID> \
+  --experiment-id "$EXPERIMENT_ID" \
   --reflection-model gpt-5-4-petrobras
+```
 
-git add external_reflection_exchange/<ID>/gpt-5-4-petrobras
-git commit -m "data: export external reflection requests for <ID>"
+O status deve listar `external_simple` e `external_complex` para cada estudante
+e dataset. Em seguida:
+
+```bash
+git add "external_reflection_exchange/$EXPERIMENT_ID/gpt-5-4-petrobras/simple_complex_v2"
+git commit -m "data: export simple complex requests for $EXPERIMENT_ID"
 git push
 ```
 
-O export usa as respostas das fontes já produzidas por cada estudante. Por
-isso, há um arquivo separado para Phi e Mistral, mesmo que o autor externo seja
-o mesmo GPT.
-
-## 2. Servidor Petrobras — gerar somente as reflexões
-
-Instale a dependência leve do Azure e configure um `.env` local:
+## 2. Servidor Petrobras — gerar os dois formatos
 
 ```bash
 git pull --ff-only
 python -m pip install -r requirements-azure.txt
-cp .env.example .env
 ```
 
-Preencha no `.env` apenas os valores reais fornecidos no ambiente Petrobras:
+O `.env` local deve conter, no mínimo:
 
 ```dotenv
 RMCQ_AZURE_DEPLOYMENTS=gpt-5-4-petrobras
 AZURE_OPENAI_BASE_URL=<URL_DO_GATEWAY>
-# ou AZURE_OPENAI_ENDPOINT=<ENDPOINT_DO_RECURSO>
-AZURE_OPENAI_API_KEY=<SEGREDO_LOCAL>
+AZURE_OPENAI_API_KEY=<CHAVE_LOCAL>
 AZURE_OPENAI_API_VERSION=2025-01-01-preview
 AZURE_OPENAI_CA_BUNDLE=petrobras-ca-root.pem
 RMCQ_AZURE_CONCURRENCY=4
@@ -92,104 +114,110 @@ RMCQ_AZURE_REASONING_MIN_TOKENS=4000
 RMCQ_AZURE_FAIL_ON_EMPTY=1
 ```
 
-Com esse valor relativo, `petrobras-ca-root.pem` deve estar na raiz clonada do
-repositório, ao lado de `run_external_reflection.py`. Também é possível informar
-um caminho absoluto. O backend verifica se o arquivo existe e o entrega ao
-cliente HTTP como CA para a conexão TLS; se o caminho estiver errado ou o PEM
-for inválido, a execução para com uma mensagem explícita antes das gerações.
+Com o caminho relativo acima, o PEM fica na raiz do repositório. `.env` e
+`*.pem` estão ignorados pelo Git.
 
-Nunca execute `git add .env`. Gere as reflexões; o comando salva checkpoints a
-cada lote e pode ser repetido após uma queda:
+Execute em `tmux`:
 
 ```bash
-python -u run_external_reflection.py generate \
-  --experiment-id <ID> \
-  --reflection-model gpt-5-4-petrobras \
-  --batch-size 128 2>&1 | tee external-reflection-<ID>.log
+tmux new -s external-simple-complex
 
+python -u run_external_reflection.py generate \
+  --experiment-id "$EXPERIMENT_ID" \
+  --reflection-model gpt-5-4-petrobras \
+  --batch-size 128 2>&1 | tee "external-simple-complex-$EXPERIMENT_ID.log"
+```
+
+O comando salva checkpoints separadamente por formato. Após uma queda, repita
+exatamente o mesmo comando, sem `--fresh`.
+
+O gerador primeiro tenta o lote inteiro. Se o gateway bloquear um prompt, ele
+isola os itens daquele lote, registra `text=""` e
+`finish_reason="content_filter_skipped"` somente para os prompts reconhecidos
+como violação de política e continua. Erros de chave, endpoint, certificado ou
+outros problemas de configuração continuam interrompendo a execução; eles não
+são mascarados como filtro de conteúdo.
+
+Confira:
+
+```bash
 python run_external_reflection.py status \
-  --experiment-id <ID> \
+  --experiment-id "$EXPERIMENT_ID" \
   --reflection-model gpt-5-4-petrobras
 ```
 
-No fluxo normal, `generation_receipt.json` indica `"complete": true`. Se o
-filtro de conteúdo do gateway obrigar a pular alguns prompts, respostas ausentes
-ou com `text` vazio também podem ser versionadas: o estágio `finish` as excluirá
-somente da condição externa e produzirá uma auditoria de cobertura.
+O status deve mencionar ambos os formatos. Prompts bloqueados pelo filtro de
+conteúdo podem ficar ausentes ou vazios; o servidor GPU os excluirá e auditará.
+
+Envie as respostas:
 
 ```bash
-git add external_reflection_exchange/<ID>/gpt-5-4-petrobras/responses
-git add external_reflection_exchange/<ID>/gpt-5-4-petrobras/generation_receipt.json
-git commit -m "data: add gpt-5-4-petrobras reflections for <ID>"
+git add "external_reflection_exchange/$EXPERIMENT_ID/gpt-5-4-petrobras/simple_complex_v2/responses"
+git add "external_reflection_exchange/$EXPERIMENT_ID/gpt-5-4-petrobras/simple_complex_v2/generation_receipt.json"
+git commit -m "data: add GPT-5-4 reflections for $EXPERIMENT_ID"
 git push
 ```
 
-## 3. Servidor de GPU — avaliar e recalcular os thresholds
+Não adicione `.env`, PEM ou logs.
 
-O servidor de GPU já deve possuir a execução-base original sob o mesmo `<ID>`:
+## 3. Servidor GPU — avaliar os estudantes
 
 ```bash
 git pull --ff-only
 
 python run_external_reflection.py status \
-  --experiment-id <ID> \
+  --experiment-id "$EXPERIMENT_ID" \
   --reflection-model gpt-5-4-petrobras
+```
 
-tmux new -s external-reflection
+Depois, em `tmux`:
+
+```bash
+tmux new -s external-finish-v2
+
 python -u run_external_reflection.py finish \
-  --experiment-id <ID> \
+  --experiment-id "$EXPERIMENT_ID" \
   --reflection-model gpt-5-4-petrobras \
   --student-backend vllm \
   --gpu 3 \
-  --batch-size 512 2>&1 | tee external-finish-<ID>.log
+  --batch-size 512 2>&1 | tee "external-finish-v2-$EXPERIMENT_ID.log"
 ```
 
-O `finish`:
+O `finish` carrega cada estudante apenas uma vez e avalia sucessivamente
+`external_simple` e `external_complex`. Ele:
 
-1. valida experimento e hashes do pacote recebido;
-2. importa apenas reflexões com texto não vazio e hash correto;
-3. executa as questões com uma memória externa por prompt;
-4. salva checkpoints após cada lote;
-5. acrescenta `depth=external_reflection` aos outcomes;
-6. salva `analysis/external_reflection_coverage.csv` com ausentes/vazias por
-   estudante e dataset;
-7. recalcula curvas, thresholds, políticas holdout e transições para os cinco casos.
+1. mantém somente `simple`, `external_simple`, `complex` e `external_complex`;
+2. ignora reflexões externas vazias/ausentes sem inserir memória vazia;
+3. salva checkpoints por formato;
+4. grava `analysis/external_reflection_coverage.csv` por formato e dataset;
+5. recalcula curvas, thresholds, políticas holdout e transições.
 
-Esse comportamento tolerante é o padrão. Para exigir 100% das reflexões e
-interromper diante de qualquer ausência, use `--strict-external` no `finish`.
+Se cair, repita o comando. `--strict-external` é opcional e exige 100% de
+cobertura; não o use quando houver bloqueios de conteúdo.
 
-Se o servidor cair, repita exatamente o mesmo comando, sem `--fresh`.
-
-## 4. Gerar os plots
-
-Abra e execute:
-
-```text
-notebooks/08_similarity_reflection_threshold_plots.ipynb
-```
-
-O notebook detecta `manifest["analysis_depths"]` e inclui automaticamente
-`external_reflection`. Além dos painéis gerais, ele produz o gráfico direto
-`diagnostic` versus `external_reflection` usando o mesmo prompt e um heatmap de
-cobertura externa. Cobertura inferior a 95% aparece como alerta de possível
-viés de seleção causado pelo filtro de conteúdo.
-
-Para fixar uma execução quando houver vários IDs:
+## 4. Plots
 
 ```bash
-export RMCQ_THRESHOLD_EXPERIMENT_ID=<ID>
+export RMCQ_THRESHOLD_EXPERIMENT_ID="$EXPERIMENT_ID"
 jupyter lab notebooks/08_similarity_reflection_threshold_plots.ipynb
 ```
 
-## Regras para evitar mistura de resultados
+O notebook mostra somente as quatro condições do quadro inicial. A figura
+principal é separada por modelo, tem um subplot por dataset e sobrepõe baseline,
+`simple`, `complex`, `external_simple` e `external_complex`, com acurácia no eixo
+y e similaridade entre questões no eixo x. As demais seções incluem:
 
-- Não renomeie o diretório `<ID>` nem edite os JSONL manualmente.
-- Não use `--fresh` após uma queda; ele existe somente para reiniciar
-  deliberadamente o estágio correspondente.
-- Não rode novamente `run_similarity_threshold.py` sobre o mesmo resultado
-  depois do `finish`, pois ele recria a análise-base sem a condição externa.
-  Se isso acontecer, basta executar `finish` novamente; os caches serão usados.
-- Antes de `finish`, use `status` para conferir quantas respostas têm texto
-  utilizável. Um receipt incompleto é aceito e auditado por padrão.
-- Resultados finais e plots continuam locais no servidor de GPU; somente o
-  pacote de intercâmbio é versionado.
+- curvas e thresholds por formato/autor;
+- efeito holdout e comparação com placebo;
+- `simple` estudante versus `external_simple` GPT;
+- `complex` estudante versus `external_complex` GPT;
+- cobertura dos bloqueios separada por formato.
+
+Os plots são salvos em
+`data/results/similarity_threshold_v2/<NOVO_ID>/plots_accuracy_v3/`.
+
+## Não reutilizar a rodada anterior
+
+Não copie respostas do diretório antigo diretamente para `simple_complex_v2`.
+As chaves e hashes são diferentes e o `finish` v2 rejeita um pacote no formato
+anterior. A pasta antiga pode permanecer no Git apenas como registro histórico.

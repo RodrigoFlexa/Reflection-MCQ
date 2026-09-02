@@ -93,6 +93,20 @@ O pipeline completo de threshold roda sem Jupyter em
 `run_similarity_threshold.py`. Ele salva um checkpoint depois de cada lote;
 depois de uma queda, execute novamente o mesmo comando para continuar.
 
+A configuração atual começa uma rodada nova com `phi2`,
+`deepseek-r1-distill-llama-8b-ollama` e `llama3.1-8b`. Apenas `pool=all` é
+analisado: reflexões geradas após acertos e erros participam juntas da
+recuperação. Antes da primeira execução, prepare o modelo Ollama exato:
+
+```bash
+ollama pull deepseek-r1:8b-llama-distill-fp16
+```
+
+No `.env`, use `RMCQ_OLLAMA_NUM_CTX=16384`,
+`RMCQ_OLLAMA_TIMEOUT=1800` e `RMCQ_OLLAMA_KEEP_ALIVE=30m`. Phi-2 e Llama 3.1
+rodam via vLLM; o DeepSeek usa o `ollama serve`. O Llama exige acesso aceito no
+Hugging Face e `HF_TOKEN` configurado.
+
 ```bash
 mkdir -p logs
 tmux new -s threshold08
@@ -110,7 +124,7 @@ Ensaio menor com um modelo e um dataset:
 ```bash
 python -u run_similarity_threshold.py \
   --gpu 3 \
-  --models phi4-mini \
+  --models phi2 \
   --datasets aqua \
   --validation-cap 100
 ```
@@ -189,8 +203,8 @@ print(available_backends())
 
 ## Experimento 08 com reflexão externa via Azure
 
-Para gerar `external_reflection` com um deployment Azure em outro servidor e
-depois concluir a avaliação nos estudantes locais, siga o fluxo versionado em
+Para gerar `external_simple` e `external_complex` com um deployment Azure em
+outro servidor e depois concluir a avaliação nos estudantes locais, siga o fluxo em
 [docs/external_reflection_workflow.md](docs/external_reflection_workflow.md).
 O Git transporta apenas pedidos e reflexões com hashes; credenciais e a pasta
 local `data/results` não são versionadas.

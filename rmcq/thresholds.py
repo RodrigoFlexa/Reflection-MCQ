@@ -138,11 +138,12 @@ def clustered_bootstrap_curve(
     rows: Sequence[dict[str, Any]],
     grid: Sequence[float],
     *,
+    value_key: str = "delta",
     bandwidth: float = 0.08,
     n_boot: int = 1000,
     seed: int = 42,
 ) -> dict[str, np.ndarray]:
-    """Kernel curve with a percentile CI, resampling validation items as clusters."""
+    """Kernel curve for ``value_key``, resampling validation items as clusters."""
     if not rows:
         raise ValueError("rows cannot be empty")
     by_cluster: dict[str, list[dict[str, Any]]] = {}
@@ -151,7 +152,7 @@ def clustered_bootstrap_curve(
     cluster_ids = list(by_cluster)
     flat = [r for rs in by_cluster.values() for r in rs]
     estimate, effective_n = gaussian_kernel_curve(
-        [r["similarity"] for r in flat], [r["delta"] for r in flat], grid, bandwidth
+        [r["similarity"] for r in flat], [r[value_key] for r in flat], grid, bandwidth
     )
 
     rng = np.random.default_rng(seed)
@@ -161,7 +162,7 @@ def clustered_bootstrap_curve(
         sampled = [r for cid in sampled_ids for r in by_cluster[str(cid)]]
         boot[b], _ = gaussian_kernel_curve(
             [r["similarity"] for r in sampled],
-            [r["delta"] for r in sampled],
+            [r[value_key] for r in sampled],
             grid,
             bandwidth,
         )

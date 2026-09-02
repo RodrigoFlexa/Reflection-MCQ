@@ -101,6 +101,18 @@ class ModelSpec:
 # Alguns modelos de exemplo, prontos para rodar via vLLM ou transformers
 # (provider="hf" == pesos locais). Apague os que não usar, adicione os seus.
 MODELS: dict[str, ModelSpec] = {
+    "phi2": ModelSpec(
+        key="phi2",
+        repo_id="microsoft/phi-2",
+        notes=(
+            "MIT. 2.7B base model, 2048-token context. Uses the model-card "
+            "Instruct/Output wrapper instead of a chat template."
+        ),
+        extra_kwargs={
+            "prompt_wrapper": "Instruct: {prompt}\nOutput:",
+            "max_model_len": 2048,
+        },
+    ),
     "phi4-mini": ModelSpec(
         key="phi4-mini",
         repo_id="microsoft/Phi-4-mini-instruct",
@@ -127,16 +139,28 @@ MODELS: dict[str, ModelSpec] = {
     "llama3.1-8b": ModelSpec(
         key="llama3.1-8b",
         repo_id="meta-llama/Llama-3.1-8B-Instruct",
+        extra_kwargs={"max_model_len": 8192},
         notes=(
             "Licença Llama 3.1, aprovação manual: aceite os termos em "
             "huggingface.co/meta-llama/Llama-3.1-8B-Instruct e defina HF_TOKEN. "
-            "Já em cache local (~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct)."
+            "Contexto operacional limitado a 8192 tokens para manter espaço de KV-cache "
+            "sem truncar os prompts deste experimento."
         ),
     ),
     "mistral-7b": ModelSpec(
         key="mistral-7b",
         repo_id="mistralai/Mistral-7B-Instruct-v0.3",
         notes="Apache 2.0. 7B.",
+    ),
+    "deepseek-r1-distill-llama-8b-ollama": ModelSpec(
+        key="deepseek-r1-distill-llama-8b-ollama",
+        repo_id="deepseek-r1:8b-llama-distill-fp16",
+        provider="ollama",
+        extra_kwargs={"tag": "deepseek-r1:8b-llama-distill-fp16"},
+        notes=(
+            "DeepSeek-R1-Distill-Llama-8B via Ollama, FP16 tag selected to avoid "
+            "quantization loss. Operational context is controlled by RMCQ_OLLAMA_NUM_CTX."
+        ),
     ),
 }
 

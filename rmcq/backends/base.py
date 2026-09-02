@@ -112,6 +112,10 @@ class Backend(ABC):
 
     def render(self, tokenizer: Any, prompt: str, system: str | None = None) -> str:
         """Render a chat prompt as text for APIs that explicitly need text."""
+        wrapper = self.spec.extra_kwargs.get("prompt_wrapper")
+        if wrapper:
+            body = f"{system}\n\n{prompt}" if system else prompt
+            return str(wrapper).format(prompt=body)
         messages = ([{"role": "system", "content": system}] if system else []) + [
             {"role": "user", "content": prompt}
         ]
@@ -132,6 +136,14 @@ class Backend(ABC):
         can change or duplicate special tokens. Local backends consume token
         ids, so they should use this lossless path instead.
         """
+        wrapper = self.spec.extra_kwargs.get("prompt_wrapper")
+        if wrapper:
+            rendered = self.render(tokenizer, prompt, system)
+            encoded = tokenizer(rendered, add_special_tokens=True)["input_ids"]
+            if hasattr(encoded, "tolist"):
+                encoded = encoded.tolist()
+            return [int(token_id) for token_id in encoded]
+
         messages = ([{"role": "system", "content": system}] if system else []) + [
             {"role": "user", "content": prompt}
         ]

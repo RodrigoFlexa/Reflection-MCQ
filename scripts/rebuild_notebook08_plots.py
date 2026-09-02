@@ -29,8 +29,9 @@ cells = [
 # 08 — Análise comparativa do threshold de similaridade
 
 Este notebook **só lê os resultados**: não carrega modelos, não gera reflexões e
-não refaz bootstrap. A análise compara `compact`, `simple`, `diagnostic`, `complex`
-e `external_reflection` (quando disponível), sempre com **uma única memória**.
+não refaz bootstrap. A análise compara `simple` e `complex` escritos pelo próprio
+estudante com `external_simple` e `external_complex` escritos pelo GPT externo,
+sempre com **uma única memória**.
 
 Além das curvas individuais, os painéis abaixo respondem quatro perguntas:
 
@@ -61,7 +62,7 @@ else:
 
 RESULTS_ROOT = ROOT / "data" / "results" / "similarity_threshold_v2"
 EXPERIMENT_ID = os.environ.get("RMCQ_THRESHOLD_EXPERIMENT_ID") or None
-COMPARISON_POOLS = ["all", "errors"]
+COMPARISON_POOLS = ["all"]
 SAVE_FIGURES = True
 
 REQUIRED = [
@@ -90,20 +91,30 @@ else:
     EXPERIMENT_ID = OUT_DIR.name
 
 # Diretório novo: não sobrescreve os plots da análise anterior.
-PLOT_DIR = OUT_DIR / "plots_comparison_v2"
+PLOT_DIR = OUT_DIR / "plots_accuracy_v3"
 PLOT_DIR.mkdir(parents=True, exist_ok=True)
 manifest = json.loads((OUT_DIR / "manifest.json").read_text(encoding="utf-8"))
 
-preferred_depths = ["compact", "simple", "diagnostic", "complex", "external_reflection"]
+preferred_depths = ["simple", "external_simple", "complex", "external_complex"]
 available_depths = list(manifest.get("analysis_depths", manifest.get("depths", [])))
 DEPTH_ORDER = [d for d in preferred_depths if d in available_depths]
 DEPTH_ORDER += [d for d in available_depths if d not in DEPTH_ORDER]
 MODELS = list(manifest["models"])
 DATASETS = list(manifest["datasets"])
-DEPTH_COLORS = dict(zip(DEPTH_ORDER, plt.cm.viridis(np.linspace(0.12, 0.88, len(DEPTH_ORDER)))))
-if "external_reflection" in DEPTH_COLORS:
-    DEPTH_COLORS["external_reflection"] = "tab:purple"
-DEPTH_LABELS = {"external_reflection": "external (GPT)"}
+DEPTH_COLORS = {
+    "simple": "tab:blue", "external_simple": "tab:cyan",
+    "complex": "tab:orange", "external_complex": "tab:purple",
+}
+DEPTH_COLORS.update({
+    depth: color for depth, color in zip(
+        [d for d in DEPTH_ORDER if d not in DEPTH_COLORS],
+        plt.cm.viridis(np.linspace(0.12, 0.88, max(1, len(DEPTH_ORDER)))),
+    )
+})
+DEPTH_LABELS = {
+    "external_simple": "simple — GPT",
+    "external_complex": "complex — GPT",
+}
 
 plt.rcParams.update({"figure.dpi": 110, "axes.grid": True, "grid.alpha": 0.2})
 
@@ -205,21 +216,28 @@ else:
 
 external_coverage_df = optional["external_coverage"]
 if not external_coverage_df.empty:
-    coverage = external_coverage_df.pivot(index="dataset", columns="model", values="coverage").reindex(
-        index=DATASETS, columns=MODELS
+    external_coverage_df["row"] = (
+        external_coverage_df["dataset"] + " | " + external_coverage_df["depth"]
     )
-    usable = external_coverage_df.pivot(index="dataset", columns="model", values="usable").reindex(
-        index=DATASETS, columns=MODELS
+    coverage_rows_order = [
+        f"{dataset} | {depth}" for dataset in DATASETS
+        for depth in ["external_simple", "external_complex"]
+    ]
+    coverage = external_coverage_df.pivot(index="row", columns="model", values="coverage").reindex(
+        index=coverage_rows_order, columns=MODELS
     )
-    requested = external_coverage_df.pivot(index="dataset", columns="model", values="requested").reindex(
-        index=DATASETS, columns=MODELS
+    usable = external_coverage_df.pivot(index="row", columns="model", values="usable").reindex(
+        index=coverage_rows_order, columns=MODELS
     )
-    fig, ax = plt.subplots(figsize=(max(6, 1.8 * len(MODELS)), max(4, 0.75 * len(DATASETS))))
+    requested = external_coverage_df.pivot(index="row", columns="model", values="requested").reindex(
+        index=coverage_rows_order, columns=MODELS
+    )
+    fig, ax = plt.subplots(figsize=(max(6, 1.8 * len(MODELS)), max(5, 0.55 * len(coverage_rows_order))))
     image = ax.imshow(np.ma.masked_invalid(coverage.to_numpy(float)), cmap="YlGn", vmin=0, vmax=1,
                       aspect="auto")
     ax.set_xticks(range(len(MODELS)), MODELS, rotation=20)
-    ax.set_yticks(range(len(DATASETS)), DATASETS)
-    for i in range(len(DATASETS)):
+    ax.set_yticks(range(len(coverage_rows_order)), coverage_rows_order)
+    for i in range(len(coverage_rows_order)):
         for j in range(len(MODELS)):
             value = coverage.iloc[i, j]
             label = "—" if pd.isna(value) else f"{value:.1%}\n{int(usable.iloc[i, j])}/{int(requested.iloc[i, j])}"
@@ -257,66 +275,82 @@ if not optional["pairs"].empty:
         r"""
 ## 3. Curvas de calibração — reflexões na mesma escala
 
-mesmos limites, tornando diferenças de formato e estabilidade visíveis. A linha
-Cada figura fixa modelo, dataset e origem da memória. Todos os painéis usam os
-mesmos limites, tornando diferenças de formato, gerador e estabilidade visíveis. A linha
-mesmos limites, tornando diferenças de formato e estabilidade visíveis. A linha
-vertical é o threshold aprendido; a faixa é o IC 95% do efeito pareado.
+Cada figura corresponde a **um modelo de linguagem** e cada painel a um dataset.
+As quatro curvas mostram a acurácia após inserir uma única reflexão; a linha preta
+tracejada é a acurácia baseline, sem memória. A faixa é o IC 95% da acurácia local.
+Todas as reflexões de origem entram na recuperação, independentemente de terem vindo
+de uma resposta correta ou incorreta (`pool=all`).
 """
     ),
     code(
         r"""
-def plot_calibration_dashboard(model, dataset, pool):
-    ncols = 2
-    nrows = int(np.ceil(len(DEPTH_ORDER) / ncols))
-    fig, axes = plt.subplots(nrows, ncols, figsize=(13, 4.4 * nrows), sharex=True,
-                             sharey=True, squeeze=False)
-    axes = axes.ravel()
-    selected = curves_df[
-        (curves_df.model == model) & (curves_df.dataset == dataset)
-        & (curves_df.pool == pool) & (curves_df.depth.isin(DEPTH_ORDER))
+accuracy_columns = {
+    "memory_accuracy", "memory_ci_low", "memory_ci_high", "baseline_accuracy"
+}
+missing_accuracy = accuracy_columns - set(curves_df.columns)
+if missing_accuracy:
+    raise RuntimeError(
+        "As curvas pertencem ao formato antigo. Rode novamente o experimento (ou o "
+        "comando finish da reflexão externa) antes dos plots. Colunas ausentes: "
+        + ", ".join(sorted(missing_accuracy))
+    )
+
+
+def calibration_baseline(model, dataset):
+    sub = results_df[
+        (results_df.model == model) & (results_df.dataset == dataset)
+        & (results_df.analysis_split == "calibration")
     ]
-    if selected.empty:
-        plt.close(fig)
-        return
-    y_values = selected[["ci_low", "ci_high"]].to_numpy(float)
-    finite = y_values[np.isfinite(y_values)]
-    y_limit = max(0.05, np.max(np.abs(finite)) * 1.08) if len(finite) else 0.1
-    for ax, depth in zip(axes, DEPTH_ORDER):
-        curve = selected[selected.depth == depth].sort_values("similarity")
-        ax.axhline(0, color="black", lw=1)
-        if curve.empty:
-            ax.set_title(f"{depth} — sem dados")
-            continue
-        x = curve.similarity.to_numpy(float)
-        effect = curve.effect.to_numpy(float)
-        ax.plot(x, effect, color=DEPTH_COLORS[depth], lw=2)
-        ax.fill_between(x, curve.ci_low.to_numpy(float), curve.ci_high.to_numpy(float),
-                        color=DEPTH_COLORS[depth], alpha=0.20)
-        estimate = threshold_df[
-            (threshold_df.model == model) & (threshold_df.dataset == dataset)
-            & (threshold_df.depth == depth) & (threshold_df.pool == pool)
+    unique = sub.dropna(subset=["baseline_correct"]).drop_duplicates("val_uid")
+    return unique.baseline_correct.astype(float).mean() if len(unique) else np.nan
+
+
+def plot_accuracy_dashboard(model):
+    ncols = min(2, max(1, len(DATASETS)))
+    nrows = int(np.ceil(len(DATASETS) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(7 * ncols, 4.8 * nrows),
+                             sharex=True, sharey=True, squeeze=False)
+    axes = axes.ravel()
+    for ax, dataset in zip(axes, DATASETS):
+        selected = curves_df[
+            (curves_df.model == model) & (curves_df.dataset == dataset)
+            & (curves_df.pool == "all") & (curves_df.depth.isin(DEPTH_ORDER))
         ]
-        if not estimate.empty and pd.notna(estimate.iloc[0].threshold):
-            t = float(estimate.iloc[0].threshold)
-            rate = estimate.iloc[0].get("threshold_identification_rate", np.nan)
-            ax.axvline(t, color="tab:red", ls="--", lw=1.5)
-            ax.text(0.03, 0.95, f"t={t:.3f} | ident.={rate:.0%}", transform=ax.transAxes,
-                    va="top", fontsize=9)
-        ax.set_title(DEPTH_LABELS.get(depth, depth))
-        ax.set_ylim(-y_limit, y_limit)
-        ax.set_xlabel("similaridade")
-        ax.set_ylabel("efeito na acurácia")
-    for ax in axes[len(DEPTH_ORDER):]:
+        baseline = calibration_baseline(model, dataset)
+        if pd.notna(baseline):
+            ax.axhline(baseline, color="black", lw=1.8, ls="--",
+                       label=f"baseline ({baseline:.1%})")
+        for depth in DEPTH_ORDER:
+            curve = selected[selected.depth == depth].sort_values("similarity")
+            if curve.empty:
+                continue
+            x = curve.similarity.to_numpy(float)
+            y = curve.memory_accuracy.to_numpy(float)
+            low = curve.memory_ci_low.to_numpy(float)
+            high = curve.memory_ci_high.to_numpy(float)
+            label = DEPTH_LABELS.get(depth, depth)
+            ax.plot(x, y, color=DEPTH_COLORS[depth], lw=2, label=label)
+            ax.fill_between(x, low, high, color=DEPTH_COLORS[depth], alpha=0.12)
+        ax.set_title(dataset)
+        ax.set_ylim(0, 1)
+        ax.set_xlabel("similaridade entre questões")
+        ax.set_ylabel("acurácia")
+    for ax in axes[len(DATASETS):]:
         ax.axis("off")
-    fig.suptitle(f"Calibração | {model} | {dataset} | pool={pool}", fontsize=14)
-    finish(fig, f"02_calibration__{model}__{dataset}__{pool}.png")
+    legend = {}
+    for ax in axes[:len(DATASETS)]:
+        handles, labels = ax.get_legend_handles_labels()
+        legend.update(zip(labels, handles))
+    if legend:
+        fig.legend(list(legend.values()), list(legend), loc="upper center",
+                   ncol=min(5, len(legend)),
+                   bbox_to_anchor=(0.5, 1.01), frameon=False)
+    fig.suptitle(f"Acurácia por similaridade | {model}", fontsize=14, y=1.06)
+    finish(fig, f"02_accuracy_curves__{model}.png")
 
 
 for model in MODELS:
-    for dataset in DATASETS:
-        for pool in COMPARISON_POOLS:
-            plot_calibration_dashboard(model, dataset, pool)
+    plot_accuracy_dashboard(model)
 """
     ),
     md(
@@ -477,22 +511,21 @@ for pool in COMPARISON_POOLS:
     ),
     md(
         r"""
-## 7. GPT externo versus a reflexão diagnóstica do próprio estudante
+## 7. GPT externo versus o próprio estudante, mantendo o formato
 
-O prompt de `external_reflection` é propositalmente o mesmo de `diagnostic`.
-Assim, este painel compara principalmente **quem escreveu a memória**: no eixo
-horizontal, o próprio modelo pequeno; no vertical, o GPT externo. Pontos acima
-da diagonal favorecem a reflexão externa naquela combinação.
+`external_simple` usa exatamente o prompt `simple`, e `external_complex` usa o
+prompt `complex`. O eixo horizontal contém a reflexão do estudante e o vertical
+a reflexão GPT do mesmo formato. Pontos acima da diagonal favorecem o GPT.
 """
     ),
     code(
         r"""
 direct = policy_df[
     (policy_df.policy == "threshold_top")
-    & (policy_df.depth.isin(["diagnostic", "external_reflection"]))
+    & (policy_df.depth.isin(DEPTH_ORDER))
 ].pivot_table(
     index=["model", "dataset", "pool"], columns="depth", values="difference"
-).dropna(subset=["diagnostic", "external_reflection"], how="any")
+)
 
 for pool in COMPARISON_POOLS:
     sub_pool = direct.reset_index()
@@ -500,20 +533,32 @@ for pool in COMPARISON_POOLS:
     if sub_pool.empty:
         continue
     fig, axes = plt.subplots(1, len(MODELS), figsize=(7 * len(MODELS), 6), squeeze=False)
-    values = 100 * sub_pool[["diagnostic", "external_reflection"]].to_numpy(float)
-    limit = max(3, np.max(np.abs(values)) * 1.12)
+    pair_columns = [
+        column for pair in [("simple", "external_simple"), ("complex", "external_complex")]
+        for column in pair if column in sub_pool.columns
+    ]
+    values = 100 * sub_pool[pair_columns].to_numpy(float)
+    finite = values[np.isfinite(values)]
+    limit = max(3, np.max(np.abs(finite)) * 1.12) if len(finite) else 3
     for ax, model in zip(axes.ravel(), MODELS):
         sub = sub_pool[sub_pool.model == model]
         ax.plot([-limit, limit], [-limit, limit], color="black", ls="--", lw=1)
         ax.axhline(0, color="gray", lw=0.8); ax.axvline(0, color="gray", lw=0.8)
         for row in sub.itertuples():
-            x, y = 100 * row.diagnostic, 100 * row.external_reflection
-            ax.scatter(x, y, color="tab:purple", s=55)
-            ax.annotate(row.dataset, (x, y), xytext=(4, 3), textcoords="offset points", fontsize=8)
+            for base, external, marker in [
+                ("simple", "external_simple", "o"), ("complex", "external_complex", "s")
+            ]:
+                x, y = getattr(row, base, np.nan), getattr(row, external, np.nan)
+                if not (np.isfinite(x) and np.isfinite(y)):
+                    continue
+                x, y = 100 * x, 100 * y
+                ax.scatter(x, y, color=DEPTH_COLORS[external], marker=marker, s=55)
+                ax.annotate(f"{row.dataset}/{base}", (x, y), xytext=(4, 3),
+                            textcoords="offset points", fontsize=8)
         ax.set(xlim=(-limit, limit), ylim=(-limit, limit), title=model,
-               xlabel="diagnostic do estudante (pp)", ylabel="external GPT (pp)")
-    fig.suptitle(f"Mesmo prompt: estudante versus GPT externo | pool={pool}", fontsize=14)
-    finish(fig, f"07_external_vs_diagnostic__{pool}.png")
+               xlabel="reflexão do estudante (pp)", ylabel="mesmo formato pelo GPT (pp)")
+    fig.suptitle(f"Mesmo formato: estudante versus GPT externo | pool={pool}", fontsize=14)
+    finish(fig, f"07_external_vs_student__{pool}.png")
 """
     ),
     md(
@@ -622,7 +667,7 @@ if not external_coverage_df.empty:
     else:
         for row in low_coverage.itertuples():
             print(
-                f"- {row.model}/{row.dataset}: {row.coverage:.1%} utilizável; "
+                f"- {row.model}/{row.dataset}/{row.depth}: {row.coverage:.1%} utilizável; "
                 f"missing={row.missing}, empty={row.empty}, hash_mismatch={row.hash_mismatch}"
             )
 
