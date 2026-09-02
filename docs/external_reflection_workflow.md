@@ -86,10 +86,17 @@ AZURE_OPENAI_BASE_URL=<URL_DO_GATEWAY>
 # ou AZURE_OPENAI_ENDPOINT=<ENDPOINT_DO_RECURSO>
 AZURE_OPENAI_API_KEY=<SEGREDO_LOCAL>
 AZURE_OPENAI_API_VERSION=2025-01-01-preview
+AZURE_OPENAI_CA_BUNDLE=petrobras-ca-root.pem
 RMCQ_AZURE_CONCURRENCY=4
 RMCQ_AZURE_REASONING_MIN_TOKENS=4000
 RMCQ_AZURE_FAIL_ON_EMPTY=1
 ```
+
+Com esse valor relativo, `petrobras-ca-root.pem` deve estar na raiz clonada do
+repositório, ao lado de `run_external_reflection.py`. Também é possível informar
+um caminho absoluto. O backend verifica se o arquivo existe e o entrega ao
+cliente HTTP como CA para a conexão TLS; se o caminho estiver errado ou o PEM
+for inválido, a execução para com uma mensagem explícita antes das gerações.
 
 Nunca execute `git add .env`. Gere as reflexões; o comando salva checkpoints a
 cada lote e pode ser repetido após uma queda:
@@ -105,8 +112,10 @@ python run_external_reflection.py status \
   --reflection-model gpt-5-4-petrobras
 ```
 
-Somente faça o commit quando `generation_receipt.json` indicar
-`"complete": true` e o status mostrar o mesmo número de requests e responses:
+No fluxo normal, `generation_receipt.json` indica `"complete": true`. Se o
+filtro de conteúdo do gateway obrigar a pular alguns prompts, respostas ausentes
+ou com `text` vazio também podem ser versionadas: o estágio `finish` as excluirá
+somente da condição externa e produzirá uma auditoria de cobertura.
 
 ```bash
 git add external_reflection_exchange/<ID>/gpt-5-4-petrobras/responses
@@ -137,12 +146,17 @@ python -u run_external_reflection.py finish \
 
 O `finish`:
 
-1. valida hashes e contagens do pacote recebido;
-2. importa as reflexões para cada estudante;
+1. valida experimento e hashes do pacote recebido;
+2. importa apenas reflexões com texto não vazio e hash correto;
 3. executa as questões com uma memória externa por prompt;
 4. salva checkpoints após cada lote;
 5. acrescenta `depth=external_reflection` aos outcomes;
-6. recalcula curvas, thresholds, políticas holdout e transições para os cinco casos.
+6. salva `analysis/external_reflection_coverage.csv` com ausentes/vazias por
+   estudante e dataset;
+7. recalcula curvas, thresholds, políticas holdout e transições para os cinco casos.
+
+Esse comportamento tolerante é o padrão. Para exigir 100% das reflexões e
+interromper diante de qualquer ausência, use `--strict-external` no `finish`.
 
 Se o servidor cair, repita exatamente o mesmo comando, sem `--fresh`.
 
@@ -156,7 +170,9 @@ notebooks/08_similarity_reflection_threshold_plots.ipynb
 
 O notebook detecta `manifest["analysis_depths"]` e inclui automaticamente
 `external_reflection`. Além dos painéis gerais, ele produz o gráfico direto
-`diagnostic` versus `external_reflection` usando o mesmo prompt.
+`diagnostic` versus `external_reflection` usando o mesmo prompt e um heatmap de
+cobertura externa. Cobertura inferior a 95% aparece como alerta de possível
+viés de seleção causado pelo filtro de conteúdo.
 
 Para fixar uma execução quando houver vários IDs:
 
@@ -173,6 +189,7 @@ jupyter lab notebooks/08_similarity_reflection_threshold_plots.ipynb
 - Não rode novamente `run_similarity_threshold.py` sobre o mesmo resultado
   depois do `finish`, pois ele recria a análise-base sem a condição externa.
   Se isso acontecer, basta executar `finish` novamente; os caches serão usados.
-- Antes de `finish`, confirme que o Git trouxe `generation_receipt.json` completo.
+- Antes de `finish`, use `status` para conferir quantas respostas têm texto
+  utilizável. Um receipt incompleto é aceito e auditado por padrão.
 - Resultados finais e plots continuam locais no servidor de GPU; somente o
   pacote de intercâmbio é versionado.

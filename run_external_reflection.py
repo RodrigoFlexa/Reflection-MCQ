@@ -37,6 +37,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "3"))
     parser.add_argument("--student-backend", default="vllm", choices=("vllm", "hf", "stub"))
     parser.add_argument("--reflection-backend", default="azure", choices=("azure", "stub"))
+    parser.add_argument(
+        "--strict-external", action="store_true",
+        help="Abort finish if any external reflection is missing, empty, or has a bad hash.",
+    )
     parser.add_argument("--fresh", action="store_true", help="Ignore only this stage's caches.")
     return parser.parse_args()
 
@@ -545,8 +549,18 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
 
     manifest = read_manifest(experiment_dir)
     receipt_path = exchange_dir / "generation_receipt.json"
-    if not receipt_path.exists() or not json.loads(receipt_path.read_text(encoding="utf-8")).get("complete"):
-        raise RuntimeError("External generation receipt is absent or incomplete.")
+    receipt_complete = (
+        receipt_path.exists()
+        and bool(json.loads(receipt_path.read_text(encoding="utf-8")).get("complete"))
+    )
+    if not receipt_complete:
+        message = (
+            "External generation receipt is absent or incomplete. "
+            "Missing/empty reflections will be skipped and audited."
+        )
+        if args.strict_external:
+            raise RuntimeError(message)
+        print("WARNING:", message, flush=True)
     exchange_manifest = json.loads((exchange_dir / "exchange_manifest.json").read_text(encoding="utf-8"))
     if exchange_manifest["experiment_id"] != args.experiment_id:
         raise RuntimeError("Exchange belongs to another experiment.")
@@ -558,6 +572,7 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
     existing = existing[existing.depth != EXTERNAL_DEPTH].copy()
     memory_template = manifest["memory_prompt"]
     external_rows: list[dict[str, Any]] = []
+    coverage_rows: list[dict[str, Any]] = []
 
     for student in manifest["models"]:
         print(f"\nSTUDENT {student} | reflection {args.reflection_model}", flush=True)
@@ -565,19 +580,61 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
         response_rows: list[dict[str, Any]] = []
         for dataset in datasets:
             request_path, response_path = exchange_paths(exchange_dir, student, dataset)
-            request_rows.extend(load_jsonl(request_path))
-            response_rows.extend(load_jsonl(response_path))
+            dataset_requests = load_jsonl(request_path)
+            raw_responses = load_jsonl(response_path) if response_path.exists() else []
+            dataset_responses = {
+                row.get("key"): row for row in raw_responses
+                if isinstance(row, dict) and row.get("key")
+            }
+            dataset_request_map = {row["key"]: row for row in dataset_requests}
+            requested_keys = set(dataset_request_map)
+            missing_keys = requested_keys - set(dataset_responses)
+            mismatched_keys = {
+                key for key in requested_keys & set(dataset_responses)
+                if dataset_responses[key].get("prompt_sha256")
+                != dataset_request_map[key]["prompt_sha256"]
+            }
+            usable_keys = {
+                key for key in requested_keys & set(dataset_responses)
+                if key not in mismatched_keys
+                and str(dataset_responses[key].get("text") or "").strip()
+            }
+            empty_keys = (requested_keys & set(dataset_responses)) - mismatched_keys - usable_keys
+            extra_keys = set(dataset_responses) - requested_keys
+            requested_n = len(requested_keys)
+            usable_n = len(usable_keys)
+            dataset_coverage = usable_n / requested_n if requested_n else 0.0
+            coverage_rows.append({
+                "model": student,
+                "dataset": dataset,
+                "reflection_model": args.reflection_model,
+                "requested": requested_n,
+                "response_records": len(requested_keys & set(dataset_responses)),
+                "usable": usable_n,
+                "missing": len(missing_keys),
+                "empty": len(empty_keys),
+                "hash_mismatch": len(mismatched_keys),
+                "extra_records": len(extra_keys),
+                "coverage": dataset_coverage,
+            })
+            problems = len(missing_keys) + len(empty_keys) + len(mismatched_keys)
+            print(
+                f"{student}/{dataset}: external usable={usable_n:,}/{requested_n:,} "
+                f"({dataset_coverage:.1%}); "
+                f"missing={len(missing_keys):,} empty={len(empty_keys):,} "
+                f"hash_mismatch={len(mismatched_keys):,}",
+                flush=True,
+            )
+            if args.strict_external and problems:
+                raise RuntimeError(
+                    f"{student}/{dataset}: strict external validation failed "
+                    f"({len(missing_keys)=}, {len(empty_keys)=}, {len(mismatched_keys)=})."
+                )
+            request_rows.extend(dataset_requests)
+            response_rows.extend(dataset_responses[key] for key in usable_keys)
         requests = {row["key"]: row for row in request_rows}
         responses = {row["key"]: row for row in response_rows}
-        missing = [key for key in requests if key not in responses]
-        mismatched = [
-            key for key in requests if key in responses
-            and responses[key].get("prompt_sha256") != requests[key]["prompt_sha256"]
-        ]
-        if missing or mismatched:
-            raise RuntimeError(f"{student}: incomplete/mismatched exchange ({len(missing)=}, {len(mismatched)=}).")
-
-        imported = [responses[key] for key in requests]
+        imported = [responses[key] for key in requests if key in responses]
         reflection_cache = experiment_dir / "generations" / student / f"reflections_{EXTERNAL_DEPTH}.jsonl"
         save_jsonl(reflection_cache, imported)
         memories = {}
@@ -652,16 +709,32 @@ def finish_experiment(root: Path, experiment_dir: Path, exchange_dir: Path,
 
     combined = pd.concat([existing, pd.DataFrame(external_rows)], ignore_index=True)
     combined.to_csv(experiment_dir / "analysis" / "all_outcomes.csv", index=False)
+    coverage_frame = pd.DataFrame(coverage_rows)
+    coverage_frame.to_csv(
+        experiment_dir / "analysis" / "external_reflection_coverage.csv", index=False,
+    )
     rebuild_analysis(experiment_dir, manifest)
+    requested_total = int(coverage_frame.requested.sum()) if not coverage_frame.empty else 0
+    usable_total = int(coverage_frame.usable.sum()) if not coverage_frame.empty else 0
+    overall_coverage = usable_total / requested_total if requested_total else 0.0
     manifest["analysis_depths"] = list(dict.fromkeys(list(manifest.get("depths", [])) + [EXTERNAL_DEPTH]))
     manifest["external_reflection"] = {
         "reflection_model": args.reflection_model,
         "prompt_reference": "diagnostic",
         "exchange_format_version": exchange_manifest["format_version"],
         "exchange_relative_path": str(exchange_dir.relative_to(root)) if exchange_dir.is_relative_to(root) else str(exchange_dir),
+        "requested_reflections": requested_total,
+        "usable_reflections": usable_total,
+        "coverage": overall_coverage,
+        "incomplete_inputs_allowed": not args.strict_external,
     }
     save_json(experiment_dir / "manifest.json", manifest)
-    print(f"External condition complete: {len(external_rows):,} outcome rows.", flush=True)
+    print(
+        f"External condition complete: {len(external_rows):,} outcome rows; "
+        f"usable reflections={usable_total:,}/{requested_total:,} "
+        f"({overall_coverage:.1%}).",
+        flush=True,
+    )
     print("Run notebooks/08_similarity_reflection_threshold_plots.ipynb next.", flush=True)
 
 
@@ -677,8 +750,16 @@ def show_status(experiment_dir: Path, exchange_dir: Path, args: argparse.Namespa
             for dataset in manifest["datasets"]:
                 request_path, response_path = exchange_paths(exchange_dir, student, dataset)
                 requested = len(load_jsonl(request_path)) if request_path.exists() else 0
-                completed = len(load_jsonl(response_path)) if response_path.exists() else 0
-                print(f"{student}/{dataset}: requests={requested:,} responses={completed:,}")
+                response_rows = load_jsonl(response_path) if response_path.exists() else []
+                completed = len(response_rows)
+                usable = sum(
+                    bool(str(row.get("text") or "").strip())
+                    for row in response_rows if isinstance(row, dict)
+                )
+                print(
+                    f"{student}/{dataset}: requests={requested:,} "
+                    f"responses={completed:,} usable_text={usable:,}"
+                )
     result_manifest = read_manifest(experiment_dir)
     print("analysis_depths:", result_manifest.get("analysis_depths", result_manifest.get("depths")))
 
