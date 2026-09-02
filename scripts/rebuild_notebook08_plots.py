@@ -26,15 +26,18 @@ def code(text: str) -> dict:
 cells = [
     md(
         r"""
-# 08 — Plots do threshold de similaridade
+# 08 — Análise comparativa do threshold de similaridade
 
-Este notebook **não executa modelos, embeddings, recuperação ou bootstrap**.
-Ele apenas carrega os CSVs produzidos por `run_similarity_threshold.py` e
-recria figuras e resumos.
+Este notebook **só lê os resultados** de `run_similarity_threshold.py`: não carrega
+modelos, não gera reflexões e não refaz bootstrap. A análise foi organizada para
+comparar `compact`, `simple`, `diagnostic` e `complex` sob o limite de **uma memória**.
 
-Por padrão, ele abre a execução concluída mais recente. Para escolher outra,
-preencha `EXPERIMENT_ID` na célula seguinte ou defina a variável de ambiente
-`RMCQ_THRESHOLD_EXPERIMENT_ID` antes de iniciar o Jupyter.
+Além das curvas individuais, os painéis abaixo respondem quatro perguntas:
+
+1. Em que similaridade surge um benefício estável?
+2. O corte aprendido generaliza para o holdout e supera o placebo?
+3. O ganho vem de corrigir mais respostas do que estragar respostas corretas?
+4. Algum estilo parece melhor apenas porque suas gerações foram truncadas?
 """
     ),
     code(
@@ -57,16 +60,16 @@ else:
     raise RuntimeError("Não encontrei a raiz do repositório contendo rmcq/")
 
 RESULTS_ROOT = ROOT / "data" / "results" / "similarity_threshold_v2"
-
-# Informe um ID para fixar a execução, ou deixe None para usar a concluída mais recente.
 EXPERIMENT_ID = os.environ.get("RMCQ_THRESHOLD_EXPERIMENT_ID") or None
+COMPARISON_POOLS = ["all", "errors"]
+SAVE_FIGURES = True
 
 REQUIRED = [
+    "manifest.json",
     "analysis/all_outcomes.csv",
     "analysis/thresholds_calibration.csv",
     "analysis/effect_curves_calibration.csv",
     "analysis/heldout_policies.csv",
-    "analysis/decision_transitions.csv",
 ]
 
 
@@ -80,23 +83,48 @@ if EXPERIMENT_ID:
         missing = [x for x in REQUIRED if not (OUT_DIR / x).exists()]
         raise FileNotFoundError(f"Execução {EXPERIMENT_ID} incompleta; faltam: {missing}")
 else:
-    candidates = [path for path in RESULTS_ROOT.iterdir() if path.is_dir() and is_complete(path)]
+    candidates = [p for p in RESULTS_ROOT.iterdir() if p.is_dir() and is_complete(p)]
     if not candidates:
-        raise FileNotFoundError(
-            "Nenhuma execução concluída. Rode primeiro: python -u run_similarity_threshold.py"
-        )
-    OUT_DIR = max(candidates, key=lambda path: (path / "analysis/heldout_policies.csv").stat().st_mtime)
+        raise FileNotFoundError("Nenhuma execução concluída foi encontrada.")
+    OUT_DIR = max(candidates, key=lambda p: (p / "analysis/heldout_policies.csv").stat().st_mtime)
     EXPERIMENT_ID = OUT_DIR.name
 
-PLOT_DIR = OUT_DIR / "plots_from_notebook"
+# Diretório novo: não sobrescreve os plots da análise anterior.
+PLOT_DIR = OUT_DIR / "plots_comparison_v2"
 PLOT_DIR.mkdir(parents=True, exist_ok=True)
 manifest = json.loads((OUT_DIR / "manifest.json").read_text(encoding="utf-8"))
 
+preferred_depths = ["compact", "simple", "diagnostic", "complex"]
+available_depths = list(manifest.get("depths", []))
+DEPTH_ORDER = [d for d in preferred_depths if d in available_depths]
+DEPTH_ORDER += [d for d in available_depths if d not in DEPTH_ORDER]
+MODELS = list(manifest["models"])
+DATASETS = list(manifest["datasets"])
+DEPTH_COLORS = dict(zip(DEPTH_ORDER, plt.cm.viridis(np.linspace(0.12, 0.88, len(DEPTH_ORDER)))))
+
+plt.rcParams.update({"figure.dpi": 110, "axes.grid": True, "grid.alpha": 0.2})
+
+
+def finish(fig, filename):
+    fig.tight_layout()
+    if SAVE_FIGURES:
+        fig.savefig(PLOT_DIR / filename, dpi=190, bbox_inches="tight")
+    plt.show()
+    plt.close(fig)
+
+
+def short_path(path):
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
+
+
 print("experiment_id:", EXPERIMENT_ID)
-print("diretório:", OUT_DIR.relative_to(ROOT))
-print("modelos:", manifest["models"])
-print("datasets:", manifest["datasets"])
-print("pipeline:", manifest.get("pipeline_version"))
+print("diretório:", short_path(OUT_DIR))
+print("modelos:", MODELS)
+print("datasets:", DATASETS)
+print("reflexões:", DEPTH_ORDER)
 """
     ),
     code(
@@ -105,39 +133,91 @@ results_df = pd.read_csv(OUT_DIR / "analysis" / "all_outcomes.csv")
 threshold_df = pd.read_csv(OUT_DIR / "analysis" / "thresholds_calibration.csv")
 curves_df = pd.read_csv(OUT_DIR / "analysis" / "effect_curves_calibration.csv")
 policy_df = pd.read_csv(OUT_DIR / "analysis" / "heldout_policies.csv")
-transition_df = pd.read_csv(OUT_DIR / "analysis" / "decision_transitions.csv")
 
-dedup_path = OUT_DIR / "retrieval" / "dedup_audit.csv"
-truncation_path = OUT_DIR / "retrieval" / "embedding_truncation.csv"
-pairs_path = OUT_DIR / "retrieval" / "pairs.csv"
-dedup_df = pd.read_csv(dedup_path) if dedup_path.exists() else pd.DataFrame()
-truncation_df = pd.read_csv(truncation_path) if truncation_path.exists() else pd.DataFrame()
-pairs_df = pd.read_csv(pairs_path) if pairs_path.exists() else pd.DataFrame()
+optional = {}
+for name, relative in {
+    "transitions": "analysis/decision_transitions.csv",
+    "dedup": "retrieval/dedup_audit.csv",
+    "truncation": "retrieval/embedding_truncation.csv",
+    "pairs": "retrieval/pairs.csv",
+}.items():
+    path = OUT_DIR / relative
+    optional[name] = pd.read_csv(path) if path.exists() else pd.DataFrame()
 
 print(f"{len(results_df):,} resultados individuais")
 print(f"{len(threshold_df):,} estimativas de threshold")
 print(f"{len(policy_df):,} avaliações holdout")
-display(threshold_df.head())
+display(threshold_df.groupby(["depth", "pool"], dropna=False)["threshold"].agg(["count", "median"]))
 """
     ),
     md(
         r"""
-## Auditoria dos dados e da recuperação
+## 1. Qualidade operacional das reflexões
 
-Antes de interpretar os thresholds, confira quantos exemplos duplicados foram
-removidos, quanto texto ultrapassou o limite do encoder e quais similaridades
-foram realmente alcançadas em cada braço.
+O gráfico não tenta julgar semanticamente a reflexão. Ele verifica um confundidor
+importante em modelos pequenos: tamanho da saída e término por limite de tokens.
+Uma variante muito truncada não está sendo comparada em condições equivalentes.
 """
     ),
     code(
         r"""
-if not dedup_df.empty:
-    display(dedup_df)
-if not truncation_df.empty:
-    display(truncation_df)
-if not pairs_df.empty:
+quality_rows = []
+for model in MODELS:
+    for depth in DEPTH_ORDER:
+        path = OUT_DIR / "generations" / model / f"reflections_{depth}.jsonl"
+        if not path.exists():
+            continue
+        records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if not records:
+            continue
+        words = [len(str(r.get("text", "")).split()) for r in records]
+        tokens = [r.get("completion_tokens", np.nan) for r in records]
+        reasons = [str(r.get("finish_reason", "")).lower() for r in records]
+        quality_rows.append({
+            "model": model, "depth": depth, "n": len(records),
+            "mean_words": np.mean(words), "mean_tokens": np.nanmean(tokens),
+            "truncation_rate": np.mean([x in {"length", "max_tokens"} for x in reasons]),
+        })
+
+quality_df = pd.DataFrame(quality_rows)
+if quality_df.empty:
+    print("Caches de reflexão não foram encontrados; auditoria ignorada.")
+else:
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+    width = 0.8 / max(1, len(MODELS))
+    x = np.arange(len(DEPTH_ORDER))
+    for i, model in enumerate(MODELS):
+        sub = quality_df[quality_df.model == model].set_index("depth").reindex(DEPTH_ORDER)
+        offset = (i - (len(MODELS) - 1) / 2) * width
+        axes[0].bar(x + offset, sub["mean_tokens"], width, label=model)
+        axes[1].bar(x + offset, 100 * sub["truncation_rate"], width, label=model)
+    axes[0].set(title="Comprimento médio", ylabel="tokens de saída")
+    axes[1].set(title="Término por limite", ylabel="reflexões truncadas (%)")
+    for ax in axes:
+        ax.set_xticks(x, DEPTH_ORDER, rotation=20)
+        ax.legend()
+    finish(fig, "01_reflection_generation_audit.png")
+    display(quality_df.sort_values(["model", "depth"]))
+"""
+    ),
+    md(
+        r"""
+## 2. Cobertura da recuperação
+
+Essas tabelas mostram duplicatas, truncamento do encoder e a faixa de
+similaridades disponível. Um threshold próximo do extremo observado deve ser
+interpretado com cautela porque possui pouco suporte empírico.
+"""
+    ),
+    code(
+        r"""
+if not optional["dedup"].empty:
+    display(optional["dedup"])
+if not optional["truncation"].empty:
+    display(optional["truncation"])
+if not optional["pairs"].empty:
     retrieval_summary = (
-        pairs_df.groupby(["dataset", "arm", "level"])["similarity"]
+        optional["pairs"].groupby(["dataset", "arm", "level"])["similarity"]
         .agg(["count", "min", "median", "max"]).reset_index()
     )
     display(retrieval_summary)
@@ -145,257 +225,320 @@ if not pairs_df.empty:
     ),
     md(
         r"""
-## Curvas por modelo, dataset e profundidade
+## 3. Curvas de calibração — quatro reflexões na mesma escala
 
-Linha contínua: ganho pareado estimado na calibração. Faixa azul: IC 95% do
-pool `all`. Linhas verticais: thresholds identificados. O painel direito usa
-somente o teste holdout.
+Cada figura fixa modelo, dataset e origem da memória. Os quatro painéis usam os
+mesmos limites, tornando diferenças de formato e estabilidade visíveis. A linha
+vertical é o threshold aprendido; a faixa é o IC 95% do efeito pareado.
 """
     ),
     code(
         r"""
-POOL_COLORS = {"all": "tab:blue", "errors": "tab:red", "correct": "tab:green"}
-POLICY_LABELS = {
-    "always_top": "sempre top-1",
-    "threshold_top": "política threshold",
-    "placebo": "placebo",
-}
-
-
-def plot_result(model, dataset, depth, save=True):
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
-    ax = axes[0]
-    ax.axhline(0, color="black", linewidth=1)
-    for pool, color in POOL_COLORS.items():
-        curve = curves_df[
-            (curves_df["model"] == model) & (curves_df["dataset"] == dataset)
-            & (curves_df["depth"] == depth) & (curves_df["pool"] == pool)
-        ].sort_values("similarity")
+def plot_calibration_dashboard(model, dataset, pool):
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9), sharex=True, sharey=True)
+    axes = axes.ravel()
+    selected = curves_df[
+        (curves_df.model == model) & (curves_df.dataset == dataset)
+        & (curves_df.pool == pool) & (curves_df.depth.isin(DEPTH_ORDER))
+    ]
+    if selected.empty:
+        plt.close(fig)
+        return
+    y_values = selected[["ci_low", "ci_high"]].to_numpy(float)
+    finite = y_values[np.isfinite(y_values)]
+    y_limit = max(0.05, np.max(np.abs(finite)) * 1.08) if len(finite) else 0.1
+    for ax, depth in zip(axes, DEPTH_ORDER):
+        curve = selected[selected.depth == depth].sort_values("similarity")
+        ax.axhline(0, color="black", lw=1)
         if curve.empty:
+            ax.set_title(f"{depth} — sem dados")
             continue
-        ax.plot(curve["similarity"], curve["effect"], color=color, label=pool)
-        if pool == "all":
-            ax.fill_between(
-                curve["similarity"].to_numpy(), curve["ci_low"].to_numpy(),
-                curve["ci_high"].to_numpy(), color=color, alpha=0.18,
-            )
+        x = curve.similarity.to_numpy(float)
+        effect = curve.effect.to_numpy(float)
+        ax.plot(x, effect, color=DEPTH_COLORS[depth], lw=2)
+        ax.fill_between(x, curve.ci_low.to_numpy(float), curve.ci_high.to_numpy(float),
+                        color=DEPTH_COLORS[depth], alpha=0.20)
         estimate = threshold_df[
-            (threshold_df["model"] == model) & (threshold_df["dataset"] == dataset)
-            & (threshold_df["depth"] == depth) & (threshold_df["pool"] == pool)
+            (threshold_df.model == model) & (threshold_df.dataset == dataset)
+            & (threshold_df.depth == depth) & (threshold_df.pool == pool)
         ]
-        if not estimate.empty and pd.notna(estimate.iloc[0]["threshold"]):
-            ax.axvline(estimate.iloc[0]["threshold"], color=color, linestyle="--", alpha=0.7)
-    ax.set_xlabel("similaridade da memória")
-    ax.set_ylabel("ganho pareado de acurácia")
-    ax.set_title("Calibração: efeito vs. similaridade")
-    ax.legend(title="origem da memória")
-
-    ax2 = axes[1]
-    heldout = policy_df[
-        (policy_df["model"] == model) & (policy_df["dataset"] == dataset)
-        & (policy_df["depth"] == depth) & (policy_df["pool"] == "all")
-    ].copy()
-    order = ["always_top", "threshold_top", "placebo"]
-    heldout["order"] = heldout["policy"].map({name: i for i, name in enumerate(order)})
-    heldout = heldout.sort_values("order")
-    if not heldout.empty:
-        x = np.arange(len(heldout))
-        y = heldout["difference"].to_numpy()
-        low = y - heldout["ci_low"].to_numpy()
-        high = heldout["ci_high"].to_numpy() - y
-        colors = ["gray" if p == "placebo" else "tab:orange" for p in heldout["policy"]]
-        ax2.bar(x, y, color=colors, alpha=0.85)
-        ax2.errorbar(x, y, yerr=np.vstack([low, high]), fmt="none", color="black", capsize=4)
-        ax2.set_xticks(x, [POLICY_LABELS[p] for p in heldout["policy"]], rotation=20)
-    ax2.axhline(0, color="black", linewidth=1)
-    ax2.set_ylabel("ganho de acurácia no teste")
-    ax2.set_title("Teste holdout")
-
-    fig.suptitle(f"{model} | {dataset} | {depth} | uma memória")
-    fig.tight_layout()
-    if save:
-        fig.savefig(PLOT_DIR / f"{model}__{dataset}__{depth}.png", dpi=170, bbox_inches="tight")
-    plt.show()
+        if not estimate.empty and pd.notna(estimate.iloc[0].threshold):
+            t = float(estimate.iloc[0].threshold)
+            rate = estimate.iloc[0].get("threshold_identification_rate", np.nan)
+            ax.axvline(t, color="tab:red", ls="--", lw=1.5)
+            ax.text(0.03, 0.95, f"t={t:.3f} | ident.={rate:.0%}", transform=ax.transAxes,
+                    va="top", fontsize=9)
+        ax.set_title(depth)
+        ax.set_ylim(-y_limit, y_limit)
+        ax.set_xlabel("similaridade")
+        ax.set_ylabel("efeito na acurácia")
+    for ax in axes[len(DEPTH_ORDER):]:
+        ax.axis("off")
+    fig.suptitle(f"Calibração | {model} | {dataset} | pool={pool}", fontsize=14)
+    finish(fig, f"02_calibration__{model}__{dataset}__{pool}.png")
 
 
-for model in manifest["models"]:
-    for dataset in manifest["datasets"]:
-        for depth in manifest["depths"]:
-            plot_result(model, dataset, depth)
+for model in MODELS:
+    for dataset in DATASETS:
+        for pool in COMPARISON_POOLS:
+            plot_calibration_dashboard(model, dataset, pool)
 """
     ),
     md(
         r"""
-## Visão geral dos thresholds
+## 4. Onde os thresholds aparecem?
 
-O forest plot mostra o corte pontual e seu intervalo bootstrap. Ausência de um
-ponto significa que a calibração não identificou cruzamento sustentado ou não
-tinha suporte suficiente.
+Cada célula traz `threshold / taxa de identificação no bootstrap`. O primeiro
+número diz **onde** usar a reflexão; o segundo diz quão estável foi encontrar
+esse ponto. Células vazias significam que não houve corte sustentado.
 """
     ),
     code(
         r"""
-overview = threshold_df[
-    (threshold_df["pool"] == "all") & threshold_df["threshold"].notna()
-].copy()
-overview["label"] = (
-    overview["model"] + " | " + overview["dataset"] + " | " + overview["depth"]
+def threshold_heatmap(model, pool):
+    sub = threshold_df[(threshold_df.model == model) & (threshold_df.pool == pool)]
+    values = sub.pivot(index="dataset", columns="depth", values="threshold").reindex(
+        index=DATASETS, columns=DEPTH_ORDER
+    )
+    rates = sub.pivot(index="dataset", columns="depth", values="threshold_identification_rate").reindex(
+        index=DATASETS, columns=DEPTH_ORDER
+    )
+    fig, ax = plt.subplots(figsize=(max(7, 1.8 * len(DEPTH_ORDER)), max(4, 0.8 * len(DATASETS))))
+    masked = np.ma.masked_invalid(values.to_numpy(float))
+    image = ax.imshow(masked, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+    ax.set_xticks(range(len(DEPTH_ORDER)), DEPTH_ORDER, rotation=20)
+    ax.set_yticks(range(len(DATASETS)), DATASETS)
+    for i in range(len(DATASETS)):
+        for j in range(len(DEPTH_ORDER)):
+            t, rate = values.iloc[i, j], rates.iloc[i, j]
+            label = "—" if pd.isna(t) else f"{t:.3f}\n{rate:.0%}"
+            color = "white" if pd.notna(t) and (t < 0.28 or t > 0.72) else "black"
+            ax.text(j, i, label, ha="center", va="center", color=color, fontsize=9)
+    ax.set_title(f"Threshold / estabilidade bootstrap | {model} | pool={pool}")
+    fig.colorbar(image, ax=ax, label="threshold de similaridade")
+    finish(fig, f"03_threshold_map__{model}__{pool}.png")
+
+
+for model in MODELS:
+    for pool in COMPARISON_POOLS:
+        threshold_heatmap(model, pool)
+"""
+    ),
+    md(
+        r"""
+## 5. O threshold generaliza? — efeito no holdout
+
+O forest plot é a evidência principal: usa apenas perguntas que não escolheram
+o corte. Pontos à direita ajudam; à esquerda atrapalham. O IC precisa ficar
+inteiramente de um lado do zero para uma conclusão confirmatória simples.
+"""
+    ),
+    code(
+        r"""
+def holdout_forest(pool):
+    selected = policy_df[(policy_df.policy == "threshold_top") & (policy_df.pool == pool)].copy()
+    if selected.empty:
+        print(f"Sem política threshold_top para pool={pool}")
+        return
+    fig, axes = plt.subplots(1, len(MODELS), figsize=(8 * len(MODELS),
+                             max(6, 0.42 * len(DATASETS) * len(DEPTH_ORDER))), squeeze=False)
+    for ax, model in zip(axes.ravel(), MODELS):
+        sub = selected[selected.model == model].copy()
+        sub["dataset"] = pd.Categorical(sub.dataset, DATASETS, ordered=True)
+        sub["depth"] = pd.Categorical(sub.depth, DEPTH_ORDER, ordered=True)
+        sub = sub.sort_values(["dataset", "depth"])
+        y = np.arange(len(sub))
+        center = 100 * sub.difference.to_numpy(float)
+        low = center - 100 * sub.ci_low.to_numpy(float)
+        high = 100 * sub.ci_high.to_numpy(float) - center
+        colors = [DEPTH_COLORS[str(d)] for d in sub.depth]
+        ax.axvline(0, color="black", lw=1)
+        ax.errorbar(center, y, xerr=np.vstack([low, high]), fmt="none", color="gray", capsize=3)
+        ax.scatter(center, y, c=colors, s=42, zorder=3)
+        ax.set_yticks(y, [f"{r.dataset} | {r.depth}" for r in sub.itertuples()])
+        ax.invert_yaxis()
+        ax.set_xlabel("ganho de acurácia (pontos percentuais)")
+        ax.set_title(model)
+    fig.suptitle(f"Política de threshold no holdout | pool={pool}", fontsize=14)
+    finish(fig, f"04_holdout_forest__{pool}.png")
+
+
+for pool in COMPARISON_POOLS:
+    holdout_forest(pool)
+"""
+    ),
+    code(
+        r"""
+def holdout_heatmap(model, pool):
+    sub = policy_df[(policy_df.model == model) & (policy_df.pool == pool)
+                    & (policy_df.policy == "threshold_top")]
+    values = (100 * sub.pivot(index="dataset", columns="depth", values="difference")).reindex(
+        index=DATASETS, columns=DEPTH_ORDER
+    )
+    if values.empty:
+        return
+    arr = values.to_numpy(float)
+    finite = arr[np.isfinite(arr)]
+    limit = max(1, np.max(np.abs(finite))) if len(finite) else 1
+    fig, ax = plt.subplots(figsize=(max(7, 1.8 * len(DEPTH_ORDER)), max(4, 0.8 * len(DATASETS))))
+    image = ax.imshow(np.ma.masked_invalid(arr), cmap="RdBu", vmin=-limit, vmax=limit, aspect="auto")
+    ax.set_xticks(range(len(DEPTH_ORDER)), DEPTH_ORDER, rotation=20)
+    ax.set_yticks(range(len(DATASETS)), DATASETS)
+    for i in range(len(DATASETS)):
+        for j in range(len(DEPTH_ORDER)):
+            value = arr[i, j]
+            ax.text(j, i, "—" if not np.isfinite(value) else f"{value:+.1f} pp",
+                    ha="center", va="center", fontsize=9)
+    ax.set_title(f"Ganho holdout da política | {model} | pool={pool}")
+    fig.colorbar(image, ax=ax, label="pontos percentuais")
+    finish(fig, f"05_holdout_map__{model}__{pool}.png")
+
+
+for model in MODELS:
+    for pool in COMPARISON_POOLS:
+        holdout_heatmap(model, pool)
+"""
+    ),
+    md(
+        r"""
+## 6. Threshold versus placebo
+
+Cada ponto compara, na mesma combinação, o efeito da memória selecionada pelo
+threshold (eixo vertical) ao efeito do placebo (horizontal). Acima da diagonal,
+a recuperação por similaridade foi melhor do que uma memória sem relação.
+"""
+    ),
+    code(
+        r"""
+threshold_policy = policy_df[policy_df.policy == "threshold_top"].copy()
+placebo_policy = policy_df[policy_df.policy == "placebo"].copy()
+join_keys = ["model", "dataset", "depth", "pool"]
+comparison = threshold_policy.merge(
+    placebo_policy[join_keys + ["difference"]], on=join_keys, how="inner",
+    suffixes=("_threshold", "_placebo")
 )
-overview = overview.sort_values(["model", "depth", "threshold"])
 
-if overview.empty:
-    print("Nenhum threshold foi identificado no pool all.")
-else:
-    fig, ax = plt.subplots(figsize=(10, max(5, 0.38 * len(overview))))
-    y = np.arange(len(overview))
-    center = overview["threshold"].to_numpy()
-    left = center - overview["threshold_ci_low"].to_numpy()
-    right = overview["threshold_ci_high"].to_numpy() - center
-    valid = np.isfinite(left) & np.isfinite(right) & (left >= 0) & (right >= 0)
-    ax.scatter(center, y, color="tab:blue", zorder=3)
-    if valid.any():
-        ax.errorbar(center[valid], y[valid], xerr=np.vstack([left[valid], right[valid]]),
-                    fmt="none", color="tab:blue", capsize=3)
-    ax.set_yticks(y, overview["label"])
-    ax.set_xlabel("threshold de similaridade")
-    ax.set_title("Thresholds aprendidos na calibração — pool all")
-    ax.grid(axis="x", alpha=0.25)
-    fig.tight_layout()
-    fig.savefig(PLOT_DIR / "threshold_forest.png", dpi=180, bbox_inches="tight")
-    plt.show()
-
-display(overview[[
-    "model", "dataset", "depth", "threshold", "threshold_ci_low",
-    "threshold_ci_high", "threshold_identification_rate",
-    "confident_help_threshold", "confident_harm_region_start",
-]])
+for pool in COMPARISON_POOLS:
+    sub_pool = comparison[comparison.pool == pool]
+    if sub_pool.empty:
+        continue
+    fig, axes = plt.subplots(1, len(MODELS), figsize=(7 * len(MODELS), 6), squeeze=False)
+    all_values = 100 * sub_pool[["difference_placebo", "difference_threshold"]].to_numpy(float)
+    finite = all_values[np.isfinite(all_values)]
+    limit = max(3, np.max(np.abs(finite)) * 1.10) if len(finite) else 3
+    for ax, model in zip(axes.ravel(), MODELS):
+        sub = sub_pool[sub_pool.model == model]
+        ax.plot([-limit, limit], [-limit, limit], color="black", ls="--", lw=1)
+        ax.axhline(0, color="gray", lw=0.8); ax.axvline(0, color="gray", lw=0.8)
+        for row in sub.itertuples():
+            x, y = 100 * row.difference_placebo, 100 * row.difference_threshold
+            ax.scatter(x, y, color=DEPTH_COLORS[row.depth], s=48)
+            ax.annotate(row.dataset, (x, y), xytext=(4, 3), textcoords="offset points", fontsize=8)
+        ax.set(xlim=(-limit, limit), ylim=(-limit, limit), title=model,
+               xlabel="efeito do placebo (pp)", ylabel="efeito do threshold (pp)")
+    fig.suptitle(f"Recuperação por similaridade versus placebo | pool={pool}", fontsize=14)
+    finish(fig, f"06_threshold_vs_placebo__{pool}.png")
 """
     ),
     md(
         r"""
-## Ganho holdout em todos os datasets
+## 7. Como a reflexão ajuda ou atrapalha
 
-Este painel compara as políticas usando dados que não participaram da escolha
-do threshold. Células sem `threshold_top` indicam que nenhum corte utilizável
-foi identificado na calibração.
+O eixo vertical é a fração de respostas corrigidas; o horizontal é a fração de
+respostas corretas que foram estragadas. Acima da diagonal há saldo positivo.
+O tamanho do ponto representa quantas perguntas receberam memória.
 """
     ),
     code(
         r"""
-heldout_threshold = policy_df[
-    (policy_df["policy"] == "threshold_top") & (policy_df["pool"] == "all")
-].copy()
-heldout_threshold["column"] = heldout_threshold["model"] + " | " + heldout_threshold["depth"]
-pivot = heldout_threshold.pivot(index="dataset", columns="column", values="difference")
+selected = policy_df[policy_df.policy == "threshold_top"].copy()
+selected["helped_rate"] = selected.helped / selected.n
+selected["harmed_rate"] = selected.harmed / selected.n
 
-if not pivot.empty:
-    fig, ax = plt.subplots(figsize=(max(8, 1.7 * len(pivot.columns)), 4.8))
-    values = pivot.to_numpy()
-    image = ax.imshow(values, cmap="RdBu", vmin=-max(0.01, np.nanmax(np.abs(values))),
-                      vmax=max(0.01, np.nanmax(np.abs(values))), aspect="auto")
-    ax.set_xticks(np.arange(len(pivot.columns)), pivot.columns, rotation=35, ha="right")
-    ax.set_yticks(np.arange(len(pivot.index)), pivot.index)
-    for i in range(values.shape[0]):
-        for j in range(values.shape[1]):
-            if np.isfinite(values[i, j]):
-                ax.text(j, i, f"{100*values[i, j]:+.1f} pp", ha="center", va="center", fontsize=9)
-    ax.set_title("Ganho da política de threshold no teste holdout")
-    fig.colorbar(image, ax=ax, label="diferença de acurácia")
-    fig.tight_layout()
-    fig.savefig(PLOT_DIR / "heldout_threshold_heatmap.png", dpi=180, bbox_inches="tight")
-    plt.show()
-
-display(heldout_threshold.sort_values("difference", ascending=False)[[
-    "model", "dataset", "depth", "threshold", "memory_use_rate", "difference",
-    "ci_low", "ci_high", "helped", "harmed", "mcnemar_p",
-]])
+for pool in COMPARISON_POOLS:
+    sub_pool = selected[selected.pool == pool]
+    if sub_pool.empty:
+        continue
+    fig, axes = plt.subplots(1, len(MODELS), figsize=(7 * len(MODELS), 6), squeeze=False)
+    limit = max(0.01, sub_pool[["helped_rate", "harmed_rate"]].max().max() * 1.12)
+    for ax, model in zip(axes.ravel(), MODELS):
+        sub = sub_pool[sub_pool.model == model]
+        ax.plot([0, limit], [0, limit], color="black", ls="--", lw=1)
+        for row in sub.itertuples():
+            size = 35 + 100 * float(getattr(row, "memory_use_rate", 0) or 0)
+            ax.scatter(row.harmed_rate, row.helped_rate, color=DEPTH_COLORS[row.depth], s=size, alpha=0.85)
+            ax.annotate(row.dataset, (row.harmed_rate, row.helped_rate),
+                        xytext=(4, 3), textcoords="offset points", fontsize=8)
+        ax.set(xlim=(0, limit), ylim=(0, limit), title=model,
+               xlabel="fração prejudicada", ylabel="fração corrigida")
+    fig.suptitle(f"Respostas corrigidas versus prejudicadas | pool={pool}", fontsize=14)
+    finish(fig, f"07_helped_vs_harmed__{pool}.png")
 """
     ),
     md(
         r"""
-## Como a memória alterou decisões
+## 8. Tabela final com controle de comparações múltiplas
 
-As barras usam todos os resultados válidos e mostram a fração que passou de
-errada para correta, de correta para errada ou permaneceu igual em cada nível.
+Como há vários modelos, datasets e reflexões, também reportamos `q_bh`, o
+p-valor de McNemar corrigido por Benjamini–Hochberg dentro de cada pool. A
+ordenação prioriza efeito holdout, mas a interpretação deve combinar IC 95%,
+`q_bh`, estabilidade do threshold e comparação com placebo.
 """
     ),
     code(
         r"""
-transition_rates = transition_df.copy()
-transition_rates["total"] = transition_rates.groupby(
-    ["model", "dataset", "depth", "arm", "level"]
-)["n"].transform("sum")
-transition_rates["rate"] = transition_rates["n"] / transition_rates["total"]
-
-for model in manifest["models"]:
-    for depth in manifest["depths"]:
-        sub = transition_rates[
-            (transition_rates["model"] == model)
-            & (transition_rates["depth"] == depth)
-            & (transition_rates["arm"] == "retrieved")
-        ]
-        if sub.empty:
-            continue
-        table = sub.pivot_table(
-            index=["dataset", "level"], columns="transition", values="rate", fill_value=0
-        )
-        table = table.reindex(columns=["helped", "harmed", "unchanged"], fill_value=0)
-        fig, ax = plt.subplots(figsize=(11, max(5, 0.32 * len(table))))
-        y = np.arange(len(table))
-        left = np.zeros(len(table))
-        colors = {"helped": "tab:green", "harmed": "tab:red", "unchanged": "lightgray"}
-        for name in table.columns:
-            ax.barh(y, table[name], left=left, label=name, color=colors[name])
-            left += table[name].to_numpy()
-        ax.set_yticks(y, [f"{a} | {b}" for a, b in table.index])
-        ax.set_xlabel("fração das decisões")
-        ax.set_xlim(0, 1)
-        ax.set_title(f"Mudanças de decisão — {model} | {depth}")
-        ax.legend()
-        fig.tight_layout()
-        fig.savefig(PLOT_DIR / f"transitions__{model}__{depth}.png", dpi=170, bbox_inches="tight")
-        plt.show()
-"""
-    ),
-    md(
-        r"""
-## Resumo automático
-
-Uma política é destacada como benefício/dano apenas quando todo o IC 95% fica
-acima/abaixo de zero no teste holdout. O resultado final continua devendo ser
-interpretado em conjunto com placebo, estabilidade do threshold e replicação
-entre modelos.
-"""
-    ),
-    code(
-        r"""
-def pp(value):
-    return f"{100*value:+.1f} pp"
+def bh_adjust(values):
+    values = np.asarray(values, dtype=float)
+    result = np.full(len(values), np.nan)
+    valid = np.flatnonzero(np.isfinite(values))
+    if not len(valid):
+        return result
+    order = valid[np.argsort(values[valid])]
+    ranked = values[order] * len(order) / np.arange(1, len(order) + 1)
+    ranked = np.minimum.accumulate(ranked[::-1])[::-1]
+    result[order] = np.minimum(ranked, 1.0)
+    return result
 
 
-evaluated = policy_df[policy_df["policy"] == "threshold_top"].copy()
-positive = evaluated[evaluated["ci_low"] > 0].sort_values("difference", ascending=False)
-negative = evaluated[evaluated["ci_high"] < 0].sort_values("difference")
+ranking = policy_df[policy_df.policy == "threshold_top"].copy()
+ranking["q_bh"] = ranking.groupby("pool")["mcnemar_p"].transform(bh_adjust)
+ranking["effect_pp"] = 100 * ranking.difference
+ranking["ci_low_pp"] = 100 * ranking.ci_low
+ranking["ci_high_pp"] = 100 * ranking.ci_high
+ranking["conclusion"] = np.select(
+    [ranking.ci_low > 0, ranking.ci_high < 0],
+    ["benefício", "dano"], default="inconclusivo"
+)
+columns = [
+    "model", "dataset", "depth", "pool", "threshold", "memory_use_rate",
+    "effect_pp", "ci_low_pp", "ci_high_pp", "mcnemar_p", "q_bh", "conclusion",
+]
+display(ranking.sort_values(["pool", "effect_pp"], ascending=[True, False])[columns])
 
-print("BENEFÍCIOS COM IC 95% ACIMA DE ZERO")
-if positive.empty:
-    print("- Nenhum.")
-for row in positive.itertuples():
-    print(
-        f"- {row.model}/{row.dataset}/{row.depth}/{row.pool}: {pp(row.difference)} "
-        f"(IC {pp(row.ci_low)} a {pp(row.ci_high)}), threshold={row.threshold:.3f}"
-    )
+for pool in COMPARISON_POOLS:
+    sub = ranking[ranking.pool == pool]
+    benefit = sub[sub.ci_low > 0].sort_values("difference", ascending=False)
+    harm = sub[sub.ci_high < 0].sort_values("difference")
+    print(f"\nPOOL={pool}")
+    print("Benefícios com IC 95% acima de zero:", len(benefit))
+    for row in benefit.itertuples():
+        print(f"- {row.model}/{row.dataset}/{row.depth}: {100*row.difference:+.1f} pp; "
+              f"IC [{100*row.ci_low:+.1f}, {100*row.ci_high:+.1f}]; q={row.q_bh:.3g}")
+    print("Danos com IC 95% abaixo de zero:", len(harm))
+    for row in harm.itertuples():
+        print(f"- {row.model}/{row.dataset}/{row.depth}: {100*row.difference:+.1f} pp; "
+              f"IC [{100*row.ci_low:+.1f}, {100*row.ci_high:+.1f}]; q={row.q_bh:.3g}")
 
-print("\nDANOS COM IC 95% ABAIXO DE ZERO")
-if negative.empty:
-    print("- Nenhum.")
-for row in negative.itertuples():
-    print(
-        f"- {row.model}/{row.dataset}/{row.depth}/{row.pool}: {pp(row.difference)} "
-        f"(IC {pp(row.ci_low)} a {pp(row.ci_high)})"
-    )
+if not quality_df.empty:
+    high_truncation = quality_df[quality_df.truncation_rate > 0.10]
+    print("\nReflexões com mais de 10% de truncamento:")
+    if high_truncation.empty:
+        print("- Nenhuma.")
+    else:
+        for row in high_truncation.itertuples():
+            print(f"- {row.model}/{row.depth}: {row.truncation_rate:.1%}")
 
-print("\nPlots salvos em:", PLOT_DIR.relative_to(ROOT))
+print("\nPlots salvos em:", short_path(PLOT_DIR))
 """
     ),
 ]
