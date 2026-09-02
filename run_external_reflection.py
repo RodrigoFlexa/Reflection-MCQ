@@ -760,8 +760,11 @@ def show_status(experiment_dir: Path, exchange_dir: Path, args: argparse.Namespa
                     f"{student}/{dataset}: requests={requested:,} "
                     f"responses={completed:,} usable_text={usable:,}"
                 )
-    result_manifest = read_manifest(experiment_dir)
-    print("analysis_depths:", result_manifest.get("analysis_depths", result_manifest.get("depths")))
+    if (experiment_dir / "manifest.json").exists():
+        result_manifest = read_manifest(experiment_dir)
+        print("analysis_depths:", result_manifest.get("analysis_depths", result_manifest.get("depths")))
+    else:
+        print("local experiment results: unavailable on this machine (expected for Azure-only server)")
 
 
 def main() -> None:
