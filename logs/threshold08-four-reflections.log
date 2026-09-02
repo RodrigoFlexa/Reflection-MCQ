@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/rodrigo.flexa/Reflection-MCQ/run_similarity_threshold.py", line 938, in <module>
+    main()
+  File "/home/rodrigo.flexa/Reflection-MCQ/run_similarity_threshold.py", line 41, in main
+    os.environ["RMCQ_NOTEBOOK_GPU"] = str(ARGS.gpu)
+UnboundLocalError: local variable 'os' referenced before assignment
