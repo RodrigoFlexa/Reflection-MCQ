@@ -30,7 +30,9 @@ DEFAULT_MODELS = (
 )
 DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa")
 DEFAULT_TEACHER = "gpt-5-4-petrobras"
-PIPELINE_VERSION = "top1-two-server-v1"
+PIPELINE_VERSION = "top1-two-server-v4"
+ANSWER_TEMPERATURE = 0.0
+REFLECTION_TEMPERATURE = 0.7
 
 
 def parse_args() -> argparse.Namespace:
@@ -48,10 +50,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--embedding-model", default="BAAI/bge-large-en-v1.5")
     parser.add_argument("--embedding-device", default="cuda")
+    parser.add_argument("--reflection-temperature", type=float, default=REFLECTION_TEMPERATURE)
     parser.add_argument("--exchange-root", default="experiment_exchange")
     parser.add_argument("--results-root", default="data/results/reflection_top1")
     parser.add_argument("--fresh", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not 0.0 <= args.reflection_temperature <= 2.0:
+        parser.error("--reflection-temperature must be between 0.0 and 2.0")
+    return args
 
 
 def find_root() -> Path:
@@ -68,6 +74,13 @@ def split_csv(value: str) -> list[str]:
 def json_hash(value: Any, length: int = 12) -> str:
     payload = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:length]
+
+
+def display_path(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -196,21 +209,23 @@ def cache_key(*parts: str) -> str:
     return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
 
 
-def answer_budget(model_key: str) -> int:
-    # Thinking is disabled, so a compact visible rationale is sufficient.
-    # Phi-2 needs the smaller output reserve to keep both paired questions in
-    # its native 2048-token context.
-    return 128 if model_key == "phi2" else 256
+def training_answer_budget(model_key: str) -> int:
+    return 512 if model_key == "phi2" else 768
+
+
+def validation_answer_budget(model_key: str) -> int:
+    return 384 if model_key == "phi2" else 512
 
 
 def reflection_budget(model_key: str, depth: str) -> int:
     if model_key == "phi2":
-        return 256 if depth == "simple" else 384
-    return 512 if depth == "simple" else 768
+        return 512 if depth == "simple" else 768
+    return 768 if depth == "simple" else 1024
 
 
 def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_tokens: int,
-                    batch_size: int, fresh: bool, description: str) -> dict[str, dict[str, Any]]:
+                    batch_size: int, fresh: bool, description: str,
+                    temperature: float = ANSWER_TEMPERATURE) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
 
     max_len = getattr(backend, "max_len", None)
@@ -231,11 +246,15 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
     cached = {} if fresh or not path.exists() else {row["key"]: row for row in load_jsonl(path)}
     missing = []
     for key, prompt in prompts.items():
-        hash_input = f"{backend.key}\0{max_tokens}\0{prompt}"
+        hash_input = f"{backend.key}\0{max_tokens}\0{temperature}\0{prompt}"
         prompt_digest = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
         current = cached.get(key, {})
-        content_filtered = current.get("finish_reason") == "content_filter"
-        invalid = (not current.get("text") and not content_filtered) or current.get("finish_reason") == "length"
+        terminal_absence = current.get("finish_reason") in {
+            "content_filter", "length_exhausted",
+        }
+        invalid = (
+            not current.get("text") and not terminal_absence
+        ) or current.get("finish_reason") == "length"
         if key not in cached or cached[key].get("prompt_hash") != prompt_digest or invalid:
             missing.append((key, prompt, prompt_digest))
     print(f"{description}: total={len(prompts)} cache={len(prompts)-len(missing)} missing={len(missing)}", flush=True)
@@ -243,7 +262,8 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
     for start in range(0, len(missing), checkpoint):
         batch = missing[start:start + checkpoint]
         generations = backend.generate(
-            [prompt for _, prompt, _ in batch], GenParams(max_new_tokens=max_tokens),
+            [prompt for _, prompt, _ in batch],
+            GenParams(max_new_tokens=max_tokens, temperature=temperature),
             desc=f"{description} [{start + 1}-{start + len(batch)}]",
         )
         for (key, _prompt, digest), generation in zip(batch, generations):
@@ -252,19 +272,77 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                 "prompt_tokens": generation.prompt_tokens,
                 "completion_tokens": generation.completion_tokens,
                 "finish_reason": generation.finish_reason,
+                "max_new_tokens_used": max_tokens,
             }
         save_jsonl(path, cached.values())
-        failed = [
+        empty_failed = [
             key for key, _prompt, _digest in batch
-            if (
-                not cached[key]["text"]
-                and cached[key]["finish_reason"] != "content_filter"
-            ) or cached[key]["finish_reason"] == "length"
+            if not cached[key]["text"] and cached[key]["finish_reason"] != "content_filter"
         ]
-        if failed:
+        truncated_failed = [
+            key for key, _prompt, _digest in batch
+            if cached[key]["finish_reason"] == "length"
+        ]
+        retryable = set(empty_failed + truncated_failed)
+        if retryable and backend.spec.provider != "azure":
+            retry_batch = [entry for entry in batch if entry[0] in retryable]
+            retry_tokens = max_tokens + max(128, max_tokens // 2)
+            if max_len and hasattr(backend, "tokenizer"):
+                overflow = []
+                for key, prompt, _digest in retry_batch:
+                    prompt_tokens = len(backend.render_token_ids(backend.tokenizer, prompt))
+                    if prompt_tokens + retry_tokens > max_len:
+                        overflow.append((key, prompt_tokens))
+                if overflow:
+                    key, prompt_tokens = overflow[0]
+                    raise RuntimeError(
+                        f"{description}: retry needs {retry_tokens} output tokens but "
+                        f"{len(overflow)} prompt(s) would exceed context={max_len}; first "
+                        f"key={key!r}, prompt={prompt_tokens}."
+                    )
+            print(
+                f"{description}: retrying {len(retry_batch)} truncated/empty generation(s) "
+                f"with max_new_tokens={retry_tokens}", flush=True,
+            )
+            retried = backend.generate(
+                [prompt for _, prompt, _ in retry_batch],
+                GenParams(max_new_tokens=retry_tokens, temperature=temperature),
+                desc=f"{description} retry",
+            )
+            for (key, _prompt, digest), generation in zip(retry_batch, retried):
+                cached[key] = {
+                    "key": key, "prompt_hash": digest, "text": generation.text,
+                    "prompt_tokens": generation.prompt_tokens,
+                    "completion_tokens": generation.completion_tokens,
+                    "finish_reason": generation.finish_reason,
+                    "max_new_tokens_used": retry_tokens,
+                }
+            save_jsonl(path, cached.values())
+            empty_failed = [
+                key for key, _prompt, _digest in retry_batch if not cached[key]["text"]
+            ]
+            truncated_failed = [
+                key for key, _prompt, _digest in retry_batch
+                if cached[key]["finish_reason"] == "length"
+            ]
+        if truncated_failed:
+            truncated_set = set(truncated_failed)
+            for key in truncated_failed:
+                cached[key]["text"] = ""
+                cached[key]["finish_reason"] = "length_exhausted"
+                cached[key]["discarded"] = True
+            save_jsonl(path, cached.values())
+            empty_failed = [key for key in empty_failed if key not in truncated_set]
+            print(
+                f"{description}: discarded {len(truncated_failed)} item(s) still "
+                "truncated after the final attempt",
+                flush=True,
+            )
+        if empty_failed:
+            first = empty_failed[0]
             raise RuntimeError(
-                f"{description}: {len(failed)} generation(s) empty or truncated at "
-                f"max_new_tokens={max_tokens}; first key={failed[0]!r}. "
+                f"{description}: empty={len(empty_failed)} after the available token "
+                f"budget; first key={first!r}. "
                 "The partial checkpoint was kept, but it will not be reused as valid output."
             )
     return {key: cached[key] for key in prompts}
@@ -277,10 +355,11 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
     results: dict[str, dict[str, Any]] = {}
     judge_prompts = {}
     for key, row in generated.items():
-        if row.get("finish_reason") == "content_filter":
+        if row.get("finish_reason") in {"content_filter", "length_exhausted"}:
+            method = row["finish_reason"]
             results[key] = {
                 "selected_answer": None, "correct": None,
-                "eval_method": "content_filter",
+                "eval_method": method,
             }
             continue
         answer = extract_final_answer(row["text"])
@@ -308,11 +387,11 @@ def reflection_status(outputs: dict[str, dict[str, dict[str, Any]]], uid: str) -
 def unavailable_memory_method(
     attempt_row: dict[str, Any], reflection_row: dict[str, Any] | None, depth: str
 ) -> str:
-    if attempt_row.get("eval_method") == "content_filter":
-        return "source_answer_content_filter"
+    if attempt_row.get("eval_method") in {"content_filter", "length_exhausted"}:
+        return f"source_answer_{attempt_row['eval_method']}"
     status = (reflection_row or {}).get("reflection_status", {}).get(depth)
-    if status == "content_filter":
-        return "source_reflection_content_filter"
+    if status in {"content_filter", "length_exhausted"}:
+        return f"source_reflection_{status}"
     return "source_reflection_unavailable"
 
 
@@ -331,6 +410,24 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "teacher_model": args.teacher_model, "validation_cap": args.validation_cap,
         "train_cap": args.train_cap,
         "student_backend": args.backend or BACKEND,
+        "generation_temperatures": {
+            "student_answer": ANSWER_TEMPERATURE,
+            "student_judge": ANSWER_TEMPERATURE,
+            "student_reflection": args.reflection_temperature,
+            "gpt_5_4_petrobras": "provider_default; temperature omitted",
+        },
+        "training_answer_max_tokens": {
+            model: training_answer_budget(model) for model in split_csv(args.models)
+        },
+        "validation_answer_max_tokens": {
+            model: validation_answer_budget(model) for model in split_csv(args.models)
+        },
+        "reflection_max_tokens": {
+            model: {
+                depth: reflection_budget(model, depth) for depth in ("simple", "complex")
+            }
+            for model in split_csv(args.models)
+        },
         "embedding_model": args.embedding_model,
         "answer_prompt": ANSWER_PROMPT,
         "student_reflection_prompts": STUDENT_REFLECTION_PROMPTS,
@@ -361,6 +458,39 @@ def assert_manifest_compatible(manifest: dict[str, Any]) -> None:
         )
 
 
+def find_compatible_pair_exchange(
+    exchange: Path, datasets: list[str], args: argparse.Namespace
+) -> Path | None:
+    """Find an older run whose retrieval inputs are exactly compatible."""
+    expected = {
+        "datasets": datasets,
+        "validation_cap": args.validation_cap,
+        "train_cap": args.train_cap,
+        "embedding_model": args.embedding_model,
+        "seed": 42,
+    }
+    if not exchange.parent.exists():
+        return None
+    manifests = sorted(
+        exchange.parent.glob("*/manifest.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for manifest_path in manifests:
+        candidate = manifest_path.parent.resolve()
+        if candidate == exchange.resolve():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if any(manifest.get(key) != value for key, value in expected.items()):
+            continue
+        if all((candidate / "pairs" / f"{dataset}.jsonl").exists() for dataset in datasets):
+            return candidate
+    return None
+
+
 def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Namespace) -> None:
     from rmcq.backends import get_backend
     from rmcq.prompts import REFLECTION_DEPTHS, build_answer_prompt, build_reflection_prompt
@@ -371,11 +501,30 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
         pairs = load_pairs(exchange, datasets)
         print(f"top-1 retrieval: reused {len(pairs)} cached pairs", flush=True)
     else:
-        state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap)
-        pairs = retrieve_top1(state, args.embedding_model, args.embedding_device)
-        for dataset in datasets:
-            save_jsonl(exchange / "pairs" / f"{dataset}.jsonl", [p for p in pairs if p["dataset"] == dataset])
-        save_json(exchange / "retrieval_audit.json", audit)
+        compatible = None if args.fresh else find_compatible_pair_exchange(exchange, datasets, args)
+        if compatible is not None:
+            for dataset in datasets:
+                destination = exchange / "pairs" / f"{dataset}.jsonl"
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(compatible / "pairs" / f"{dataset}.jsonl", destination)
+            audit_source = compatible / "retrieval_audit.json"
+            if audit_source.exists():
+                shutil.copy2(audit_source, exchange / "retrieval_audit.json")
+            pairs = load_pairs(exchange, datasets)
+            print(
+                f"top-1 retrieval: reused {len(pairs)} compatible pairs from "
+                f"{compatible.name}",
+                flush=True,
+            )
+        else:
+            state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap)
+            pairs = retrieve_top1(state, args.embedding_model, args.embedding_device)
+            for dataset in datasets:
+                save_jsonl(
+                    exchange / "pairs" / f"{dataset}.jsonl",
+                    [p for p in pairs if p["dataset"] == dataset],
+                )
+            save_json(exchange / "retrieval_audit.json", audit)
 
     sources = unique_sources(pairs)
     content_filter_count = 0
@@ -384,7 +533,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
         with get_backend(model_key, kind=args.backend) as backend:
             answer_prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
             generated = cached_generate(backend, model_cache / "train_answers.jsonl", answer_prompts,
-                                        answer_budget(model_key), args.batch_size, args.fresh, f"{model_key} training answers")
+                                        training_answer_budget(model_key), args.batch_size, args.fresh, f"{model_key} training answers")
             verdicts = resolve_answers(backend, model_cache, "train", generated, sources,
                                        args.batch_size, args.fresh)
             reflection_outputs: dict[str, dict[str, dict[str, Any]]] = {}
@@ -397,6 +546,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                     backend, model_cache / f"self_{depth}.jsonl", prompts,
                     reflection_budget(model_key, depth),
                     args.batch_size, args.fresh, f"{model_key} self reflection {depth}",
+                    temperature=args.reflection_temperature,
                 )
         rows = []
         for uid, item in sources.items():
@@ -445,7 +595,7 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
     cache_dir = results / "work" / "teacher"
     with get_backend(teacher_model, kind=args.teacher_backend) as backend:
         prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
-        generated = cached_generate(backend, cache_dir / "train_answers.jsonl", prompts, 128,
+        generated = cached_generate(backend, cache_dir / "train_answers.jsonl", prompts, 1024,
                                     args.batch_size, args.fresh, "teacher training answers")
         verdicts = resolve_answers(backend, cache_dir, "train", generated, sources,
                                    args.batch_size, args.fresh)
@@ -457,8 +607,9 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
             }
             self_reflections[depth] = cached_generate(
                 backend, cache_dir / f"self_{depth}.jsonl", reflection_prompts,
-                512 if depth == "simple" else 1024, args.batch_size, args.fresh,
+                1024 if depth == "simple" else 2048, args.batch_size, args.fresh,
                 f"teacher self reflection {depth}",
+                temperature=args.reflection_temperature,
             )
 
         teacher_rows_by_model: dict[str, list[dict[str, Any]]] = {}
@@ -473,8 +624,9 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 }
                 outputs[depth] = cached_generate(
                     backend, cache_dir / student_model / f"teacher_{depth}.jsonl", teacher_prompts,
-                    512 if depth == "simple" else 1024, args.batch_size, args.fresh,
+                    1024 if depth == "simple" else 2048, args.batch_size, args.fresh,
                     f"teacher reflection for {student_model} {depth}",
+                    temperature=args.reflection_temperature,
                 )
             teacher_rows_by_model[student_model] = [{
                 "dataset": sources[uid]["dataset"], "source_uid": uid,
@@ -520,7 +672,7 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 condition_items[key] = item
                 condition_meta[key] = {"condition": condition, "pair": pair}
         condition_generated = cached_generate(
-            backend, cache_dir / "validation.jsonl", condition_prompts, 128,
+            backend, cache_dir / "validation.jsonl", condition_prompts, 1024,
             args.batch_size, args.fresh, "teacher validation",
         )
         condition_verdicts = resolve_answers(
@@ -650,7 +802,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                 metadata[key] = {"condition": condition, "pair": pair}
         cache_dir = results / "work" / "finish" / model
         with get_backend(model, kind=args.backend) as backend:
-            generated = cached_generate(backend, cache_dir / "validation.jsonl", prompts, answer_budget(model),
+            generated = cached_generate(backend, cache_dir / "validation.jsonl", prompts, validation_answer_budget(model),
                                         args.batch_size, args.fresh, f"{model} validation")
             verdicts = resolve_answers(backend, cache_dir, "validation", generated, items,
                                        args.batch_size, args.fresh)
@@ -718,7 +870,7 @@ def main() -> None:
         save_json(manifest_path, payload)
         print(f"experiment_id: {experiment_id}", flush=True)
         stage_prepare(root, exchange, results, args)
-        print(f"commit and push: {exchange.relative_to(root)}")
+        print(f"commit and push: {display_path(exchange, root)}")
         return
 
     if not args.experiment_id:
@@ -728,7 +880,7 @@ def main() -> None:
     assert_manifest_compatible(manifest)
     if args.stage == "teacher":
         stage_teacher(exchange, results, args, manifest)
-        print(f"commit and push: {(exchange / 'teacher').relative_to(root)}")
+        print(f"commit and push: {display_path(exchange / 'teacher', root)}")
     elif args.stage == "finish":
         if not (exchange / "teacher_receipt.json").exists():
             raise FileNotFoundError("teacher stage is not complete; pull its artifacts first")

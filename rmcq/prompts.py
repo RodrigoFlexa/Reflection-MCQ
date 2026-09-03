@@ -17,7 +17,8 @@ Question: {question}
 Options:
 {options}
 
-Briefly explain your reasoning, choose exactly one option, and end with this exact line with nothing after it:
+Respond in exactly two parts. Keep the reasoning to at most 60 words.
+Reasoning: <brief reasoning>
 FINAL ANSWER: <letter>"""
 
 
@@ -141,7 +142,8 @@ Question: {question}
 Options:
 {options}
 
-Briefly explain your reasoning, choose exactly one option, and end with this exact line with nothing after it:
+Respond in exactly two parts. Keep the reasoning to at most 60 words.
+Reasoning: <brief reasoning>
 FINAL ANSWER: <letter>"""
 
 

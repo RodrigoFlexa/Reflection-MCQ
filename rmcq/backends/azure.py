@@ -12,10 +12,9 @@ três formas nesta grade, e cada uma delas tem uma defesa aqui:
 2. **Gateways rejeitam parâmetros opcionais** que o modelo suporta. Um 400 que
    cita o nome do parâmetro derruba aquele parâmetro e repete a chamada — não a
    execução inteira.
-3. **Resposta vazia não é abstenção.** Se um deployment errado devolvesse "" e
-   isso virasse `reflection_text=""`, a grade inteira terminaria com 14 mil
-   linhas plausíveis e vazias, e a análise não acusaria nada. Aqui a primeira
-   vazia aborta com o diagnóstico.
+3. **Resposta vazia não é abstenção.** Vazios inesperados abortam com um
+   diagnóstico. A exceção é `finish_reason="length"`, que o orquestrador marca
+   como item esgotado e descarta de forma auditável.
 
 O cache em disco não é só economia: `reflect` só grava o JSONL depois que o lote
 inteiro (até ~380 prompts) volta, então uma queda no fim do lote jogaria fora
@@ -338,11 +337,19 @@ class AzureBackend(Backend):
         """
         if _status_of(exc) not in (400, 422):
             return False
-        message = str(exc)
+        parts = [str(exc)]
+        for attribute in ("body", "message", "code"):
+            value = getattr(exc, attribute, None)
+            if value:
+                parts.append(json.dumps(value, ensure_ascii=False, default=str))
+        response = getattr(exc, "response", None)
+        if response is not None:
+            parts.append(str(getattr(response, "text", "") or ""))
+        message = " ".join(parts)
         for name in OPTIONAL_PARAMS:
             if name in self._unsupported or name not in kwargs:
                 continue
-            if re.search(rf"\b{re.escape(name)}\b", message):
+            if re.search(rf"\b{re.escape(name)}\b", message, flags=re.IGNORECASE):
                 with self._lock:
                     self._unsupported.add(name)
                 kwargs.pop(name, None)
@@ -514,7 +521,7 @@ class AzureBackend(Backend):
 
     def _check_empty(self, gen: Generation, response: Any) -> None:
         """
-        Vazio é falha, e falha alto.
+        Vazio inesperado é falha; comprimento esgotado é ausência auditável.
 
         Deixar passar significaria terminar a grade com milhares de reflexões
         em branco e uma análise que não acusa nada de errado.
@@ -531,6 +538,12 @@ class AzureBackend(Backend):
                 return
             self._empties += 1
             calls, empties = self._calls, self._empties
+
+        # A resposta consumiu o teto configurado. O orquestrador registra e
+        # descarta esse item como length_exhausted sem interromper o restante.
+        if gen.finish_reason == "length":
+            log.warning("resposta vazia por limite de comprimento; item será descartado")
+            return
 
         diagnosis = self._diagnose(gen, response)
         if AZURE_FAIL_ON_EMPTY:

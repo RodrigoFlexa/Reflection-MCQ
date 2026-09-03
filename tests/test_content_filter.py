@@ -1,9 +1,11 @@
+from threading import Lock
 from types import SimpleNamespace
 
-from rmcq.backends.azure import is_content_filter_error
-from rmcq.backends.base import Generation
+from rmcq.backends.azure import AzureBackend, is_content_filter_error
+from rmcq.backends.base import Generation, GenParams
 from run_experiment import (
     cached_generate,
+    find_compatible_pair_exchange,
     resolve_answers,
     summarize,
     unavailable_memory_method,
@@ -27,6 +29,46 @@ def test_azure_content_policy_errors_are_recognized_precisely():
     assert is_content_filter_error(FakeAzureError("conteúdo malicioso no prompt"))
     assert not is_content_filter_error(FakeAzureError("401 invalid API key", status_code=401))
     assert not is_content_filter_error(FakeAzureError("certificate verify failed", status_code=None))
+
+
+def test_azure_uses_temperature_when_supported_and_omits_it_for_reasoning_models():
+    backend = AzureBackend.__new__(AzureBackend)
+    backend.deployment = "gpt-4o"
+    backend.reasoning = False
+    backend.max_tokens = 1024
+    backend._unsupported = set()
+    kwargs = backend.build_kwargs("prompt", GenParams(temperature=0.7))
+    assert kwargs["temperature"] == 0.7
+
+    backend.reasoning = True
+    kwargs = backend.build_kwargs("prompt", GenParams(temperature=0.7))
+    assert "temperature" not in kwargs
+
+
+def test_azure_drops_rejected_temperature_case_insensitively():
+    backend = AzureBackend.__new__(AzureBackend)
+    backend._unsupported = set()
+    backend._lock = Lock()
+    kwargs = {"model": "deployment", "messages": [], "temperature": 0.7}
+    error = FakeAzureError("Unsupported parameter: Temperature")
+    assert backend._maybe_drop_parameter(error, kwargs)
+    assert "temperature" not in kwargs
+    assert "temperature" in backend._unsupported
+
+
+def test_azure_empty_length_is_returned_for_orchestrator_to_discard():
+    backend = AzureBackend.__new__(AzureBackend)
+    backend._lock = Lock()
+    backend._calls = 0
+    backend._empties = 0
+    backend._content_filters = 0
+    backend.key = "gpt-5-4-petrobras"
+    backend.deployment = "gpt-5-4-petrobras"
+    backend.reasoning = True
+    response = SimpleNamespace(usage=None)
+    backend._check_empty(Generation(text="", finish_reason="length"), response)
+    assert backend._calls == 1
+    assert backend._empties == 1
 
 
 def test_filtered_source_propagates_an_auditable_unavailable_reason():
@@ -76,3 +118,83 @@ def test_filtered_generation_is_checkpointed_and_not_sent_to_judge(tmp_path):
         "selected_answer": None, "correct": None, "eval_method": "content_filter"
     }
     assert not (tmp_path / "judge_filtered.jsonl").exists()
+
+
+def test_local_truncation_retries_only_failed_items_with_larger_budget(tmp_path):
+    class RetryBackend:
+        key = "phi2"
+        spec = SimpleNamespace(provider="hf")
+
+        def __init__(self):
+            self.budgets = []
+            self.temperatures = []
+
+        def generate(self, prompts, params, desc=""):
+            self.budgets.append(params.max_new_tokens)
+            self.temperatures.append(params.temperature)
+            if len(self.budgets) == 1:
+                return [Generation(text="partial", finish_reason="length") for _ in prompts]
+            return [
+                Generation(text="Reasoning: short.\nFINAL ANSWER: A", finish_reason="stop")
+                for _ in prompts
+            ]
+
+    backend = RetryBackend()
+    generated = cached_generate(
+        backend, tmp_path / "retry.jsonl", {"q1": "prompt"},
+        max_tokens=256, batch_size=8, fresh=False, description="retry test",
+        temperature=0.7,
+    )
+    assert backend.budgets == [256, 384]
+    assert backend.temperatures == [0.7, 0.7]
+    assert generated["q1"]["finish_reason"] == "stop"
+    assert generated["q1"]["max_new_tokens_used"] == 384
+
+
+def test_second_truncation_is_discarded_and_becomes_unresolved(tmp_path):
+    class AlwaysTruncatedBackend:
+        key = "phi2"
+        spec = SimpleNamespace(provider="hf")
+
+        def __init__(self):
+            self.budgets = []
+
+        def generate(self, prompts, params, desc=""):
+            self.budgets.append(params.max_new_tokens)
+            return [Generation(text="partial", finish_reason="length") for _ in prompts]
+
+    backend = AlwaysTruncatedBackend()
+    generated = cached_generate(
+        backend, tmp_path / "truncated.jsonl", {"q1": "prompt"},
+        max_tokens=512, batch_size=2, fresh=False, description="truncated test",
+    )
+    assert backend.budgets == [512, 768]
+    assert generated["q1"]["text"] == ""
+    assert generated["q1"]["finish_reason"] == "length_exhausted"
+
+    item = {
+        "question": "Q?", "context": None,
+        "choices": [{"label": "A", "text": "x"}, {"label": "B", "text": "y"}],
+        "answerKey": "A",
+    }
+    verdicts = resolve_answers(
+        backend, tmp_path, "truncated", generated, {"q1": item}, 2, False
+    )
+    assert verdicts["q1"] == {
+        "selected_answer": None, "correct": None, "eval_method": "length_exhausted"
+    }
+
+
+def test_compatible_retrieval_can_be_reused_across_pipeline_versions(tmp_path):
+    old_exchange = tmp_path / "old-run"
+    (old_exchange / "pairs").mkdir(parents=True)
+    (old_exchange / "pairs" / "arc.jsonl").write_text("{}\n", encoding="utf-8")
+    (old_exchange / "manifest.json").write_text(
+        '{"pipeline_version":"v1","datasets":["arc"],"validation_cap":null,'
+        '"train_cap":null,"embedding_model":"embedding","seed":42}',
+        encoding="utf-8",
+    )
+    args = SimpleNamespace(
+        validation_cap=None, train_cap=None, embedding_model="embedding",
+    )
+    assert find_compatible_pair_exchange(tmp_path / "new-run", ["arc"], args) == old_exchange

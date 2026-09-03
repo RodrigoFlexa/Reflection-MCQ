@@ -70,14 +70,44 @@ O campo `think: false` é enviado ao Ollama. Além disso, `Generation` remove
 qualquer bloco `<think>` embutido antes que a saída seja salva, avaliada ou
 usada para gerar reflexão.
 
-Saída vazia ou `finish_reason=length` interrompe a etapa com erro. O checkpoint
-parcial é preservado para diagnóstico, mas nunca é reutilizado como reflexão
-válida; isso impede que truncamentos entrem silenciosamente na avaliação.
+Os limites iniciais e da única repetição são:
+
+| Modelo | Resposta treino | Resposta validação | Reflexão simples | Reflexão complexa |
+|---|---:|---:|---:|---:|
+| Phi-2 | 512 → 768 | 384 → 576 | 512 → 768 | 768 → 1152 |
+| DeepSeek/Llama | 768 → 1152 | 512 → 768 | 768 → 1152 | 1024 → 1536 |
+
+Uma seta representa a repetição seletiva feita somente quando a primeira saída
+fica vazia ou termina com `finish_reason=length`. Se a segunda tentativa ainda
+truncar, seu texto é apagado, o item recebe `length_exhausted` e todas as
+condições dependentes ficam não resolvidas. O lote continua e a cobertura final
+torna a exclusão visível.
+
+No Azure, os defaults são `RMCQ_AZURE_MAX_TOKENS=1024` e
+`RMCQ_AZURE_REASONING_MIN_TOKENS=4000`; portanto, o GPT-5-4 recebe um teto
+efetivo de 4000 tokens, incluindo raciocínio interno. O parâmetro por chamada
+não substitui esse teto global.
 
 Para modelos locais, o pipeline também mede o prompt renderizado antes de
 gerar. Se a questão recuperada + reflexão + validação não couberem no contexto,
 a execução falha explicitamente em vez de truncar a questão recuperada. Isso é
 especialmente importante para o contexto nativo de 2048 tokens do Phi-2.
+
+Uma revisão de prompts gera outro `experiment_id`, mas pares top-1 podem ser
+copiados automaticamente de uma execução anterior quando datasets, limites,
+seed e modelo de embeddings forem idênticos. Essa recuperação só ocorre sem
+`--fresh`.
+
+## Temperatura
+
+Respostas de treino, respostas de validação e julgamentos são determinísticos
+(`temperature=0.0`). As reflexões dos estudantes pequenos usam
+`temperature=0.7`, configurável por `--reflection-temperature`; o valor
+participa do hash do checkpoint.
+
+O GPT-5-4 Petrobras é um deployment de raciocínio e nunca recebe o parâmetro
+`temperature`. Tanto suas autorreflexões quanto suas reflexões de professor usam
+a configuração padrão do serviço Azure.
 
 ## Filtro de conteúdo do Azure
 

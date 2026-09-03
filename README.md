@@ -43,6 +43,11 @@ O único entrypoint é `run_experiment.py`. Ele grava checkpoints locais em
 python -u run_experiment.py prepare --gpu 3
 ```
 
+Para iniciar uma rodada de produção totalmente do zero, sem reaproveitar pares
+ou checkpoints anteriores, acrescente `--fresh` nessa primeira chamada. Nas
+retomadas de uma etapa interrompida, omita `--fresh` para usar os checkpoints
+válidos já concluídos.
+
 O comando imprime o `experiment_id`. Faça commit e push da pasta indicada:
 
 ```bash
@@ -135,6 +140,28 @@ O pipeline usa duas defesas complementares:
 No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
 `RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
 salvo, mas ainda consome tokens do orçamento.
+
+Respostas e reflexões têm limites explícitos e uma única segunda tentativa,
+50% maior. Por exemplo, o Phi-2 usa 512 tokens na resposta de treino e repete
+somente um item truncado com 768; reflexões complexas usam 768 e repetem com
+1152. Se a segunda tentativa também truncar, a saída é descartada e marcada
+como `length_exhausted`. Ela não é avaliada, não gera reflexão e não é usada
+como memória, mas o restante do experimento continua.
+
+O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
+recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure
+encerrar por comprimento, o item também é descartado.
+
+Respostas das questões e julgamentos usam `temperature=0.0`. Autorreflexões dos
+três estudantes pequenos usam `temperature=0.7`, configurável com
+`--reflection-temperature`. O GPT-5-4 Petrobras é reconhecido como modelo de
+raciocínio e nunca recebe o parâmetro `temperature`; suas reflexões usam o
+comportamento padrão do deployment.
+
+Quando uma mudança de prompt cria um novo `experiment_id`, o `prepare` procura
+pares top-1 de uma execução anterior com os mesmos datasets, limites, seed e
+modelo de embeddings. Execute sem `--fresh` para reaproveitar esses pares e
+evitar recalcular a busca de similaridade.
 
 ### Bloqueios do filtro de conteúdo do Azure
 
