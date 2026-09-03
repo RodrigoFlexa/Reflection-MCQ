@@ -24,6 +24,13 @@ def test_student_prompt_receives_correct_answer_as_private_feedback():
     assert "previous answer was INCORRECT" in prompt
 
 
+def test_reflection_instructions_have_no_added_word_or_token_limit():
+    for prompt in (*STUDENT_REFLECTION_PROMPTS.values(), *TEACHER_REFLECTION_PROMPTS.values()):
+        lowered = prompt.casefold()
+        assert "words" not in lowered
+        assert "tokens" not in lowered
+
+
 def test_teacher_prompt_does_not_receive_correct_answer():
     prompt = build_reflection_prompt(ITEM, "FINAL ANSWER: A", False, "complex", "teacher")
     assert prompt.startswith(TEACHER_REFLECTION_PROMPTS["complex"])

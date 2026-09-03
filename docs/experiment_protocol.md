@@ -74,7 +74,7 @@ Os limites iniciais e da única repetição são:
 
 | Modelo | Resposta treino | Resposta validação | Reflexão simples | Reflexão complexa |
 |---|---:|---:|---:|---:|
-| Phi-2 | 512 → 768 | 384 → 576 | 512 → 768 | 768 → 1152 |
+| Phi-2 | 512 → 768 | 384 → 576 | 256 → 384 | 384 → 512 |
 | DeepSeek/Llama | 768 → 1152 | 512 → 768 | 768 → 1152 | 1024 → 1536 |
 
 Uma seta representa a repetição seletiva feita somente quando a primeira saída
@@ -91,6 +91,17 @@ Quando o orçamento da repetição não cabe na janela do modelo, o item é
 descartado antes da nova geração como `length_exhausted`, com motivo
 `retry_exceeds_context`. O enunciado nunca é truncado para abrir espaço, e os
 outros itens elegíveis seguem para a repetição.
+
+Antes da validação, o pipeline mede o prompt completo. O Phi-2 rejeita qualquer
+reflexão recuperada acima de 512 tokens (`reflection_token_limit_exceeded`). Se
+o prompt ainda ultrapassar a janela depois de reservar 384 tokens para a
+resposta, somente aquela condição recebe `transfer_context_exceeded`. Llama
+3.1 e DeepSeek não precisam do teto de memória de 512 tokens, mas também passam
+pela verificação contra suas janelas operacionais.
+
+Nenhum limite de palavras ou tokens é acrescentado ao texto dos prompts de
+reflexão fornecidos para o experimento; o controle ocorre exclusivamente nos
+parâmetros de geração e na elegibilidade do prompt de transferência.
 
 No Azure, os defaults são `RMCQ_AZURE_MAX_TOKENS=1024` e
 `RMCQ_AZURE_REASONING_MIN_TOKENS=4000`; portanto, o GPT-5-4 recebe um teto

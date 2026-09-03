@@ -33,6 +33,7 @@ DEFAULT_TEACHER = "gpt-5-4-petrobras"
 PIPELINE_VERSION = "top1-two-server-v4"
 ANSWER_TEMPERATURE = 0.0
 REFLECTION_TEMPERATURE = 0.7
+PHI2_TRANSFER_REFLECTION_MAX_TOKENS = 512
 
 
 def parse_args() -> argparse.Namespace:
@@ -219,13 +220,21 @@ def validation_answer_budget(model_key: str) -> int:
 
 def reflection_budget(model_key: str, depth: str) -> int:
     if model_key == "phi2":
-        return 512 if depth == "simple" else 768
+        return 256 if depth == "simple" else 384
     return 768 if depth == "simple" else 1024
+
+
+def reflection_retry_budget(model_key: str, depth: str) -> int:
+    if model_key == "phi2":
+        return 384 if depth == "simple" else 512
+    initial = reflection_budget(model_key, depth)
+    return initial + initial // 2
 
 
 def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_tokens: int,
                     batch_size: int, fresh: bool, description: str,
-                    temperature: float = ANSWER_TEMPERATURE) -> dict[str, dict[str, Any]]:
+                    temperature: float = ANSWER_TEMPERATURE,
+                    retry_max_tokens: int | None = None) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
 
     max_len = getattr(backend, "max_len", None)
@@ -246,7 +255,14 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
     cached = {} if fresh or not path.exists() else {row["key"]: row for row in load_jsonl(path)}
     missing = []
     for key, prompt in prompts.items():
-        hash_input = f"{backend.key}\0{max_tokens}\0{temperature}\0{prompt}"
+        if retry_max_tokens is None:
+            # Preserve compatibility with answer/judge checkpoints from v4.
+            hash_input = f"{backend.key}\0{max_tokens}\0{temperature}\0{prompt}"
+        else:
+            hash_input = (
+                f"{backend.key}\0{max_tokens}\0{retry_max_tokens}\0"
+                f"{temperature}\0{prompt}"
+            )
         prompt_digest = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
         current = cached.get(key, {})
         terminal_absence = current.get("finish_reason") in {
@@ -286,7 +302,9 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
         retryable = set(empty_failed + truncated_failed)
         if retryable and backend.spec.provider != "azure":
             retry_batch = [entry for entry in batch if entry[0] in retryable]
-            retry_tokens = max_tokens + max(128, max_tokens // 2)
+            retry_tokens = retry_max_tokens or (
+                max_tokens + max(128, max_tokens // 2)
+            )
             if max_len and hasattr(backend, "tokenizer"):
                 overflow = []
                 for key, prompt, _digest in retry_batch:
@@ -429,6 +447,52 @@ def unavailable_memory_method(
     return "source_reflection_unavailable"
 
 
+def validation_prompt_issue(
+    backend: Any,
+    model_key: str,
+    prompt: str,
+    condition: str,
+    reflection: str | None,
+    answer_tokens: int,
+) -> dict[str, Any] | None:
+    """Return why a validation prompt must be skipped, without truncating it."""
+    reflection_tokens = None
+    if reflection and model_key == "phi2":
+        reflection_tokens = backend.count_tokens(reflection)
+        if reflection_tokens > PHI2_TRANSFER_REFLECTION_MAX_TOKENS:
+            return {
+                "eval_method": "reflection_token_limit_exceeded",
+                "reflection_tokens": reflection_tokens,
+                "reflection_token_limit": PHI2_TRANSFER_REFLECTION_MAX_TOKENS,
+            }
+
+    context_tokens = getattr(backend, "max_len", None) or getattr(backend, "num_ctx", None)
+    if not context_tokens:
+        return None
+    if hasattr(backend, "tokenizer"):
+        prompt_tokens = len(backend.render_token_ids(backend.tokenizer, prompt))
+        token_count_method = "tokenizer"
+    else:
+        # Ollama owns the tokenizer and chat template, so retain a conservative
+        # reserve around the backend's character-based estimate.
+        prompt_tokens = backend.count_tokens(prompt) + 128
+        token_count_method = "estimate_plus_chat_reserve"
+    if prompt_tokens + answer_tokens <= context_tokens:
+        return None
+    return {
+        "eval_method": (
+            "validation_context_exceeded"
+            if condition == "baseline"
+            else "transfer_context_exceeded"
+        ),
+        "prompt_tokens": prompt_tokens,
+        "answer_tokens_reserved": answer_tokens,
+        "model_context_tokens": context_tokens,
+        "token_count_method": token_count_method,
+        **({"reflection_tokens": reflection_tokens} if reflection_tokens is not None else {}),
+    }
+
+
 def unique_sources(pairs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {pair["source_uid"]: pair["source_item"] for pair in pairs}
 
@@ -459,6 +523,13 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "reflection_max_tokens": {
             model: {
                 depth: reflection_budget(model, depth) for depth in ("simple", "complex")
+            }
+            for model in split_csv(args.models)
+        },
+        "reflection_retry_max_tokens": {
+            model: {
+                depth: reflection_retry_budget(model, depth)
+                for depth in ("simple", "complex")
             }
             for model in split_csv(args.models)
         },
@@ -530,6 +601,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
     from rmcq.prompts import REFLECTION_DEPTHS, build_answer_prompt, build_reflection_prompt
 
     datasets = split_csv(args.datasets)
+    compatible: Path | None = None
     pair_paths = [exchange / "pairs" / f"{dataset}.jsonl" for dataset in datasets]
     if not args.fresh and all(path.exists() for path in pair_paths):
         pairs = load_pairs(exchange, datasets)
@@ -564,6 +636,22 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
     content_filter_count = 0
     for model_key in split_csv(args.models):
         model_cache = results / "work" / "prepare" / model_key
+        if compatible is not None and not args.fresh:
+            previous_cache = results.parent / compatible.name / "work" / "prepare" / model_key
+            reused = []
+            for filename in ("train_answers.jsonl", "judge_train.jsonl"):
+                source = previous_cache / filename
+                destination = model_cache / filename
+                if source.exists() and not destination.exists():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+                    reused.append(filename)
+            if reused:
+                print(
+                    f"{model_key}: reused compatible prepare checkpoints from "
+                    f"{compatible.name}: {', '.join(reused)}",
+                    flush=True,
+                )
         with get_backend(model_key, kind=args.backend) as backend:
             answer_prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
             generated = cached_generate(backend, model_cache / "train_answers.jsonl", answer_prompts,
@@ -581,6 +669,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                     reflection_budget(model_key, depth),
                     args.batch_size, args.fresh, f"{model_key} self reflection {depth}",
                     temperature=args.reflection_temperature,
+                    retry_max_tokens=reflection_retry_budget(model_key, depth),
                 )
         rows = []
         for uid, item in sources.items():
@@ -807,6 +896,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
             source_uid = pair["source_uid"]
             for condition in ("baseline", "self_simple", "self_complex", "teacher_simple", "teacher_complex"):
                 key = cache_key(pair["dataset"], pair["val_uid"], condition)
+                reflection = None
                 if condition == "baseline":
                     prompt = build_answer_prompt(val_item)
                 else:
@@ -833,11 +923,39 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                         attempt_row["correct"], reflection,
                     )
                 prompts[key], items[key] = prompt, val_item
-                metadata[key] = {"condition": condition, "pair": pair}
+                metadata[key] = {
+                    "condition": condition, "pair": pair, "reflection": reflection,
+                }
         cache_dir = results / "work" / "finish" / model
         with get_backend(model, kind=args.backend) as backend:
-            generated = cached_generate(backend, cache_dir / "validation.jsonl", prompts, validation_answer_budget(model),
-                                        args.batch_size, args.fresh, f"{model} validation")
+            answer_tokens = validation_answer_budget(model)
+            accepted_prompts: dict[str, str] = {}
+            accepted_items: dict[str, dict[str, Any]] = {}
+            accepted_metadata: dict[str, dict[str, Any]] = {}
+            for key, prompt in prompts.items():
+                meta = metadata[key]
+                issue = validation_prompt_issue(
+                    backend, model, prompt, meta["condition"], meta["reflection"],
+                    answer_tokens,
+                )
+                if issue is None:
+                    accepted_prompts[key] = prompt
+                    accepted_items[key] = items[key]
+                    accepted_metadata[key] = meta
+                    continue
+                pair = meta["pair"]
+                unavailable_rows.append({
+                    "model": model, "dataset": pair["dataset"],
+                    "val_uid": pair["val_uid"], "source_uid": pair["source_uid"],
+                    "similarity": pair["similarity"], "condition": meta["condition"],
+                    "response": "", "finish_reason": "not_generated",
+                    "selected_answer": None, "correct": None, **issue,
+                })
+            prompts, items, metadata = accepted_prompts, accepted_items, accepted_metadata
+            generated = cached_generate(
+                backend, cache_dir / "validation.jsonl", prompts, answer_tokens,
+                args.batch_size, args.fresh, f"{model} validation",
+            )
             verdicts = resolve_answers(backend, cache_dir, "validation", generated, items,
                                        args.batch_size, args.fresh)
         model_rows = list(unavailable_rows)

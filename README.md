@@ -141,10 +141,10 @@ No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
 `RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
 salvo, mas ainda consome tokens do orçamento.
 
-Respostas e reflexões têm limites explícitos e uma única segunda tentativa,
-50% maior. Por exemplo, o Phi-2 usa 512 tokens na resposta de treino e repete
-somente um item truncado com 768; reflexões complexas usam 768 e repetem com
-1152. Se a segunda tentativa também truncar, a saída é descartada e marcada
+Respostas e reflexões têm limites explícitos e uma única segunda tentativa
+com orçamento maior. Por exemplo, o Phi-2 usa 512 tokens na resposta de treino e repete
+somente um item truncado com 768. Suas reflexões simples usam 256 → 384 tokens,
+e as complexas usam 384 → 512. Se a segunda tentativa também truncar, a saída é descartada e marcada
 como `length_exhausted`. Ela não é avaliada, não gera reflexão e não é usada
 como memória, mas o restante do experimento continua.
 
@@ -156,6 +156,15 @@ Se o orçamento maior da repetição não couber na janela de contexto do modelo
 o item também recebe `length_exhausted`, com
 `discard_reason=retry_exceeds_context`. O prompt não é truncado e os demais
 itens do lote são repetidos normalmente.
+
+Na validação, memórias com mais de 512 tokens não são fornecidas ao Phi-2. O
+prompt completo também é medido antes de gerar: uma condição que não caiba é
+marcada como `transfer_context_exceeded`, enquanto as outras continuam. Llama
+3.1 e DeepSeek mantêm seus tetos maiores, adequados às janelas operacionais de
+8192 e 16384 tokens, mas passam pela mesma verificação do prompt completo.
+
+Os prompts de reflexão são mantidos literalmente como definidos no protocolo;
+nenhuma instrução adicional de limite de palavras ou tokens é anexada a eles.
 
 O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
 recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure

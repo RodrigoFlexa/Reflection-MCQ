@@ -6,9 +6,12 @@ from rmcq.backends.base import Generation, GenParams
 from run_experiment import (
     cached_generate,
     find_compatible_pair_exchange,
+    reflection_budget,
+    reflection_retry_budget,
     resolve_answers,
     summarize,
     unavailable_memory_method,
+    validation_prompt_issue,
 )
 
 
@@ -29,6 +32,15 @@ def test_azure_content_policy_errors_are_recognized_precisely():
     assert is_content_filter_error(FakeAzureError("conteúdo malicioso no prompt"))
     assert not is_content_filter_error(FakeAzureError("401 invalid API key", status_code=401))
     assert not is_content_filter_error(FakeAzureError("certificate verify failed", status_code=None))
+
+
+def test_reflection_budgets_respect_each_models_context_size():
+    assert reflection_budget("phi2", "simple") == 256
+    assert reflection_retry_budget("phi2", "simple") == 384
+    assert reflection_budget("phi2", "complex") == 384
+    assert reflection_retry_budget("phi2", "complex") == 512
+    assert reflection_budget("llama3.1-8b", "complex") == 1024
+    assert reflection_retry_budget("llama3.1-8b", "complex") == 1536
 
 
 def test_azure_uses_temperature_when_supported_and_omits_it_for_reasoning_models():
@@ -214,6 +226,51 @@ def test_retry_that_exceeds_context_discards_only_affected_item(tmp_path):
     assert generated["overflow"]["finish_reason"] == "length_exhausted"
     assert generated["overflow"]["discard_reason"] == "retry_exceeds_context"
     assert generated["fits"]["finish_reason"] == "stop"
+
+
+def test_phi2_rejects_oversized_memory_and_full_transfer_prompt():
+    class PhiBackend:
+        max_len = 2048
+        tokenizer = object()
+
+        def count_tokens(self, text):
+            return int(text)
+
+        def render_token_ids(self, tokenizer, prompt):
+            return list(range(int(prompt)))
+
+    backend = PhiBackend()
+    memory_issue = validation_prompt_issue(
+        backend, "phi2", "1000", "teacher_complex", "513", 384
+    )
+    assert memory_issue == {
+        "eval_method": "reflection_token_limit_exceeded",
+        "reflection_tokens": 513,
+        "reflection_token_limit": 512,
+    }
+    context_issue = validation_prompt_issue(
+        backend, "phi2", "1700", "self_complex", "400", 384
+    )
+    assert context_issue["eval_method"] == "transfer_context_exceeded"
+    assert validation_prompt_issue(
+        backend, "phi2", "1600", "self_complex", "400", 384
+    ) is None
+
+
+def test_larger_students_keep_their_reflections_when_prompt_fits():
+    class LlamaBackend:
+        max_len = 8192
+        tokenizer = object()
+
+        def count_tokens(self, text):
+            return int(text)
+
+        def render_token_ids(self, tokenizer, prompt):
+            return list(range(int(prompt)))
+
+    assert validation_prompt_issue(
+        LlamaBackend(), "llama3.1-8b", "3000", "teacher_complex", "1200", 512
+    ) is None
 
 
 def test_empty_judge_is_unresolved_without_aborting_stage(tmp_path):
