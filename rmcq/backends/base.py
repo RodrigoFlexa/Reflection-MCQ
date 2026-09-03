@@ -12,7 +12,24 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from collections.abc import Mapping
+import re
 from typing import Any, Sequence
+
+
+_THINK_BLOCK = re.compile(r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL)
+_THINK_START = re.compile(r"^\s*<think\b[^>]*>", re.IGNORECASE)
+
+
+def strip_thinking(text: str) -> str:
+    """Remove embedded reasoning traces and keep only visible model output."""
+    value = text or ""
+    value = _THINK_BLOCK.sub("", value)
+    if "</think>" in value.lower():
+        value = re.split(r"</think\s*>", value, flags=re.IGNORECASE)[-1]
+    # A generation truncated inside a leading think block has no usable answer.
+    if _THINK_START.match(value):
+        return ""
+    return value.strip()
 
 
 @dataclass(frozen=True)
@@ -62,6 +79,11 @@ class Generation:
     finish_reason: str = ""
     samples: list[str] = field(default_factory=list)  # preenchido quando n > 1
 
+    def __post_init__(self) -> None:
+        self.text = strip_thinking(self.text)
+        if self.samples:
+            self.samples = [strip_thinking(sample) for sample in self.samples]
+
 
 class Backend(ABC):
     """
@@ -103,11 +125,7 @@ class Backend(ABC):
         return None
 
     def template_kwargs(self) -> dict[str, Any]:
-        """Qwen3 é de pensamento híbrido; os outros ignoram esta flag."""
-        from rmcq.config import QWEN_ENABLE_THINKING
-
-        if "qwen3" in self.key:
-            return {"enable_thinking": QWEN_ENABLE_THINKING}
+        """Optional chat-template controls for locally loaded models."""
         return {}
 
     def render(self, tokenizer: Any, prompt: str, system: str | None = None) -> str:

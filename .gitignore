@@ -31,4 +31,6 @@ cache/*
 backups/*
 backup/*
 data/*
-logs/threshold08.log
+logs/
+.tmp_test_exchange/
+.tmp_test_results/

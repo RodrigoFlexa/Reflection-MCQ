@@ -4,8 +4,8 @@ Uso mínimo do pacote: pega um modelo por chave e gera texto.
     python example.py <chave-do-modelo> ["pergunta"]
 
 Exemplos:
-    python example.py phi4-mini                  # backend do .env (RMCQ_BACKEND)
-    RMCQ_BACKEND=stub python example.py phi4-mini # sem GPU, só para testar a integração
+    python example.py phi2                       # backend do .env (RMCQ_BACKEND)
+    RMCQ_BACKEND=stub python example.py phi2     # sem GPU, só para testar a integração
     python example.py llama3.1:8b                 # se registrado via RMCQ_OLLAMA_MODELS
     python example.py gpt-5-mini-petrobras         # se registrado via RMCQ_AZURE_DEPLOYMENTS
 """
