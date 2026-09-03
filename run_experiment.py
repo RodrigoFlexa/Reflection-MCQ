@@ -234,7 +234,8 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
         hash_input = f"{backend.key}\0{max_tokens}\0{prompt}"
         prompt_digest = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
         current = cached.get(key, {})
-        invalid = not current.get("text") or current.get("finish_reason") == "length"
+        content_filtered = current.get("finish_reason") == "content_filter"
+        invalid = (not current.get("text") and not content_filtered) or current.get("finish_reason") == "length"
         if key not in cached or cached[key].get("prompt_hash") != prompt_digest or invalid:
             missing.append((key, prompt, prompt_digest))
     print(f"{description}: total={len(prompts)} cache={len(prompts)-len(missing)} missing={len(missing)}", flush=True)
@@ -255,7 +256,10 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
         save_jsonl(path, cached.values())
         failed = [
             key for key, _prompt, _digest in batch
-            if not cached[key]["text"] or cached[key]["finish_reason"] == "length"
+            if (
+                not cached[key]["text"]
+                and cached[key]["finish_reason"] != "content_filter"
+            ) or cached[key]["finish_reason"] == "length"
         ]
         if failed:
             raise RuntimeError(
@@ -273,6 +277,12 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
     results: dict[str, dict[str, Any]] = {}
     judge_prompts = {}
     for key, row in generated.items():
+        if row.get("finish_reason") == "content_filter":
+            results[key] = {
+                "selected_answer": None, "correct": None,
+                "eval_method": "content_filter",
+            }
+            continue
         answer = extract_final_answer(row["text"])
         if answer is None:
             judge_prompts[key] = build_judge_prompt(items[key], row["text"])
@@ -286,6 +296,24 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
             results[key] = {"selected_answer": None, "correct": verdict,
                             "eval_method": "judge" if verdict is not None else "unresolved"}
     return results
+
+
+def reflection_status(outputs: dict[str, dict[str, dict[str, Any]]], uid: str) -> dict[str, str]:
+    return {
+        depth: outputs[depth].get(uid, {}).get("finish_reason", "not_generated")
+        for depth in ("simple", "complex")
+    }
+
+
+def unavailable_memory_method(
+    attempt_row: dict[str, Any], reflection_row: dict[str, Any] | None, depth: str
+) -> str:
+    if attempt_row.get("eval_method") == "content_filter":
+        return "source_answer_content_filter"
+    status = (reflection_row or {}).get("reflection_status", {}).get(depth)
+    if status == "content_filter":
+        return "source_reflection_content_filter"
+    return "source_reflection_unavailable"
 
 
 def unique_sources(pairs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -350,6 +378,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
         save_json(exchange / "retrieval_audit.json", audit)
 
     sources = unique_sources(pairs)
+    content_filter_count = 0
     for model_key in split_csv(args.models):
         model_cache = results / "work" / "prepare" / model_key
         with get_backend(model_key, kind=args.backend) as backend:
@@ -374,16 +403,26 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
             verdict = verdicts[uid]
             rows.append({
                 "dataset": item["dataset"], "source_uid": uid, "item": item,
-                "response": generated[uid]["text"], **verdict,
+                "response": generated[uid]["text"],
+                "answer_finish_reason": generated[uid]["finish_reason"], **verdict,
                 "reflections": {
                     depth: reflection_outputs[depth].get(uid, {}).get("text")
                     for depth in REFLECTION_DEPTHS
                 },
+                "reflection_status": reflection_status(reflection_outputs, uid),
             })
+        content_filter_count += sum(
+            row["answer_finish_reason"] == "content_filter"
+            for row in rows
+        ) + sum(
+            status == "content_filter"
+            for row in rows for status in row["reflection_status"].values()
+        )
         save_jsonl(exchange / "students" / model_key / "train.jsonl", rows)
     save_json(exchange / "prepare_receipt.json", {
         "pairs": len(pairs), "unique_training_sources": len(sources),
-        "student_models": split_csv(args.models), "complete": True,
+        "student_models": split_csv(args.models),
+        "content_filter_events": content_filter_count, "complete": True,
     })
 
 
@@ -441,11 +480,13 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 "dataset": sources[uid]["dataset"], "source_uid": uid,
                 "student_model": student_model,
                 "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
+                "reflection_status": reflection_status(outputs, uid),
             } for uid in student_by_uid]
 
         condition_prompts: dict[str, str] = {}
         condition_items: dict[str, dict[str, Any]] = {}
         condition_meta: dict[str, dict[str, Any]] = {}
+        unavailable_validation_rows: list[dict[str, Any]] = []
         for uid, item in validation.items():
             pair = pair_by_val[uid]
             source_uid = pair["source_uid"]
@@ -457,6 +498,19 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                     depth = condition.removeprefix("self_")
                     reflection = self_reflections[depth].get(source_uid, {}).get("text")
                     if not reflection:
+                        source_attempt = verdicts[source_uid] | {
+                            "reflection_status": reflection_status(self_reflections, source_uid)
+                        }
+                        unavailable_validation_rows.append({
+                            "model": teacher_model, "dataset": pair["dataset"],
+                            "val_uid": pair["val_uid"], "source_uid": source_uid,
+                            "similarity": pair["similarity"], "condition": condition,
+                            "response": "", "finish_reason": "not_generated",
+                            "selected_answer": None, "correct": None,
+                            "eval_method": unavailable_memory_method(
+                                source_attempt, source_attempt, depth
+                            ),
+                        })
                         continue
                     prompt = build_transfer_prompt(
                         item, pair["source_item"], generated[source_uid]["text"],
@@ -476,25 +530,42 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
 
     teacher_train = [{
         "dataset": item["dataset"], "source_uid": uid, "item": item,
-        "response": generated[uid]["text"], **verdicts[uid],
+        "response": generated[uid]["text"],
+        "answer_finish_reason": generated[uid]["finish_reason"], **verdicts[uid],
         "reflections": {depth: self_reflections[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
+        "reflection_status": reflection_status(self_reflections, uid),
     } for uid, item in sources.items()]
     save_jsonl(exchange / "teacher" / "train.jsonl", teacher_train)
     for model, rows in teacher_rows_by_model.items():
         save_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl", rows)
-    validation_rows = []
+    validation_rows = list(unavailable_validation_rows)
     for key, meta in condition_meta.items():
         pair = meta["pair"]
         validation_rows.append({
             "model": teacher_model, "dataset": pair["dataset"], "val_uid": pair["val_uid"],
             "source_uid": pair["source_uid"], "similarity": pair["similarity"],
             "condition": meta["condition"], "response": condition_generated[key]["text"],
+            "finish_reason": condition_generated[key]["finish_reason"],
             **condition_verdicts[key],
         })
     save_jsonl(exchange / "teacher" / "validation.jsonl", validation_rows)
+    teacher_filter_events = (
+        sum(row["answer_finish_reason"] == "content_filter" for row in teacher_train)
+        + sum(status == "content_filter" for row in teacher_train for status in row["reflection_status"].values())
+        + sum(
+            status == "content_filter"
+            for rows in teacher_rows_by_model.values()
+            for row in rows for status in row["reflection_status"].values()
+        )
+        + sum(row.get("finish_reason") == "content_filter" for row in validation_rows)
+    )
     save_json(exchange / "teacher_receipt.json", {
         "teacher_model": teacher_model, "training_sources": len(sources),
         "validation_generations": len(validation_rows), "student_models_taught": models,
+        "content_filter_events": teacher_filter_events,
+        "unavailable_validation_conditions": sum(
+            row.get("correct") is None for row in validation_rows
+        ),
         "complete": True,
     })
 
@@ -510,6 +581,7 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         summary.append({
             "model": model, "dataset": dataset, "condition": condition,
             "n": len(group), "resolved": len(resolved),
+            "coverage": len(resolved) / len(group),
             "accuracy": (sum(bool(row["correct"]) for row in resolved) / len(resolved)) if resolved else None,
         })
     return summary
@@ -543,6 +615,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         prompts: dict[str, str] = {}
         items: dict[str, dict[str, Any]] = {}
         metadata: dict[str, dict[str, Any]] = {}
+        unavailable_rows: list[dict[str, Any]] = []
         for pair in pairs:
             val_item, source_item = pair["validation_item"], pair["source_item"]
             source_uid = pair["source_uid"]
@@ -556,6 +629,18 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                     reflection_row = attempt_row if author == "self" else teacher_rows_by_model[model].get(source_uid)
                     reflection = (reflection_row or {}).get("reflections", {}).get(depth)
                     if not reflection:
+                        method = (
+                            "source_attempt_unavailable" if attempt_row is None
+                            else unavailable_memory_method(attempt_row, reflection_row, depth)
+                        )
+                        unavailable_rows.append({
+                            "model": model, "dataset": pair["dataset"],
+                            "val_uid": pair["val_uid"], "source_uid": source_uid,
+                            "similarity": pair["similarity"], "condition": condition,
+                            "response": "", "finish_reason": "not_generated",
+                            "selected_answer": None, "correct": None,
+                            "eval_method": method,
+                        })
                         continue
                     prompt = build_transfer_prompt(
                         val_item, source_item, attempt_row["response"],
@@ -569,13 +654,14 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                                         args.batch_size, args.fresh, f"{model} validation")
             verdicts = resolve_answers(backend, cache_dir, "validation", generated, items,
                                        args.batch_size, args.fresh)
-        model_rows = []
+        model_rows = list(unavailable_rows)
         for key, meta in metadata.items():
             pair = meta["pair"]
             model_rows.append({
                 "model": model, "dataset": pair["dataset"], "val_uid": pair["val_uid"],
                 "source_uid": pair["source_uid"], "similarity": pair["similarity"],
                 "condition": meta["condition"], "response": generated[key]["text"],
+                "finish_reason": generated[key]["finish_reason"],
                 **verdicts[key],
             })
         save_jsonl(results / "models" / model / "validation.jsonl", model_rows)
@@ -583,7 +669,15 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     save_jsonl(results / "analysis" / "all_outcomes.jsonl", all_rows)
     summary = summarize(all_rows)
     save_csv(results / "analysis" / "accuracy.csv", summary)
-    save_json(results / "finish_receipt.json", {"rows": len(all_rows), "complete": True})
+    filter_audit = [
+        row for row in all_rows if "content_filter" in (row.get("eval_method") or "")
+    ]
+    save_jsonl(results / "analysis" / "content_filter_audit.jsonl", filter_audit)
+    save_json(results / "finish_receipt.json", {
+        "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
+        "unresolved_conditions": sum(row.get("correct") is None for row in all_rows),
+        "complete": True,
+    })
     print(f"completed: {results}", flush=True)
 
 

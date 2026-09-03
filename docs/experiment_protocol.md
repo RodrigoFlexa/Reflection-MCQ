@@ -78,3 +78,16 @@ Para modelos locais, o pipeline também mede o prompt renderizado antes de
 gerar. Se a questão recuperada + reflexão + validação não couberem no contexto,
 a execução falha explicitamente em vez de truncar a questão recuperada. Isso é
 especialmente importante para o contexto nativo de 2048 tokens do Phi-2.
+
+## Filtro de conteúdo do Azure
+
+Bloqueios identificados como `ResponsibleAIPolicyViolation`, `content_filter`,
+`jailbreak` ou conteúdo malicioso são tratados como ausência de dado. O item é
+salvo com `correct=null`, a memória dependente não é usada e o restante do lote
+continua. Outros erros HTTP não são engolidos.
+
+Os recibos registram o total de eventos do filtro. Ao final,
+`accuracy.csv` informa a cobertura de cada condição e
+`content_filter_audit.jsonl` lista todas as condições afetadas. Assim, a
+acurácia é calculada entre respostas resolvidas sem esconder quantos exemplos
+foram bloqueados.

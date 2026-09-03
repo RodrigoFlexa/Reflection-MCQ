@@ -292,6 +292,11 @@ AZURE_REASONING_EFFORT = _env_str("RMCQ_AZURE_REASONING_EFFORT", "low")
 
 # Resposta vazia é falha de configuração, nunca abstenção do modelo.
 AZURE_FAIL_ON_EMPTY = _env_str("RMCQ_AZURE_FAIL_ON_EMPTY", "1") in ("1", "true", "True")
+# Bloqueios de política são ausência de dado auditável, não falha de
+# infraestrutura. Quando ligado, um item filtrado não derruba o lote inteiro.
+AZURE_CONTINUE_ON_CONTENT_FILTER = _env_str(
+    "RMCQ_AZURE_CONTINUE_ON_CONTENT_FILTER", "1"
+) in ("1", "true", "True")
 AZURE_HEALTH_CHECK_CALLS = _env_int("RMCQ_AZURE_HEALTH_CHECK_CALLS", 5)
 AZURE_MAX_EMPTY_RATE = _env_float("RMCQ_AZURE_MAX_EMPTY_RATE", 0.2)
 

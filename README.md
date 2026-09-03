@@ -136,6 +136,19 @@ No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
 `RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
 salvo, mas ainda consome tokens do orçamento.
 
+### Bloqueios do filtro de conteúdo do Azure
+
+`RMCQ_AZURE_CONTINUE_ON_CONTENT_FILTER=1` impede que um único
+`ResponsibleAIPolicyViolation` derrube toda a grade. Somente erros reconhecidos
+como política de conteúdo são convertidos em item não resolvido; erros de
+credencial, TLS, deployment ou rede continuam falhando normalmente.
+
+Uma resposta ou reflexão filtrada nunca é reutilizada como memória. As
+condições dependentes ficam com `correct=null` e um `eval_method` explícito,
+como `source_answer_content_filter` ou `source_reflection_content_filter`.
+`accuracy.csv` apresenta também a cobertura (`resolved / n`) e a lista detalhada
+fica em `analysis/content_filter_audit.jsonl`.
+
 ## Instalação e configuração
 
 ```bash
