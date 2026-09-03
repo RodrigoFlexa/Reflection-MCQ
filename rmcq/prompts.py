@@ -30,6 +30,8 @@ STUDENT_REFLECTION_PROMPTS = {
 3. Whether your answer was correct or incorrect.
 4. The correct answer.
 
+Reflect on your reasoning in 3–5 sentences (about 60–100 words).
+
 Analyze:
 
 - Approach: What reasoning approach did you use?
@@ -50,6 +52,8 @@ Do not solve the question again or state the correct answer.""",
 4. The correct answer.
 
 Analyze your reasoning in detail.
+
+Reflect on your reasoning in 8–12 sentences (about 160–240 words).
 
 Consider:
 
@@ -74,7 +78,7 @@ TEACHER_REFLECTION_PROMPTS = {
 2. The student's previous answer.
 3. Feedback indicating whether the student's answer was correct or incorrect.
 
-Write a brief reflection (3–6 sentences) on the student's previous response.
+Write a brief reflection (3–6 sentences, about 60–120 words) on the student's previous response.
 
 Discuss:
 
@@ -93,7 +97,7 @@ If the answer was incorrect, identify the most likely source of the error withou
 2. The student's previous answer.
 3. Feedback indicating whether the student's answer was correct or incorrect.
 
-Write a detailed reflection on the student's previous response.
+Write a detailed reflection (8–12 sentences, about 160–240 words) on the student's previous response.
 
 Analyze:
 

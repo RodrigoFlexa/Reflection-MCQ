@@ -25,15 +25,23 @@ from typing import Any, Iterable
 
 DEFAULT_MODELS = (
     "phi2",
-    "deepseek-r1-distill-llama-8b-ollama",
+    "deepseek-r1-distill-llama-8b",
     "llama3.1-8b",
 )
 DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa")
 DEFAULT_TEACHER = "gpt-5-4-petrobras"
+DEFAULT_JUDGE = "llama3.1-8b"
 PIPELINE_VERSION = "top1-two-server-v4"
 ANSWER_TEMPERATURE = 0.0
 REFLECTION_TEMPERATURE = 0.7
 PHI2_TRANSFER_REFLECTION_MAX_TOKENS = 512
+# Phi-2 is a base model behind an "Instruct:/Output:" text-completion wrapper,
+# not a chat model with a reliable EOS. Once it finishes the real answer it
+# tends to keep completing in the style of its pretraining corpus, inventing
+# a brand-new exercise instead of stopping. These strings are what that drift
+# looks like in practice; cutting generation there keeps the real answer and
+# discards nothing usable.
+PHI2_STOP_SEQUENCES = ("\nInstruct:", "\nExercise", "\nQuestion:")
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,6 +51,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", default=",".join(DEFAULT_MODELS))
     parser.add_argument("--datasets", default=",".join(DEFAULT_DATASETS))
     parser.add_argument("--teacher-model", default=DEFAULT_TEACHER)
+    parser.add_argument(
+        "--judge-model", default=DEFAULT_JUDGE,
+        help=(
+            "Fixed model that decides selected-option match when a student's own "
+            "answer doesn't parse as FINAL ANSWER: <letter>. Never the student "
+            "itself, so a model that ignores formatting instructions doesn't also "
+            "grade itself."
+        ),
+    )
     parser.add_argument("--backend", choices=("vllm", "hf", "stub"), default=None)
     parser.add_argument("--teacher-backend", choices=("azure", "stub"), default="azure")
     parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "0"))
@@ -211,11 +228,41 @@ def cache_key(*parts: str) -> str:
 
 
 def training_answer_budget(model_key: str) -> int:
-    return 512 if model_key == "phi2" else 768
+    return 512 if model_key == "phi2" else 1024
+
+
+def training_answer_retry_budget(model_key: str) -> int:
+    # DeepSeek-R1-distill spends its budget inside <think>...</think>, which is
+    # stripped before saving: a truncated block leaves an empty answer, not a
+    # cut-off-but-usable one. Observed p99 among *successful* generations was
+    # already 1085/1152 tokens at the old 768/1152 budget, with ~20% still
+    # exhausting the retry outright — the tail runs well past 1152, so give it
+    # real headroom instead of the default +50% fallback.
+    if model_key == "phi2":
+        base = training_answer_budget(model_key)
+        return base + max(128, base // 2)
+    return 2048
 
 
 def validation_answer_budget(model_key: str) -> int:
     return 384 if model_key == "phi2" else 512
+
+
+def judge_budget(model_key: str) -> int:
+    # The judge is asked for exactly one word, but it still shares the model's
+    # generation quirks: a reasoning model opens <think> here too, unconditionally,
+    # even for a one-word classification. The pilot at the old flat 128 budget
+    # (never tuned per model) discarded 40% of DeepSeek's judge calls as
+    # length_exhausted — same failure shape as the training answer, just never
+    # given the same headroom.
+    return 128 if model_key == "phi2" else 512
+
+
+def judge_retry_budget(model_key: str) -> int:
+    if model_key == "phi2":
+        base = judge_budget(model_key)
+        return base + max(128, base // 2)
+    return 2048
 
 
 def reflection_budget(model_key: str, depth: str) -> int:
@@ -234,7 +281,8 @@ def reflection_retry_budget(model_key: str, depth: str) -> int:
 def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_tokens: int,
                     batch_size: int, fresh: bool, description: str,
                     temperature: float = ANSWER_TEMPERATURE,
-                    retry_max_tokens: int | None = None) -> dict[str, dict[str, Any]]:
+                    retry_max_tokens: int | None = None,
+                    stop: tuple[str, ...] = ()) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
 
     max_len = getattr(backend, "max_len", None)
@@ -255,12 +303,12 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
     cached = {} if fresh or not path.exists() else {row["key"]: row for row in load_jsonl(path)}
     missing = []
     for key, prompt in prompts.items():
-        if retry_max_tokens is None:
+        if retry_max_tokens is None and not stop:
             # Preserve compatibility with answer/judge checkpoints from v4.
             hash_input = f"{backend.key}\0{max_tokens}\0{temperature}\0{prompt}"
         else:
             hash_input = (
-                f"{backend.key}\0{max_tokens}\0{retry_max_tokens}\0"
+                f"{backend.key}\0{max_tokens}\0{retry_max_tokens}\0{','.join(stop)}\0"
                 f"{temperature}\0{prompt}"
             )
         prompt_digest = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
@@ -279,7 +327,7 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
         batch = missing[start:start + checkpoint]
         generations = backend.generate(
             [prompt for _, prompt, _ in batch],
-            GenParams(max_new_tokens=max_tokens, temperature=temperature),
+            GenParams(max_new_tokens=max_tokens, temperature=temperature, stop=stop),
             desc=f"{description} [{start + 1}-{start + len(batch)}]",
         )
         for (key, _prompt, digest), generation in zip(batch, generations):
@@ -339,7 +387,7 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                 )
                 retried = backend.generate(
                     [prompt for _, prompt, _ in retry_batch],
-                    GenParams(max_new_tokens=retry_tokens, temperature=temperature),
+                    GenParams(max_new_tokens=retry_tokens, temperature=temperature, stop=stop),
                     desc=f"{description} retry",
                 )
                 for (key, _prompt, digest), generation in zip(retry_batch, retried):
@@ -410,8 +458,12 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
         else:
             results[key] = {"selected_answer": answer, "correct": answer == items[key]["answerKey"], "eval_method": "parser"}
     if judge_prompts:
-        judged = cached_generate(backend, cache_dir / f"judge_{stage}.jsonl", judge_prompts,
-                                  128, batch_size, fresh, f"judge {stage}")
+        judged = cached_generate(
+            backend, cache_dir / f"judge_{stage}.jsonl", judge_prompts,
+            judge_budget(backend.key), batch_size, fresh, f"judge {stage}",
+            retry_max_tokens=None if backend.key == "phi2" else judge_retry_budget(backend.key),
+            stop=PHI2_STOP_SEQUENCES if backend.key == "phi2" else (),
+        )
         for key, row in judged.items():
             if row.get("finish_reason") in {"length_exhausted", "empty_exhausted"}:
                 results[key] = {
@@ -505,7 +557,8 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "pipeline_version": PIPELINE_VERSION,
         "models": split_csv(args.models), "datasets": split_csv(args.datasets),
-        "teacher_model": args.teacher_model, "validation_cap": args.validation_cap,
+        "teacher_model": args.teacher_model, "judge_model": args.judge_model,
+        "validation_cap": args.validation_cap,
         "train_cap": args.train_cap,
         "student_backend": args.backend or BACKEND,
         "generation_temperatures": {
@@ -517,9 +570,19 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "training_answer_max_tokens": {
             model: training_answer_budget(model) for model in split_csv(args.models)
         },
+        "training_answer_retry_max_tokens": {
+            model: training_answer_retry_budget(model) for model in split_csv(args.models)
+        },
         "validation_answer_max_tokens": {
             model: validation_answer_budget(model) for model in split_csv(args.models)
         },
+        "judge_max_tokens": {
+            model: judge_budget(model) for model in split_csv(args.models)
+        },
+        "judge_retry_max_tokens": {
+            model: judge_retry_budget(model) for model in split_csv(args.models)
+        },
+        "phi2_stop_sequences": list(PHI2_STOP_SEQUENCES),
         "reflection_max_tokens": {
             model: {
                 depth: reflection_budget(model, depth) for depth in ("simple", "complex")
@@ -634,8 +697,14 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
 
     sources = unique_sources(pairs)
     content_filter_count = 0
-    for model_key in split_csv(args.models):
+    models = split_csv(args.models)
+    model_caches: dict[str, Path] = {}
+    generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+
+    # Pass 1: each model generates its own training answers. Nobody is judged yet.
+    for model_key in models:
         model_cache = results / "work" / "prepare" / model_key
+        model_caches[model_key] = model_cache
         if compatible is not None and not args.fresh:
             previous_cache = results.parent / compatible.name / "work" / "prepare" / model_key
             reused = []
@@ -652,12 +721,34 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                     f"{compatible.name}: {', '.join(reused)}",
                     flush=True,
                 )
+        answer_prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
         with get_backend(model_key, kind=args.backend) as backend:
-            answer_prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
-            generated = cached_generate(backend, model_cache / "train_answers.jsonl", answer_prompts,
-                                        training_answer_budget(model_key), args.batch_size, args.fresh, f"{model_key} training answers")
-            verdicts = resolve_answers(backend, model_cache, "train", generated, sources,
-                                       args.batch_size, args.fresh)
+            generated_by_model[model_key] = cached_generate(
+                backend, model_cache / "train_answers.jsonl", answer_prompts,
+                training_answer_budget(model_key), args.batch_size, args.fresh,
+                f"{model_key} training answers",
+                retry_max_tokens=None if model_key == "phi2" else training_answer_retry_budget(model_key),
+                stop=PHI2_STOP_SEQUENCES if model_key == "phi2" else (),
+            )
+
+    # Pass 2: one fixed judge model decides selected-option match for every
+    # model's unparsed answers, loaded once. A student never grades itself —
+    # see docs/experiment_protocol.md for why (a self-graded DeepSeek barely
+    # follows "respond in exactly one word" either).
+    verdicts_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+    with get_backend(args.judge_model, kind=args.backend) as judge_backend:
+        for model_key in models:
+            verdicts_by_model[model_key] = resolve_answers(
+                judge_backend, model_caches[model_key], "train",
+                generated_by_model[model_key], sources, args.batch_size, args.fresh,
+            )
+
+    # Pass 3: each model reflects on its own (now-judged) training answers.
+    for model_key in models:
+        model_cache = model_caches[model_key]
+        generated = generated_by_model[model_key]
+        verdicts = verdicts_by_model[model_key]
+        with get_backend(model_key, kind=args.backend) as backend:
             reflection_outputs: dict[str, dict[str, dict[str, Any]]] = {}
             for depth in REFLECTION_DEPTHS:
                 prompts = {
@@ -670,6 +761,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                     args.batch_size, args.fresh, f"{model_key} self reflection {depth}",
                     temperature=args.reflection_temperature,
                     retry_max_tokens=reflection_retry_budget(model_key, depth),
+                    stop=PHI2_STOP_SEQUENCES if model_key == "phi2" else (),
                 )
         rows = []
         for uid, item in sources.items():
@@ -694,7 +786,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
         save_jsonl(exchange / "students" / model_key / "train.jsonl", rows)
     save_json(exchange / "prepare_receipt.json", {
         "pairs": len(pairs), "unique_training_sources": len(sources),
-        "student_models": split_csv(args.models),
+        "student_models": models, "judge_model": args.judge_model,
         "content_filter_events": content_filter_count, "complete": True,
     })
 
@@ -886,7 +978,15 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         for model in manifest["models"]
     }
     all_rows = load_jsonl(exchange / "teacher" / "validation.jsonl")
-    for model in manifest["models"]:
+    models = manifest["models"]
+    cache_dirs: dict[str, Path] = {}
+    generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+    items_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+    metadata_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+    unavailable_rows_by_model: dict[str, list[dict[str, Any]]] = {}
+
+    # Pass 1: each model answers its own validation prompts. Nobody is judged yet.
+    for model in models:
         prompts: dict[str, str] = {}
         items: dict[str, dict[str, Any]] = {}
         metadata: dict[str, dict[str, Any]] = {}
@@ -927,6 +1027,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                     "condition": condition, "pair": pair, "reflection": reflection,
                 }
         cache_dir = results / "work" / "finish" / model
+        cache_dirs[model] = cache_dir
         with get_backend(model, kind=args.backend) as backend:
             answer_tokens = validation_answer_budget(model)
             accepted_prompts: dict[str, str] = {}
@@ -952,13 +1053,31 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                     "selected_answer": None, "correct": None, **issue,
                 })
             prompts, items, metadata = accepted_prompts, accepted_items, accepted_metadata
-            generated = cached_generate(
+            generated_by_model[model] = cached_generate(
                 backend, cache_dir / "validation.jsonl", prompts, answer_tokens,
                 args.batch_size, args.fresh, f"{model} validation",
+                stop=PHI2_STOP_SEQUENCES if model == "phi2" else (),
             )
-            verdicts = resolve_answers(backend, cache_dir, "validation", generated, items,
-                                       args.batch_size, args.fresh)
-        model_rows = list(unavailable_rows)
+        items_by_model[model] = items
+        metadata_by_model[model] = metadata
+        unavailable_rows_by_model[model] = unavailable_rows
+
+    # Pass 2: the same fixed judge model used in `prepare` resolves every
+    # model's unparsed validation answers, loaded once.
+    verdicts_by_model: dict[str, dict[str, dict[str, Any]]] = {}
+    with get_backend(args.judge_model, kind=args.backend) as judge_backend:
+        for model in models:
+            verdicts_by_model[model] = resolve_answers(
+                judge_backend, cache_dirs[model], "validation",
+                generated_by_model[model], items_by_model[model],
+                args.batch_size, args.fresh,
+            )
+
+    for model in models:
+        generated = generated_by_model[model]
+        metadata = metadata_by_model[model]
+        verdicts = verdicts_by_model[model]
+        model_rows = list(unavailable_rows_by_model[model])
         for key, meta in metadata.items():
             pair = meta["pair"]
             model_rows.append({

@@ -62,20 +62,78 @@ questão de validação que precisa ser respondida.
 ## Integridade da resposta
 
 O parser usa a última ocorrência de `FINAL ANSWER: <letter>`. Se o modelo não
-respeitar o formato, uma segunda geração julga apenas qual opção foi escolhida.
-Respostas ainda ambíguas ficam com `correct=null` e são contabilizadas como não
-resolvidas, sem serem silenciosamente convertidas em erro ou acerto.
+respeitar o formato, uma segunda geração julga apenas qual opção foi escolhida
+— mas não é o próprio modelo que respondeu quem julga. Um `--judge-model` fixo
+(padrão `llama3.1-8b`, ver `DEFAULT_JUDGE` em `run_experiment.py`) resolve o
+fallback de todo mundo, incluindo suas próprias respostas. Isso evita que um
+modelo que ignora instrução de formato (o DeepSeek, na prática) também seja
+quem decide se acertou: ele receberia a resposta correta e uma instrução
+igualmente específica ("responda só uma palavra"), que também não seguiria de
+forma confiável. Respostas ainda ambíguas ficam com `correct=null` e são
+contabilizadas como não resolvidas, sem serem silenciosamente convertidas em
+erro ou acerto.
 
-O campo `think: false` é enviado ao Ollama. Além disso, `Generation` remove
-qualquer bloco `<think>` embutido antes que a saída seja salva, avaliada ou
-usada para gerar reflexão.
+Isso muda a ordem de execução de `prepare`/`finish`: em vez de cada modelo
+responder, julgar a si mesmo e refletir em uma única sessão, agora são três
+passagens — (1) cada modelo gera suas respostas e descarrega, (2) o juiz fixo
+carrega uma única vez e resolve o fallback de todos, descarrega, (3) cada
+modelo recarrega para gerar suas reflexões usando o veredito já resolvido.
+Custa recarregar cada modelo estudante duas vezes em vez de uma, mas isolar o
+julgamento do modelo que respondeu vale o tempo de carga extra.
+
+O campo `think: false` é enviado ao Ollama, mas nenhum modelo do registro
+padrão usa mais esse provider — o DeepSeek foi movido para vLLM por
+velocidade (continuous batching em vez de uma chamada HTTP por item). Isso
+não muda o comportamento do `<think>`: a destilação do DeepSeek-R1 embute o
+raciocínio de forma incondicional, sem alternância para desativá-lo, então
+todo backend sempre abre um bloco `<think>`. A defesa real é a outra:
+`Generation` remove qualquer bloco `<think>` embutido antes que a saída seja
+salva, avaliada ou usada para gerar reflexão, em qualquer backend.
+
+O Phi-2 é um modelo base atrás do wrapper de completação `Instruct:/Output:`,
+sem EOS confiável: depois de terminar a resposta real, ele tende a continuar
+completando no estilo do corpus de pré-treino, inventando um novo exercício
+em vez de parar. Três stop sequences (`\nInstruct:`, `\nExercise`,
+`\nQuestion:`) cortam a geração nesse ponto, preservando a resposta real. Elas
+valem para toda geração do Phi-2 — resposta de treino, validação e reflexão —
+e não se aplicam a nenhum outro modelo.
 
 Os limites iniciais e da única repetição são:
 
 | Modelo | Resposta treino | Resposta validação | Reflexão simples | Reflexão complexa |
 |---|---:|---:|---:|---:|
 | Phi-2 | 512 → 768 | 384 → 576 | 256 → 384 | 384 → 512 |
-| DeepSeek/Llama | 768 → 1152 | 512 → 768 | 768 → 1152 | 1024 → 1536 |
+| DeepSeek/Llama | 1024 → 2048 | 512 → 768 | 768 → 1152 | 1024 → 1536 |
+
+O `judge` não tem mais um teto por modelo respondente — é sempre o teto do
+`--judge-model` fixo (`judge_budget`/`judge_retry_budget` em
+`run_experiment.py`), hoje 512 → 2048 para o Llama3.1-8B padrão, 128 → 192 se
+o juiz declarado for o Phi-2.
+
+A resposta de treino do DeepSeek/Llama foi revista para 1024 → 2048 depois de
+auditar `data/results`: o DeepSeek-R1-distill gasta o orçamento dentro de
+`<think>...</think>`, que é removido antes de salvar — um bloco que não fecha
+vira resposta vazia, não uma resposta truncada mas usável. No teto anterior
+(768 → 1152), 20% das respostas de treino eram descartadas como
+`length_exhausted` mesmo com a repetição, e o p99 das gerações bem-sucedidas
+já estava em 1085/1152 tokens — a cauda passava do teto antigo.
+
+Até este ponto do desenvolvimento, o `judge` era o próprio modelo que
+respondeu, com um teto fixo de 128 → 256 para todo mundo, nunca ajustado por
+modelo. Um piloto do DeepSeek revelou dois problemas empilhados: primeiro, ele
+quase nunca produz o literal `FINAL ANSWER:` (só 4,5% das respostas
+bem-sucedidas no piloto), então quase toda resposta caía no `judge`; segundo,
+o `judge` sofria do mesmo problema do `<think>` que a resposta de treino
+tinha — mesmo pedindo uma única palavra, o modelo ainda abria um bloco de
+raciocínio antes de responder. Com o teto antigo, 40% das chamadas ao `judge`
+no piloto terminaram `length_exhausted` (texto vazio), deixando ~44% dos itens
+de treino sem veredito e, portanto, sem reflexão gerada.
+
+Subir o teto do `judge` teria resolvido só metade do problema — a outra
+metade (85% de fallback rate) vem do próprio DeepSeek não seguir o formato
+pedido, o que não é corrigível por budget. Por isso o `judge` deixou de ser o
+modelo respondente e virou um `--judge-model` fixo (padrão Llama3.1-8B, ver
+acima).
 
 Uma seta representa a repetição seletiva feita somente quando a primeira saída
 fica vazia ou termina com `finish_reason=length`. Se a segunda tentativa ainda
@@ -99,9 +157,12 @@ resposta, somente aquela condição recebe `transfer_context_exceeded`. Llama
 3.1 e DeepSeek não precisam do teto de memória de 512 tokens, mas também passam
 pela verificação contra suas janelas operacionais.
 
-Nenhum limite de palavras ou tokens é acrescentado ao texto dos prompts de
-reflexão fornecidos para o experimento; o controle ocorre exclusivamente nos
-parâmetros de geração e na elegibilidade do prompt de transferência.
+Os prompts de reflexão trazem uma faixa de frases e palavras (student simple
+3–5 frases/60–100 palavras, student complex e teacher complex 8–12/160–240,
+teacher simple 3–6/60–120) para reduzir divagação, especialmente no Phi-2.
+Nenhum limite bruto de tokens é acrescentado ao texto; o controle de tokens
+continua exclusivamente nos parâmetros de geração e na elegibilidade do
+prompt de transferência.
 
 No Azure, os defaults são `RMCQ_AZURE_MAX_TOKENS=1024` e
 `RMCQ_AZURE_REASONING_MIN_TOKENS=4000`; portanto, o GPT-5-4 recebe um teto

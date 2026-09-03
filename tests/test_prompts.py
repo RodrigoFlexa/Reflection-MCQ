@@ -24,11 +24,11 @@ def test_student_prompt_receives_correct_answer_as_private_feedback():
     assert "previous answer was INCORRECT" in prompt
 
 
-def test_reflection_instructions_have_no_added_word_or_token_limit():
+def test_reflection_instructions_have_no_added_token_limit():
+    # Sentence/word guidance is allowed (it curbs rambling); a raw token count
+    # is not — token budgeting stays exclusively in the generation parameters.
     for prompt in (*STUDENT_REFLECTION_PROMPTS.values(), *TEACHER_REFLECTION_PROMPTS.values()):
-        lowered = prompt.casefold()
-        assert "words" not in lowered
-        assert "tokens" not in lowered
+        assert "tokens" not in prompt.casefold()
 
 
 def test_teacher_prompt_does_not_receive_correct_answer():

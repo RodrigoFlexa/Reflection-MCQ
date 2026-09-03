@@ -131,14 +131,17 @@ MODELS: dict[str, ModelSpec] = {
             "sem truncar os prompts deste experimento."
         ),
     ),
-    "deepseek-r1-distill-llama-8b-ollama": ModelSpec(
-        key="deepseek-r1-distill-llama-8b-ollama",
-        repo_id="deepseek-r1:8b-llama-distill-fp16",
-        provider="ollama",
-        extra_kwargs={"tag": "deepseek-r1:8b-llama-distill-fp16"},
+    "deepseek-r1-distill-llama-8b": ModelSpec(
+        key="deepseek-r1-distill-llama-8b",
+        repo_id="deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        extra_kwargs={"max_model_len": 8192},
         notes=(
-            "DeepSeek-R1-Distill-Llama-8B via Ollama, FP16 tag selected to avoid "
-            "quantization loss. Operational context is controlled by RMCQ_OLLAMA_NUM_CTX."
+            "Moved from Ollama to vLLM for throughput (continuous batching vs. "
+            "one HTTP call per item). This does not change the <think> behavior: "
+            "the distillation bakes reasoning in unconditionally, with no toggle "
+            "to disable it (unlike e.g. Qwen3) — every generation still opens a "
+            "<think> block regardless of backend, and Generation still strips it "
+            "before saving. Only speed changes, not the truncation risk inside it."
         ),
     ),
 }

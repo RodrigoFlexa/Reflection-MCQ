@@ -9,7 +9,7 @@ repetidas.
 O pipeline usa três estudantes pequenos:
 
 - `phi2`;
-- `deepseek-r1-distill-llama-8b-ollama`;
+- `deepseek-r1-distill-llama-8b`;
 - `llama3.1-8b`.
 
 O `gpt-5-4-petrobras` tem dois papéis: quarto estudante (responde o treino,
@@ -129,13 +129,19 @@ conclusão e suas letras não se transferem para a questão nova.
 
 ## Thinking
 
-O pipeline usa duas defesas complementares:
+O pipeline usa duas defesas complementares, mas hoje só a segunda está ativa:
 
-1. `RMCQ_OLLAMA_THINK=0` envia `think: false` ao Ollama. Em versões atuais, o
-   raciocínio é separado de `message.content` e pode ser desativado.
+1. `RMCQ_OLLAMA_THINK=0` envia `think: false` ao Ollama. Só vale para modelos
+   com `provider="ollama"` em `rmcq/config.py`; nenhum modelo do registro
+   padrão usa mais Ollama (o DeepSeek foi movido para vLLM — ver abaixo), então
+   esta defesa está inativa até que algum modelo Ollama volte a ser declarado.
 2. Todo backend remove blocos `<think>...</think>` antes de persistir ou
    reutilizar a resposta. Um bloco aberto e truncado vira resposta vazia, nunca
-   uma reflexão aparentemente válida.
+   uma reflexão aparentemente válida. Esta é a única defesa em vigor para o
+   DeepSeek-R1-distill: a destilação embute o raciocínio de forma
+   incondicional, sem alternância para desativá-lo (diferente de, por exemplo,
+   Qwen3), então todo backend — Ollama ou vLLM — sempre abre um bloco
+   `<think>`.
 
 No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
 `RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
@@ -144,9 +150,30 @@ salvo, mas ainda consome tokens do orçamento.
 Respostas e reflexões têm limites explícitos e uma única segunda tentativa
 com orçamento maior. Por exemplo, o Phi-2 usa 512 tokens na resposta de treino e repete
 somente um item truncado com 768. Suas reflexões simples usam 256 → 384 tokens,
-e as complexas usam 384 → 512. Se a segunda tentativa também truncar, a saída é descartada e marcada
+e as complexas usam 384 → 512. O DeepSeek/Llama usa 1024 → 2048 na resposta de
+treino — mais alto porque o DeepSeek-R1-distill gasta orçamento dentro de
+`<think>`, removido antes de salvar; truncar ali não sobra resposta parcial,
+sobra resposta vazia. Se a segunda tentativa também truncar, a saída é descartada e marcada
 como `length_exhausted`. Ela não é avaliada, não gera reflexão e não é usada
 como memória, mas o restante do experimento continua.
+
+O Phi-2 também usa três stop sequences (`\nInstruct:`, `\nExercise`,
+`\nQuestion:`) em toda geração sua, porque sendo um modelo base sem EOS
+confiável ele tende a inventar um novo exercício depois de terminar a
+resposta real, em vez de parar.
+
+O `judge` — segunda geração acionada quando o parser não acha
+`FINAL ANSWER: <letter>` — não é mais o próprio modelo que respondeu. Um
+piloto do DeepSeek mostrou dois problemas: ele quase nunca usa o literal
+`FINAL ANSWER:` (cai no `judge` em ~95% dos casos) e, quando cai, o `judge`
+sofre do mesmo problema do `<think>` — mesmo pedindo uma palavra só, ele abre
+um bloco de raciocínio antes de responder (40% de `length_exhausted` no
+piloto, com o teto antigo de 128 → 256 igual pra todo modelo). Subir o budget
+resolvia só a segunda metade; a primeira (não seguir o formato pedido) não é
+corrigível por budget. Por isso o `judge` virou um `--judge-model` fixo
+(padrão `llama3.1-8b`, configurável) que julga a resposta de todo mundo,
+inclusive a própria — um modelo que ignora instrução de formato não deveria
+ser também quem decide se acertou.
 
 O mesmo vale para uma saída que continue vazia depois da repetição: ela recebe
 `empty_exhausted` e é excluída sem interromper o lote. Essa regra vale para
@@ -160,11 +187,13 @@ itens do lote são repetidos normalmente.
 Na validação, memórias com mais de 512 tokens não são fornecidas ao Phi-2. O
 prompt completo também é medido antes de gerar: uma condição que não caiba é
 marcada como `transfer_context_exceeded`, enquanto as outras continuam. Llama
-3.1 e DeepSeek mantêm seus tetos maiores, adequados às janelas operacionais de
-8192 e 16384 tokens, mas passam pela mesma verificação do prompt completo.
+3.1 e DeepSeek mantêm seus tetos maiores, adequados à janela operacional de
+8192 tokens dos dois, mas passam pela mesma verificação do prompt completo.
 
-Os prompts de reflexão são mantidos literalmente como definidos no protocolo;
-nenhuma instrução adicional de limite de palavras ou tokens é anexada a eles.
+Os prompts de reflexão trazem uma faixa de frases e palavras (por exemplo,
+"3–5 sentences (about 60–100 words)") para reduzir divagação. Nenhum limite
+bruto de tokens é acrescentado ao texto — esse controle continua exclusivo dos
+parâmetros de geração.
 
 O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
 recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure
@@ -199,10 +228,10 @@ fica em `analysis/content_filter_audit.jsonl`.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-ollama pull deepseek-r1:8b-llama-distill-fp16
 ```
 
-Aceite a licença do Llama 3.1 no Hugging Face e configure `HF_TOKEN`. No
+Aceite a licença do Llama 3.1 no Hugging Face e configure `HF_TOKEN` (o
+DeepSeek-R1-Distill-Llama-8B roda via vLLM com pesos próprios, sem gate). No
 servidor Petrobras, configure `AZURE_OPENAI_BASE_URL` (ou
 `AZURE_OPENAI_ENDPOINT`) e `AZURE_OPENAI_API_KEY`. Nunca faça commit do `.env`.
 
