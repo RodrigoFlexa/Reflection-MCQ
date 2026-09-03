@@ -46,6 +46,7 @@ from rmcq.config import (
     AZURE_BACKOFF_MAX,
     AZURE_CACHE,
     AZURE_CONCURRENCY,
+    AZURE_CONTINUE_ON_CONTENT_FILTER,
     AZURE_ENDPOINT_VAR,
     AZURE_FAIL_ON_EMPTY,
     AZURE_HEALTH_CHECK_CALLS,
@@ -123,6 +124,36 @@ def _retry_after_seconds(exc: Exception) -> float:
     return 0.0
 
 
+CONTENT_FILTER_MARKERS = (
+    "responsibleaipolicyviolation",
+    "content_filter",
+    "content filter",
+    "content management policy",
+    "prompt was filtered",
+    "jailbreak",
+    "malicious content",
+    "conteúdo malicioso",
+    "conteudo malicioso",
+)
+
+
+def is_content_filter_error(exc: BaseException) -> bool:
+    """Recognize Azure/gateway policy errors without swallowing other 4xx errors."""
+    parts = [str(exc)]
+    for attribute in ("body", "message", "code"):
+        value = getattr(exc, attribute, None)
+        if value:
+            try:
+                parts.append(json.dumps(value, ensure_ascii=False, default=str))
+            except TypeError:
+                parts.append(str(value))
+    response = getattr(exc, "response", None)
+    if response is not None:
+        parts.append(str(getattr(response, "text", "") or ""))
+    text = " ".join(parts).casefold()
+    return any(marker in text for marker in CONTENT_FILTER_MARKERS)
+
+
 class AzureEmptyResponse(RuntimeError):
     """Resposta vazia do Azure. É falha de configuração, não abstenção."""
 
@@ -158,6 +189,7 @@ class AzureBackend(Backend):
         self._lock = threading.Lock()
         self._calls = 0
         self._empties = 0
+        self._content_filters = 0
 
         self._client = self._make_client()
 
@@ -358,7 +390,10 @@ class AzureBackend(Backend):
         )
 
     def _cache_write(self, path, gen: Generation) -> None:
-        if not self.use_cache:
+        # The stage checkpoint records filtered items so the current run can
+        # resume. Do not put them in the long-lived API cache: --fresh should
+        # be able to try them again after a policy/deployment change.
+        if not self.use_cache or gen.finish_reason == "content_filter":
             return
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -404,6 +439,18 @@ class AzureBackend(Backend):
                 response = self._client.chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001 - classificado logo abaixo
                 last_exc = exc
+                if is_content_filter_error(exc) and AZURE_CONTINUE_ON_CONTENT_FILTER:
+                    gen = Generation(text="", finish_reason="content_filter")
+                    with self._lock:
+                        self._calls += 1
+                        self._content_filters += 1
+                    log.warning(
+                        "prompt bloqueado pelo filtro de conteúdo; item marcado como não "
+                        "resolvido e o lote continuará (%s)",
+                        str(exc).splitlines()[0][:200],
+                    )
+                    self._cache_write(cache_path, gen)
+                    return gen
                 if self._maybe_drop_parameter(exc, kwargs):
                     continue  # não conta como tentativa: a chamada mudou
                 if not _is_transient(exc) or attempt == AZURE_MAX_RETRIES:
@@ -474,6 +521,12 @@ class AzureBackend(Backend):
         """
         with self._lock:
             self._calls += 1
+            if gen.finish_reason == "content_filter" and AZURE_CONTINUE_ON_CONTENT_FILTER:
+                self._content_filters += 1
+                log.warning(
+                    "resposta bloqueada pelo filtro de conteúdo; item marcado como não resolvido"
+                )
+                return
             if gen.text:
                 return
             self._empties += 1

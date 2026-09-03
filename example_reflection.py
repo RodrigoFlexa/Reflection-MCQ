@@ -20,7 +20,7 @@ import sys
 import rmcq  # noqa: F401 — carrega o .env antes de qualquer import de torch
 from rmcq.backends import get_backend
 from rmcq.backends.base import GenParams
-from rmcq.prompts import build_answer_prompt, build_eval_prompt, build_reflection_prompt
+from rmcq.prompts import build_answer_prompt, build_reflection_prompt, build_transfer_prompt
 
 PREVIOUS_ITEM = {
     "question": "If 3 apples cost $6, how much do 5 apples cost?",
@@ -74,11 +74,8 @@ def main() -> int:
         print(reflection.text, "\n")
 
         # 3. avaliação: responde um item NOVO com a reflexão injetada no prompt
-        eval_prompt = build_eval_prompt(
-            NEW_ITEM,
-            reflections=[reflection.text],
-            source_questions=[PREVIOUS_ITEM["question"]],
-            source_was_correct=[was_correct],
+        eval_prompt = build_transfer_prompt(
+            NEW_ITEM, PREVIOUS_ITEM, baseline.text, was_correct, reflection.text
         )
         [evaluation] = backend.generate([eval_prompt], params)
         print("=== avaliação (com reflexão) ===")

@@ -1,20 +1,14 @@
-"""
-Os três prompts do notebook 07: baseline, reflexão e avaliação com reflexão.
+"""Prompts canonicos do experimento top-1 em duas etapas.
 
-Regra do projeto: existe UM prompt de baseline, UM conjunto de prompts de
-reflexão e UM prompt de avaliação, todos aqui. Tratamento específico de modelo
-vira parâmetro, nunca um caminho de código separado.
+O mesmo arquivo e importado nos servidores GPU e Petrobras. Assim, o texto
+registrado no manifesto e exatamente o texto usado na geracao.
 """
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Any, Sequence
 
-# ===========================================================================
-# 1. BASELINE — responder sem reflexão nenhuma
-# ===========================================================================
 
 ANSWER_PROMPT = """You are answering a multiple-choice question.
 
@@ -23,73 +17,58 @@ Question: {question}
 Options:
 {options}
 
-Instructions:
-- Think step by step before answering.
-- Choose exactly one option.
-- End your response with this exact line, and nothing after it:
+Briefly explain your reasoning, choose exactly one option, and end with this exact line with nothing after it:
 FINAL ANSWER: <letter>"""
 
 
-def format_options(choices: Sequence[dict[str, str]]) -> str:
-    return "\n".join(f"{c['label']}) {c['text']}" for c in choices)
+STUDENT_REFLECTION_PROMPTS = {
+    "simple": """You are given:
+
+1. The question and answer choices.
+2. Your previous answer.
+3. Whether your answer was correct or incorrect.
+4. The correct answer.
+
+Analyze:
+
+- Approach: What reasoning approach did you use?
+- Key factor: What fact, relationship, constraint, or clue affected your decision?
+- Error/Success: If incorrect, what specific reasoning mistake caused the error? If correct, what reasoning step helped?
+- Lesson: What one general reasoning rule should you use for similar problems?
+
+The lesson must describe what to do differently, not just “be careful” or “think harder.”
+
+Focus on reasoning, not the answer.
+
+Do not solve the question again or state the correct answer.""",
+    "complex": """You are given:
+
+1. The question and answer choices.
+2. Your previous answer.
+3. Whether your answer was correct or incorrect.
+4. The correct answer.
+
+Analyze your reasoning in detail.
+
+Consider:
+
+- Interpretation: What was the question asking? Did you interpret it correctly?
+- Strategy: What reasoning strategy did you use? Was it appropriate?
+- Evidence: Which facts, relationships, or constraints did you use or miss?
+- Assumptions: What assumptions or shortcuts affected your reasoning?
+- Alternatives: Which other possibilities should you have considered?
+- Diagnosis: What specifically caused the error, or what made the reasoning successful?
+- Improvement: What should you change when solving similar problems?
+- Lesson: State a precise, general reasoning rule that can transfer to other problems.
+
+Do not give vague advice such as “be more careful.” Focus on how to reason, not on the specific answer.
+
+Do not solve the question again or state the correct answer.""",
+}
 
 
-def format_question(item: dict[str, Any]) -> str:
-    """Enunciado, com a premissa/contexto prefixado quando o dataset tem um."""
-    context = item.get("context")
-    if context:
-        return f"{context.strip()}\n\n{item['question'].strip()}"
-    return item["question"].strip()
-
-
-def build_answer_prompt(item: dict[str, Any]) -> str:
-    """O prompt de baseline. Vale para todo modelo e dataset."""
-    return ANSWER_PROMPT.format(
-        question=format_question(item),
-        options=format_options(item["choices"]),
-    )
-
-
-# ===========================================================================
-# 2. REFLEXÃO — o professor (ou o próprio aluno) comenta uma resposta anterior
-# ===========================================================================
-#
-# Duas profundidades (simple/complex) x duas perspectivas (student/teacher).
-# Perspectiva "student" é autorreflexão (aluno == professor); "teacher" é
-# reflexão externa, escrita na terceira pessoa sobre a resposta do aluno.
-
-REFLECTION_PROMPTS = {
-    ("simple", "student"): """You are given:
-1 - The original multiple-choice question.
-2 - Your previous answer.
-3 - Feedback indicating whether your answer was correct or incorrect.
-
-Write a brief reflection (3-6 sentences) on your previous response. Discuss:
-- The main factors that influenced your answer.
-- Any assumptions or uncertainties you had.
-- How the feedback supports or challenges your approach.
-- One lesson you would apply when answering similar questions in the future.
-
-If the answer was correct, explain why your approach was effective and note any remaining uncertainty.
-If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
-Do not answer the question again or identify which option is correct.""",
-    ("complex", "student"): """You are given:
-1 - The original multiple-choice question.
-2 - Your previous answer.
-3 - Feedback indicating whether your answer was correct or incorrect.
-
-Write a detailed reflection on your previous response. Analyze:
-- The reasoning strategy you used to reach your answer.
-- The evidence or cues from the question that influenced your decision.
-- Any assumptions, heuristics, or uncertainties that affected your judgment.
-- How the feedback confirms or contradicts your reasoning.
-- Whether your conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.
-- How you would improve your reasoning process for similar problems in the future.
-
-If the answer was correct, explain which parts of your reasoning were reliable and whether your confidence was appropriately calibrated.
-If the answer was incorrect, explain what aspect of your reasoning should change rather than merely noting the correct outcome.
-Do not answer the question again, identify the correct option, or speculate about what the correct answer is.""",
-    ("simple", "teacher"): """You are given:
+TEACHER_REFLECTION_PROMPTS = {
+    "simple": """You are given:
 1. The original multiple-choice question.
 2. The student's previous answer.
 3. Feedback indicating whether the student's answer was correct or incorrect.
@@ -99,11 +78,8 @@ Write a brief reflection (3–6 sentences) on the student's previous response.
 Discuss:
 
 - The main factors that influenced their answer.
-
 - Any assumptions or uncertainties they had.
-
 - How the feedback supports or challenges their approach.
-
 - One lesson they would apply when answering similar questions in the future.
 
 If the answer was correct, explain why their approach was effective and note any remaining uncertainty.
@@ -111,7 +87,7 @@ If the answer was correct, explain why their approach was effective and note any
 If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
 
 **Do not answer the question again or identify which option is correct.**""",
-    ("complex", "teacher"): """You are given:
+    "complex": """You are given:
 1. The original multiple-choice question.
 2. The student's previous answer.
 3. Feedback indicating whether the student's answer was correct or incorrect.
@@ -121,15 +97,10 @@ Write a detailed reflection on the student's previous response.
 Analyze:
 
 - The reasoning strategy they used to reach their answer.
-
 - The evidence or cues from the question that influenced their decision.
-
 - Any assumptions, heuristics, or uncertainties that affected their judgment.
-
 - How the feedback confirms or contradicts their reasoning.
-
 - Whether their conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.
-
 - How they would improve their reasoning process for similar problems in the future.
 
 If the answer was correct, explain which parts of their reasoning were reliable and whether their confidence was appropriately calibrated.
@@ -139,346 +110,42 @@ If the answer was incorrect, explain what aspect of their reasoning should chang
 **Do not answer the question again, identify the correct option, or speculate about what the correct answer is.**""",
 }
 
-FEEDBACK_CORRECT = "Feedback: Your answer was CORRECT."
-FEEDBACK_INCORRECT = "Feedback: Your answer was INCORRECT."
-FEEDBACK_CORRECT_TEACHER = "Feedback: The student's answer was CORRECT."
-FEEDBACK_INCORRECT_TEACHER = "Feedback: The student's answer was INCORRECT."
+REFLECTION_DEPTHS = ("simple", "complex")
 
 
-def build_reflection_prompt(
-    item: dict[str, Any],
-    previous_answer: str,
-    was_correct: bool,
-    depth: str = "simple",
-    perspective: str = "teacher",
-) -> str:
-    """Um dos quatro prompts da grade profundidade x perspectiva."""
-    if (depth, perspective) not in REFLECTION_PROMPTS:
-        raise ValueError(
-            f"combinação inválida: depth={depth!r}, perspective={perspective!r}. "
-            f"Válidas: {sorted(REFLECTION_PROMPTS)}"
-        )
-    instruction = REFLECTION_PROMPTS[(depth, perspective)]
-    if perspective == "teacher":
-        feedback = FEEDBACK_CORRECT_TEACHER if was_correct else FEEDBACK_INCORRECT_TEACHER
-        answer_header = "Student's previous answer:"
-    else:
-        feedback = FEEDBACK_CORRECT if was_correct else FEEDBACK_INCORRECT
-        answer_header = "Your previous answer:"
+TRANSFER_PROMPT = """You are answering a new multiple-choice question.
 
-    return (
-        f"{instruction}\n\n"
-        f"Question: {format_question(item)}\n\n"
-        f"Options:\n{format_options(item['choices'])}\n\n"
-        f"{answer_header}\n{previous_answer.strip()}\n\n"
-        f"{feedback}"
-    )
+First, review one related training case. It is context for how to reason, not a demonstration whose conclusion should be copied. Its answer labels belong only to that earlier case.
 
+<training_case>
+Question:
+{source_question}
 
-# ===========================================================================
-# 3. AVALIAÇÃO COM REFLEXÃO — injeta as k reflexões recuperadas no prompt
-# ===========================================================================
-#
-# Duas versões, trocáveis por RMCQ_EVAL_PROMPT:
-#
-# v1 — as reflexões vêm ANTES do enquadramento da tarefa, como uma lista
-#      numerada ("[Lesson 1]"). É o formato original.
-#
-# v2 (padrão) — layout revisto para modelos pequenos (phi4-mini, llama3-8b):
-#   1. Enquadramento primeiro, questão por último — um decoder causal atende
-#      mais ao que está perto do fim do prompt.
-#   2. Delimitador duro (<notes>/<note id="i">) em vez de "[Lesson 1]" + "---",
-#      para o enunciado da nota não competir com o enunciado a responder.
-#   3. Questão de origem ligada por padrão, com contexto — sem ela a nota vira
-#      conselho sem referente.
-#   4. Orçamento por nota (compact_reflection corta pela CABEÇA: é lá que
-#      mora a narração da questão de origem, e a cauda tem a parte que
-#      generaliza — "Lesson: ...").
-#   5. Neutralização de letra (neutralize_option_letters troca "you selected
-#      D" por "you selected [letter]"): a letra da nota é de OUTRA questão, e
-#      lida antes de responder ancoraria o aluno na letra D da questão nova.
-#
-# Sem nenhuma reflexão recuperada, build_eval_prompt() devolve
-# build_answer_prompt() byte a byte — o fallback é idêntico ao baseline.
+Correct answer:
+{source_correct_answer}
 
-RETRIEVED_HEADER = """Below are lessons you recorded after answering other, different multiple-choice questions in the past. They are ordered from least to most relevant to the question you are about to answer.
+Agent's previous response:
+{source_response}
 
-They are not about the question below and they do not contain its answer. Use them only as guidance on how to reason.
+Outcome:
+{source_outcome}
 
-{reflections}
----
-"""
-
-RETRIEVED_ITEM = """[Lesson {i}]
+Reflection:
 {reflection}
-"""
+</training_case>
 
-RETRIEVED_ITEM_WITH_SOURCE = """[Lesson {i} — recorded on a different question: "{source_question}"]
-{reflection}
-"""
+Now answer the validation question independently.
 
-INJECT_SOURCE_QUESTION = os.environ.get("RMCQ_INJECT_SOURCE_QUESTION", "0") in (
-    "1", "true", "True",
-)
-SOURCE_QUESTION_MAX_CHARS = 220
-
-EVAL_PROMPT_VERSION = os.environ.get("RMCQ_EVAL_PROMPT", "v2").strip().lower()
-
-NOTES_HEADER_V2 = """You are answering a multiple-choice question.
-
-First, some notes from earlier attempts at OTHER questions. They are reference material about how to reason. None of them is about the question below, and none of them contains its answer.
-
-<notes>
-{notes}
-</notes>
-
-"""
-
-NOTE_V2 = """<note id="{i}">
-{body}
-</note>"""
-
-NOTE_SOURCE_V2 = 'This note was written about a different question: "{source_question}"'
-NOTE_OUTCOME_V2 = {
-    True: "The earlier answer to that question was correct.",
-    False: "The earlier answer to that question was incorrect.",
-}
-
-EVAL_TAIL_V2 = """Question: {question}
+Question: {question}
 
 Options:
 {options}
 
-Instructions:
-- The notes are advice on how to reason, nothing more. The correct option here may be a different letter than any letter mentioned in a note.
-- Think step by step before answering.
-- Choose exactly one option.
-- End your response with this exact line, and nothing after it:
+Briefly explain your reasoning, choose exactly one option, and end with this exact line with nothing after it:
 FINAL ANSWER: <letter>"""
 
-# 120 palavras ~ o tamanho de uma reflexão `simple` (mediana medida: 128), o
-# corte é quase inócuo nelas e vale 5x nas `complex`. 0 desliga.
-NOTE_MAX_WORDS = int(os.environ.get("RMCQ_NOTE_MAX_WORDS", "120"))
 
-# 600 caracteres cobrem a premissa completa do LogiQA2; 220 (v1) cortavam a
-# premissa no meio, o que é pior que omiti-la.
-SOURCE_QUESTION_MAX_CHARS_V2 = int(os.environ.get("RMCQ_SOURCE_QUESTION_MAX_CHARS", "600"))
-
-NEUTRALIZE_OPTION_LETTERS = os.environ.get("RMCQ_NEUTRALIZE_LETTERS", "1") in (
-    "1", "true", "True",
-)
-
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
-_BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
-
-# "option D", "answer (B)", "chose C" — sempre letra MAIÚSCULA isolada, então
-# o artigo "a" e palavras comuns não são atingidos. O separador aceita vírgula
-# e dois-pontos, não só espaço ("the correct answer, B, highlights...").
-_LETTER_SEP = r"(?:\s*[,:]\s*|\s+)"
-_LETTER_COPULA = r"\s+(?:is|was|are|were|being|would\s+be|should\s+be|must\s+be)\s+"
-_LETTER_MENTIONS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\b((?:option|choice|answer|alternative|response)s?" + _LETTER_SEP + r")\(?([A-H])\)?(?![\w-])"),
-    re.compile(r"\b((?:option|choice|answer|alternative|response)s?" + _LETTER_COPULA + r")\(?([A-H])\)?(?![\w-])"),
-    re.compile(r"\b((?:chose|choose|chosen|selected|select|picked|pick|answered)" + _LETTER_SEP + r")\(?([A-H])\)?(?![\w-])"),
-    re.compile(r"(\s)\(([A-H])\)(?![\w-])"),
-)
-
-# Continuação de enumeração: "options [letter], C, and D".
-_LETTER_ENUM = re.compile(r"(\[letter\])(,?\s+(?:and|or)\s+|,\s*)([A-H])(?![\w-])")
-
-# Enumeração SEM palavra-gatilho: "while A, B, and D are essential". Exige
-# duas ou mais letras encadeadas, o que descarta o artigo "A" isolado.
-_LETTER_TOKEN = r"(?:\[letter\]|[A-H])"
-_LETTER_RUN = re.compile(
-    r"(?<![\w\[°º])(" + _LETTER_TOKEN + r"(?:(?:\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+)" + _LETTER_TOKEN + r")+)(?![\w-])"
-)
-_LETTER_QUOTED = re.compile(r"([\"“'])([A-H])([\"”'])")
-
-
-def _neutralize_runs(text: str) -> str:
-    def sub(match: re.Match[str]) -> str:
-        run = match.group(1)
-        if len(re.findall(r"(?<!\[letter)\b[A-H]\b", run)) + run.count("[letter]") < 2:
-            return run
-        return re.sub(r"(?<![\w\[])[A-H](?![\w-])", "[letter]", run)
-
-    return _LETTER_RUN.sub(sub, text)
-
-
-def neutralize_option_letters(text: str) -> str:
-    """
-    Troca menções a letras de alternativa por "[letter]".
-
-    A reflexão foi escrita sobre OUTRA questão, onde "D" era outra coisa. Ler
-    "you selected D" antes de responder ancora o aluno na letra D da questão
-    nova. NÃO cobre letra solta sem nenhuma pista ("arguing that A could be
-    possible"): o preço de um falso positivo no artigo "A" é maior que o do
-    resíduo.
-    """
-    for pattern in _LETTER_MENTIONS:
-        text = pattern.sub(r"\1[letter]", text)
-    text = _LETTER_QUOTED.sub(r"\1[letter]\3", text)
-    text = re.sub(r"(?<![\w\[°º(])([A-H])(?=\)(?![\w-]))", "[letter]", text)  # "B) was the most aligned"
-    while True:
-        text, n = _LETTER_ENUM.subn(r"\1\2[letter]", text)
-        if not n:
-            break
-    return _neutralize_runs(text)
-
-
-def _text_units(text: str) -> list[str]:
-    """Linhas e frases da reflexão, na ordem, sem vazios — a unidade de corte."""
-    units: list[str] = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        parts = [p.strip() for p in _SENTENCE_END.split(line) if p.strip()]
-        units.extend(parts or [line])
-    return units
-
-
-def compact_reflection(text: str, max_words: int | None = None) -> str:
-    """
-    Limita a reflexão a `max_words`, cortando pela CABEÇA.
-
-    A cabeça narra a questão de origem; a cauda traz o que transfere ("Use the
-    negation test for necessary assumptions..."). Cortar pela cauda, que seria
-    o reflexo natural, joga fora exatamente a parte reaproveitável.
-    """
-    max_words = NOTE_MAX_WORDS if max_words is None else max_words
-    text = (text or "").strip()
-    if max_words <= 0 or len(text.split()) <= max_words:
-        return text
-
-    kept: list[str] = []
-    total = 0
-    for unit in reversed(_text_units(text)):
-        n = len(unit.split())
-        if kept and total + n > max_words:
-            break
-        kept.append(unit)
-        total += n
-    kept.reverse()
-    if not kept:
-        return " ".join(text.split()[:max_words])
-    out = ""
-    for unit in kept:
-        sep = "\n" if out and _BULLET.match(unit) else (" " if out else "")
-        out += sep + unit
-    return "(...) " + out
-
-
-def format_source_question(text: str, max_chars: int | None = None) -> str:
-    """Enunciado de origem em uma linha, cortado em fronteira de frase."""
-    max_chars = SOURCE_QUESTION_MAX_CHARS_V2 if max_chars is None else max_chars
-    text = " ".join((text or "").split())
-    if len(text) <= max_chars:
-        return text
-    cut = text[:max_chars]
-    stop = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "))
-    return (cut[: stop + 1] if stop > max_chars // 2 else cut.rstrip()) + " (...)"
-
-
-def build_retrieval_prefix(
-    reflections: Sequence[str],
-    source_questions: Sequence[str] | None = None,
-    include_source: bool | None = None,
-    source_was_correct: Sequence[bool | None] | None = None,
-    version: str | None = None,
-) -> str:
-    """
-    Bloco com as k reflexões recuperadas, em similaridade crescente.
-
-    `reflections` deve chegar JÁ ordenado do menos para o mais similar — a
-    mais parecida com a questão nova fica por último, adjacente a ela, onde um
-    decoder causal atende mais.
-
-    No v2 este bloco é só a PRIMEIRA metade do prompt (enquadramento + notas):
-    a questão vem depois, montada por build_eval_prompt.
-    """
-    if not reflections:
-        return ""
-
-    version = (version or EVAL_PROMPT_VERSION).lower()
-
-    if version == "v1":
-        include = INJECT_SOURCE_QUESTION if include_source is None else include_source
-        blocks = []
-        for i, reflection in enumerate(reflections, start=1):
-            text = reflection.strip()
-            if include and source_questions:
-                src = source_questions[i - 1].strip().replace("\n", " ")
-                if len(src) > SOURCE_QUESTION_MAX_CHARS:
-                    src = src[: SOURCE_QUESTION_MAX_CHARS - 3] + "..."
-                blocks.append(RETRIEVED_ITEM_WITH_SOURCE.format(
-                    i=i, reflection=text, source_question=src))
-            else:
-                blocks.append(RETRIEVED_ITEM.format(i=i, reflection=text))
-        return RETRIEVED_HEADER.format(reflections="\n".join(blocks))
-
-    include = True if include_source is None else include_source
-    notes = []
-    for i, reflection in enumerate(reflections, start=1):
-        lines = []
-        if include and source_questions:
-            lines.append(NOTE_SOURCE_V2.format(
-                source_question=format_source_question(source_questions[i - 1])))
-        if source_was_correct:
-            outcome = NOTE_OUTCOME_V2.get(source_was_correct[i - 1])
-            if outcome:
-                lines.append(outcome)
-
-        text = compact_reflection(reflection)
-        if NEUTRALIZE_OPTION_LETTERS:
-            text = neutralize_option_letters(text)
-        lines.append(text)
-
-        notes.append(NOTE_V2.format(i=i, body="\n".join(lines)))
-
-    return NOTES_HEADER_V2.format(notes="\n\n".join(notes))
-
-
-def build_eval_prompt(
-    item: dict[str, Any],
-    reflections: Sequence[str],
-    source_questions: Sequence[str] | None = None,
-    source_was_correct: Sequence[bool | None] | None = None,
-    include_source: bool | None = None,
-    version: str | None = None,
-) -> str:
-    """
-    Prompt de avaliação: notas recuperadas + a questão nova.
-
-    Sem nenhuma reflexão recuperada, devolve build_answer_prompt() byte a
-    byte — o fallback é comparável ao baseline em vez de ser uma condição à parte.
-    """
-    if not reflections:
-        return build_answer_prompt(item)
-
-    version = (version or EVAL_PROMPT_VERSION).lower()
-    prefix = build_retrieval_prefix(
-        reflections, source_questions, include_source, source_was_correct, version
-    )
-
-    if version == "v1":
-        return prefix + build_answer_prompt(item)
-
-    return prefix + EVAL_TAIL_V2.format(
-        question=format_question(item),
-        options=format_options(item["choices"]),
-    )
-
-
-# ===========================================================================
-# 4. JUIZ — grade uma resposta livre contra o gabarito
-# ===========================================================================
-#
-# Só decide qual LETRA o candidato escolheu, não a qualidade do raciocínio.
-# Formato igual ao usado nos experimentos anteriores (backup/*/judge/*.jsonl),
-# para manter is_correct comparável entre runs.
-
-JUDGE_PROMPT = """You are grading a multiple-choice answer.
+JUDGE_PROMPT = """You are grading a multiple-choice response.
 
 Question: {question}
 
@@ -487,53 +154,131 @@ Options:
 
 Correct option: {correct_label}) {correct_text}
 
-Candidate's response:
+Candidate response:
 {response}
 
-Does the candidate's response select the correct option ({correct_label})? Consider only which option the candidate ultimately selected, not the quality of their reasoning.
-
-End your reply with this exact line, and nothing after it:
+Decide only which option the candidate ultimately selected.
+Return only this line:
 Verdict: <CORRECT or INCORRECT>"""
 
-_VERDICT_RE = re.compile(r"Verdict:\s*(CORRECT|INCORRECT)", re.IGNORECASE)
+
+def format_options(choices: Sequence[dict[str, str]]) -> str:
+    return "\n".join(f"{choice['label']}) {choice['text']}" for choice in choices)
 
 
-def build_judge_prompt(item: dict[str, Any], response: str) -> str:
-    """Prompt do juiz para uma resposta livre a `item`."""
-    correct_label = item["answerKey"]
-    correct_text = next(c["text"] for c in item["choices"] if c["label"] == correct_label)
-    return JUDGE_PROMPT.format(
-        question=format_question(item),
-        options=format_options(item["choices"]),
-        correct_label=correct_label,
-        correct_text=correct_text,
-        response=(response or "").strip(),
+def format_question(item: dict[str, Any]) -> str:
+    context = (item.get("context") or "").strip()
+    question = item["question"].strip()
+    return f"{context}\n\n{question}" if context else question
+
+
+def correct_answer_text(item: dict[str, Any]) -> str:
+    label = item["answerKey"]
+    text = next(choice["text"] for choice in item["choices"] if choice["label"] == label)
+    return f"{label}) {text}"
+
+
+def build_answer_prompt(item: dict[str, Any]) -> str:
+    return ANSWER_PROMPT.format(
+        question=format_question(item), options=format_options(item["choices"])
     )
 
 
-def parse_judge_verdict(judge_text: str) -> bool | None:
-    """True/False a partir da linha `Verdict: ...`; None se o juiz não a emitiu (abstenção)."""
-    match = _VERDICT_RE.search(judge_text or "")
-    if not match:
-        return None
-    return match.group(1).upper() == "CORRECT"
+def build_reflection_prompt(
+    item: dict[str, Any],
+    previous_answer: str,
+    was_correct: bool,
+    depth: str = "simple",
+    perspective: str = "student",
+) -> str:
+    """Build an exact student or teacher reflection task."""
+    if depth not in REFLECTION_DEPTHS:
+        raise ValueError(f"invalid reflection depth: {depth!r}")
+    if perspective not in {"student", "teacher"}:
+        raise ValueError(f"invalid reflection perspective: {perspective!r}")
+
+    if perspective == "student":
+        instruction = STUDENT_REFLECTION_PROMPTS[depth]
+        answer_header = "Your previous answer:"
+        private_feedback = f"\n\nCorrect answer (private feedback):\n{correct_answer_text(item)}"
+    else:
+        instruction = TEACHER_REFLECTION_PROMPTS[depth]
+        answer_header = "Student's previous answer:"
+        private_feedback = ""
+    outcome = "CORRECT" if was_correct else "INCORRECT"
+
+    return (
+        f"{instruction}\n\n"
+        f"Original multiple-choice question:\n{format_question(item)}\n\n"
+        f"Answer choices:\n{format_options(item['choices'])}\n\n"
+        f"{answer_header}\n{previous_answer.strip()}\n\n"
+        f"Feedback: The previous answer was {outcome}."
+        f"{private_feedback}"
+    )
 
 
-# ===========================================================================
-# 5. EXTRAÇÃO DE LETRA — para controle interno (ex.: feedback da reflexão)
-# ===========================================================================
-#
-# Mais barata que o juiz e não precisa de outra chamada de modelo: o prompt
-# de baseline pede explicitamente "FINAL ANSWER: <letter>", então basta ler a
-# última ocorrência. Não substitui o juiz na métrica final — só decide, no
-# momento em que a reflexão é escrita, se o feedback é "CORRECT" ou
-# "INCORRECT" (o juiz sobre essa mesma resposta só roda no fim, depois de
-# toda a geração da grade).
+def build_transfer_prompt(
+    item: dict[str, Any],
+    source_item: dict[str, Any],
+    source_response: str,
+    source_was_correct: bool,
+    reflection: str,
+) -> str:
+    if not (reflection or "").strip():
+        raise ValueError("reflection cannot be empty")
+    if not (source_response or "").strip():
+        raise ValueError("source response cannot be empty")
+    return TRANSFER_PROMPT.format(
+        source_question=format_question(source_item),
+        source_correct_answer=correct_answer_text(source_item),
+        source_response=source_response.strip(),
+        source_outcome="CORRECT" if source_was_correct else "INCORRECT",
+        reflection=reflection.strip(),
+        question=format_question(item),
+        options=format_options(item["choices"]),
+    )
+
+
+def build_eval_prompt(
+    item: dict[str, Any],
+    reflections: Sequence[str],
+    source_items: Sequence[dict[str, Any]] | None = None,
+    source_answers: Sequence[str] | None = None,
+    source_was_correct: Sequence[bool] | None = None,
+    **_: Any,
+) -> str:
+    """Compatibility wrapper; the new protocol accepts exactly one top-1 pair."""
+    if not reflections:
+        return build_answer_prompt(item)
+    if (
+        len(reflections) != 1 or not source_items or len(source_items) != 1
+        or not source_answers or len(source_answers) != 1
+        or not source_was_correct or len(source_was_correct) != 1
+    ):
+        raise ValueError("the top-1 protocol requires one aligned source case")
+    return build_transfer_prompt(
+        item, source_items[0], source_answers[0], source_was_correct[0], reflections[0]
+    )
+
+
+def build_judge_prompt(item: dict[str, Any], response: str) -> str:
+    label = item["answerKey"]
+    text = next(choice["text"] for choice in item["choices"] if choice["label"] == label)
+    return JUDGE_PROMPT.format(
+        question=format_question(item), options=format_options(item["choices"]),
+        correct_label=label, correct_text=text, response=(response or "").strip(),
+    )
+
 
 _FINAL_ANSWER_RE = re.compile(r"FINAL ANSWER:\s*\(?([A-H])\)?", re.IGNORECASE)
+_VERDICT_RE = re.compile(r"Verdict:\s*(CORRECT|INCORRECT)", re.IGNORECASE)
 
 
 def extract_final_answer(text: str) -> str | None:
-    """Última letra depois de "FINAL ANSWER:"; None se o modelo não a emitiu."""
     matches = _FINAL_ANSWER_RE.findall(text or "")
     return matches[-1].upper() if matches else None
+
+
+def parse_judge_verdict(text: str) -> bool | None:
+    match = _VERDICT_RE.search(text or "")
+    return None if match is None else match.group(1).upper() == "CORRECT"

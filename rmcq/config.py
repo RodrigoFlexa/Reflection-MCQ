@@ -101,42 +101,45 @@ class ModelSpec:
 # Alguns modelos de exemplo, prontos para rodar via vLLM ou transformers
 # (provider="hf" == pesos locais). Apague os que não usar, adicione os seus.
 MODELS: dict[str, ModelSpec] = {
-    "phi4-mini": ModelSpec(
-        key="phi4-mini",
-        repo_id="microsoft/Phi-4-mini-instruct",
-        notes="MIT. 3.8B.",
+    "gpt-5-4-petrobras": ModelSpec(
+        key="gpt-5-4-petrobras",
+        repo_id="azure://gpt-5-4-petrobras",
+        provider="azure",
+        extra_kwargs={"deployment": "gpt-5-4-petrobras"},
+        notes="Professor externo e estudante de referencia no servidor Petrobras.",
     ),
-    "qwen3-8b": ModelSpec(
-        key="qwen3-8b",
-        repo_id="Qwen/Qwen3-8B",
-        notes="Apache 2.0. 8B. Pensamento híbrido — ver QWEN_ENABLE_THINKING.",
-    ),
-    "llama3-8b": ModelSpec(
-        key="llama3-8b",
-        repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
+    "phi2": ModelSpec(
+        key="phi2",
+        repo_id="microsoft/phi-2",
         notes=(
-            "Licença Llama 3, aprovação manual: aceite os termos em "
-            "huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct e defina HF_TOKEN."
+            "MIT. 2.7B base model, 2048-token context. Uses the model-card "
+            "Instruct/Output wrapper instead of a chat template."
         ),
+        extra_kwargs={
+            "prompt_wrapper": "Instruct: {prompt}\nOutput:",
+            "max_model_len": 2048,
+        },
     ),
-    # Chave SEM dois-pontos, de propósito: "llama3.1:8b" (com ":") é a tag do
-    # MESMO modelo servido via Ollama (ver notebook 08) -- usar chaves iguais
-    # faria o registro automático de um provider pisar no do outro em
-    # get_backend(). Mantendo as duas, o aluno roda este (vLLM/GPU) e o juiz
-    # roda a tag Ollama, sem precisar duplicar pesos.
     "llama3.1-8b": ModelSpec(
         key="llama3.1-8b",
         repo_id="meta-llama/Llama-3.1-8B-Instruct",
+        extra_kwargs={"max_model_len": 8192},
         notes=(
             "Licença Llama 3.1, aprovação manual: aceite os termos em "
             "huggingface.co/meta-llama/Llama-3.1-8B-Instruct e defina HF_TOKEN. "
-            "Já em cache local (~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct)."
+            "Contexto operacional limitado a 8192 tokens para manter espaço de KV-cache "
+            "sem truncar os prompts deste experimento."
         ),
     ),
-    "mistral-7b": ModelSpec(
-        key="mistral-7b",
-        repo_id="mistralai/Mistral-7B-Instruct-v0.3",
-        notes="Apache 2.0. 7B.",
+    "deepseek-r1-distill-llama-8b-ollama": ModelSpec(
+        key="deepseek-r1-distill-llama-8b-ollama",
+        repo_id="deepseek-r1:8b-llama-distill-fp16",
+        provider="ollama",
+        extra_kwargs={"tag": "deepseek-r1:8b-llama-distill-fp16"},
+        notes=(
+            "DeepSeek-R1-Distill-Llama-8B via Ollama, FP16 tag selected to avoid "
+            "quantization loss. Operational context is controlled by RMCQ_OLLAMA_NUM_CTX."
+        ),
     ),
 }
 
@@ -156,9 +159,10 @@ AZURE_DEPLOYMENTS = tuple(
 def _register_azure_deployments() -> None:
     for nome in AZURE_DEPLOYMENTS:
         if nome in MODELS:
-            raise ValueError(
-                f"RMCQ_AZURE_DEPLOYMENTS: {nome!r} colide com um modelo já registrado."
-            )
+            existing = MODELS[nome]
+            if existing.provider == "azure" and existing.extra_kwargs.get("deployment") == nome:
+                continue
+            raise ValueError(f"RMCQ_AZURE_DEPLOYMENTS: {nome!r} colide com um modelo já registrado.")
         MODELS[nome] = ModelSpec(
             key=nome,
             repo_id=f"azure://{nome}",
@@ -176,7 +180,7 @@ _register_azure_deployments()
 # A tag do Ollama (a mesma usada em `ollama pull <tag>`) vira a chave do
 # modelo, então o que está declarado aqui é exatamente o que roda.
 #
-#     RMCQ_OLLAMA_MODELS=llama3.1:8b,mistral:7b
+#     RMCQ_OLLAMA_MODELS=outro-modelo:tag
 
 OLLAMA_MODELS = tuple(
     d.strip() for d in os.environ.get("RMCQ_OLLAMA_MODELS", "").split(",") if d.strip()
@@ -226,9 +230,6 @@ VLLM_GPU_UTIL = _env_float("RMCQ_VLLM_GPU_UTIL", 0.90)
 # reprodutibilidade byte a byte.
 VLLM_DETERMINISTIC = _env_str("RMCQ_VLLM_DETERMINISTIC", "1") in ("1", "true", "True")
 VLLM_MAX_NUM_SEQS = _env_opt_int("RMCQ_VLLM_MAX_NUM_SEQS") or 32
-
-# Qwen3 é de pensamento híbrido; os outros modelos ignoram esta flag.
-QWEN_ENABLE_THINKING = _env_str("RMCQ_QWEN_ENABLE_THINKING", "0") in ("1", "true", "True")
 
 LOG_LEVEL = _env_str("RMCQ_LOG_LEVEL", "INFO").upper()
 
@@ -291,6 +292,11 @@ AZURE_REASONING_EFFORT = _env_str("RMCQ_AZURE_REASONING_EFFORT", "low")
 
 # Resposta vazia é falha de configuração, nunca abstenção do modelo.
 AZURE_FAIL_ON_EMPTY = _env_str("RMCQ_AZURE_FAIL_ON_EMPTY", "1") in ("1", "true", "True")
+# Bloqueios de política são ausência de dado auditável, não falha de
+# infraestrutura. Quando ligado, um item filtrado não derruba o lote inteiro.
+AZURE_CONTINUE_ON_CONTENT_FILTER = _env_str(
+    "RMCQ_AZURE_CONTINUE_ON_CONTENT_FILTER", "1"
+) in ("1", "true", "True")
 AZURE_HEALTH_CHECK_CALLS = _env_int("RMCQ_AZURE_HEALTH_CHECK_CALLS", 5)
 AZURE_MAX_EMPTY_RATE = _env_float("RMCQ_AZURE_MAX_EMPTY_RATE", 0.2)
 
@@ -318,3 +324,4 @@ OLLAMA_TIMEOUT = _env_float("RMCQ_OLLAMA_TIMEOUT", 300.0)
 OLLAMA_NUM_CTX = _env_opt_int("RMCQ_OLLAMA_NUM_CTX")
 # Quanto tempo o servidor mantém o modelo carregado após a última chamada.
 OLLAMA_KEEP_ALIVE = _env_str("RMCQ_OLLAMA_KEEP_ALIVE", "5m")
+OLLAMA_THINK = _env_str("RMCQ_OLLAMA_THINK", "0") in ("1", "true", "True")

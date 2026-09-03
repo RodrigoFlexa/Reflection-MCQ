@@ -47,6 +47,15 @@ class VLLMBackend(Backend):
     ) -> None:
         super().__init__(model_key)
 
+        # O limite do modelo protege arquiteturas curtas (Phi-2) e evita reservar o
+        # contexto nativo enorme do Llama 3.1. Um limite global pode reduzi-lo, nunca
+        # ampliá-lo além do valor operacional seguro declarado pelo modelo.
+        spec_model_len = self.spec.extra_kwargs.get("max_model_len")
+        if max_model_len and spec_model_len:
+            resolved_max_model_len = min(int(max_model_len), int(spec_model_len))
+        else:
+            resolved_max_model_len = max_model_len or spec_model_len
+
         from vllm import LLM
 
         if hf_token():
@@ -82,7 +91,7 @@ class VLLMBackend(Backend):
             trust_remote_code=self.spec.trust_remote_code,
             gpu_memory_utilization=gpu_util,
             tensor_parallel_size=tp_size,
-            max_model_len=max_model_len,
+            max_model_len=resolved_max_model_len,
             seed=SEED,
             download_dir=str(HF_HOME),
         )
@@ -112,7 +121,7 @@ class VLLMBackend(Backend):
                 else:
                     os.environ["CUDA_VISIBLE_DEVICES"] = prev_cvd
         self.tokenizer = self.llm.get_tokenizer()
-        self.max_len = max_model_len or getattr(
+        self.max_len = resolved_max_model_len or getattr(
             self.llm.llm_engine.model_config, "max_model_len", None
         )
         log.info("  max_model_len=%s", self.max_len)

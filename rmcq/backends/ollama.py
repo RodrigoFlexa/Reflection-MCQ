@@ -18,7 +18,13 @@ import time
 from typing import Any, Sequence
 
 from rmcq.backends.base import Backend, Generation, GenParams
-from rmcq.config import OLLAMA_BASE_URL, OLLAMA_KEEP_ALIVE, OLLAMA_NUM_CTX, OLLAMA_TIMEOUT
+from rmcq.config import (
+    OLLAMA_BASE_URL,
+    OLLAMA_KEEP_ALIVE,
+    OLLAMA_NUM_CTX,
+    OLLAMA_THINK,
+    OLLAMA_TIMEOUT,
+)
 from rmcq.store import get_logger, progress
 
 log = get_logger(__name__)
@@ -85,12 +91,18 @@ class OllamaBackend(Backend):
             "stream": False,
             "options": self._options(params),
             "keep_alive": self.keep_alive,
+            "think": OLLAMA_THINK,
         }
 
         started = time.perf_counter()
         response = self._requests.post(
             f"{self.base_url}/api/chat", json=payload, timeout=self.timeout,
         )
+        if response.status_code in (400, 422) and "think" in response.text.lower():
+            raise RuntimeError(
+                "Este servidor Ollama não aceita o campo 'think'. Atualize o Ollama; "
+                "continuar sem esse controle poderia truncar a resposta dentro do raciocínio."
+            )
         response.raise_for_status()
         data = response.json()
         latency = time.perf_counter() - started
@@ -101,7 +113,7 @@ class OllamaBackend(Backend):
             prompt_tokens=data.get("prompt_eval_count", 0) or 0,
             completion_tokens=data.get("eval_count", 0) or 0,
             latency_s=round(latency, 4),
-            finish_reason="stop" if data.get("done", True) else "length",
+            finish_reason=data.get("done_reason") or ("stop" if data.get("done", True) else "length"),
         )
 
     # -- interface Backend ---------------------------------------------------

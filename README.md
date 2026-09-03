@@ -1,196 +1,165 @@
-# Reflection-MCQ — backends
+# Reflection-MCQ
 
-Camada de acesso a modelos de linguagem usada pelo Reflection-MCQ, isolada do
-resto do pipeline experimental. Uma interface (`Backend.generate`), quatro
-implementações — **vLLM**, **transformers (hf)**, **Azure OpenAI** e
-**Ollama** — mais um backend `stub` para testar sem GPU nem API. Junto vêm os
-três prompts congelados do notebook 07 (`rmcq/prompts.py`): baseline,
-reflexão e avaliação-com-reflexão.
+Experimento de transferência de reflexões em questões de múltipla escolha.
+Cada questão de validação recupera **uma única questão de treino: a top-1 por
+similaridade**. O caso recuperado contém enunciado, resposta correta, resposta
+anterior do agente, resultado e reflexão. As alternativas antigas não são
+repetidas.
 
-## Início rápido
+O pipeline usa três estudantes pequenos:
 
-```bash
-pip install -r requirements.txt          # ou só as libs do backend que for usar, ver o arquivo
-cp .env.example .env                     # ajuste CUDA_VISIBLE_DEVICES, HF_TOKEN, etc.
+- `phi2`;
+- `deepseek-r1-distill-llama-8b-ollama`;
+- `llama3.1-8b`.
 
-python example.py phi4-mini              # gera via RMCQ_BACKEND do .env (padrão: vllm)
-RMCQ_BACKEND=stub python example.py phi4-mini   # testa a integração sem GPU
-```
+O `gpt-5-4-petrobras` tem dois papéis: quarto estudante (responde o treino,
+cria autorreflexões e responde a validação) e professor (cria reflexões para
+cada resposta de treino dos três modelos pequenos).
 
-```python
-import rmcq  # carrega o .env antes de qualquer import de torch — importe sempre primeiro
-from rmcq.backends import get_backend
-from rmcq.backends.base import GenParams
+## Condições avaliadas
 
-with get_backend("phi4-mini") as backend:      # kind= sobrepõe RMCQ_BACKEND: "vllm" | "hf" | "stub"
-    [gen] = backend.generate(["2 + 2 = ?"], GenParams(max_new_tokens=50))
-    print(gen.text)
-```
+Para cada modelo pequeno:
 
-## Colocando um modelo novo no ar
+1. `baseline`: questão de validação sem memória;
+2. `self_simple` e `self_complex`: reflexão criada pelo próprio estudante;
+3. `teacher_simple` e `teacher_complex`: reflexão criada pelo GPT-5-4 sobre a
+   resposta daquele estudante.
 
-Tudo passa por um único registro, `MODELS` em [rmcq/config.py](rmcq/config.py). Três formas de adicionar um modelo, uma por provider:
+Para o GPT-5-4: `baseline`, `self_simple` e `self_complex`.
 
-**Hugging Face (vLLM ou transformers)** — edite `MODELS` diretamente:
+Não há mais grade de similaridades, placebo, threshold ou divisão
+calibração/teste. Todos os itens vêm exclusivamente de `validation.jsonl` e
+recebem o vizinho de treino com maior similaridade.
 
-```python
-MODELS["meu-modelo"] = ModelSpec(
-    key="meu-modelo",
-    repo_id="org/nome-do-repo",     # repo do Hugging Face Hub
-    trust_remote_code=False,
-)
-```
+## Execução em dois servidores
 
-Depois `get_backend("meu-modelo")` baixa e serve os pesos via vLLM (ou
-transformers, se `--backend hf` ou se o vLLM não importar). `provider="hf"` é
-o padrão.
+O único entrypoint é `run_experiment.py`. Ele grava checkpoints locais em
+`data/results/reflection_top1/` e os artefatos transportáveis pelo Git em
+`experiment_exchange/`.
 
-**Ollama** — sem editar código, só o `.env`:
+### 1. Servidor com GPU
 
 ```bash
-ollama pull llama3.1:8b
-echo 'RMCQ_OLLAMA_MODELS=llama3.1:8b' >> .env
+python -u run_experiment.py prepare --gpu 3
 ```
 
-A tag vira a chave do modelo. `get_backend("llama3.1:8b")` fala com o
-`ollama serve` local (ou remoto, via `RMCQ_OLLAMA_BASE_URL`).
-
-**Azure OpenAI** — mesmo mecanismo, para deployments:
+O comando imprime o `experiment_id`. Faça commit e push da pasta indicada:
 
 ```bash
-echo 'RMCQ_AZURE_DEPLOYMENTS=gpt-5-mini-petrobras' >> .env
+git add experiment_exchange/<experiment_id>
+git commit -m "data: prepare reflection experiment <experiment_id>"
+git push
 ```
 
-O nome do deployment vira a chave do modelo — sem apelido genérico escondendo
-qual deployment respondeu de fato.
+Essa etapa calcula os pares top-1, faz os três estudantes responderem somente
+as questões de treino selecionadas e gera suas autorreflexões simples e
+complexas.
+
+### 2. Servidor Petrobras
+
+Depois de `git pull`, configure as credenciais Azure no `.env` e execute:
+
+```bash
+python -u run_experiment.py teacher --experiment-id <experiment_id>
+```
+
+O GPT-5-4:
+
+- responde as questões de treino selecionadas e cria suas autorreflexões;
+- cria reflexões simples/complexas de professor para cada estudante pequeno;
+- responde toda a validação sem memória e com suas duas autorreflexões.
+
+Envie os novos artefatos de volta:
+
+```bash
+git add experiment_exchange/<experiment_id>/teacher \
+        experiment_exchange/<experiment_id>/teacher_receipt.json
+git commit -m "data: add Petrobras stage <experiment_id>"
+git push
+```
+
+### 3. Servidor com GPU novamente
+
+```bash
+git pull
+python -u run_experiment.py finish --experiment-id <experiment_id> --gpu 3
+```
+
+Os resultados finais ficam em:
+
+```text
+data/results/reflection_top1/<experiment_id>/analysis/accuracy.csv
+data/results/reflection_top1/<experiment_id>/analysis/all_outcomes.jsonl
+```
+
+Para conferir o andamento em qualquer máquina:
+
+```bash
+python run_experiment.py status --experiment-id <experiment_id>
+```
+
+Um ensaio rápido, sem GPU/API e sem representar o experimento real:
+
+```bash
+python run_experiment.py prepare --backend stub --models phi2 \
+  --datasets arc --validation-cap 5 --train-cap 20 --embedding-device cpu
+```
+
+`--train-cap` existe apenas para smoke tests. Não o use na rodada de produção,
+pois ela precisa procurar o top-1 no conjunto de treino completo.
 
 ## Prompts
 
-`rmcq/prompts.py` traz os três prompts congelados usados no notebook 07:
+Os textos canônicos ficam em `rmcq/prompts.py`:
 
-| função | o quê |
-|---|---|
-| `build_answer_prompt(item)` | **baseline** — responde a questão sem nenhuma reflexão |
-| `build_reflection_prompt(item, previous_answer, was_correct, depth, perspective)` | **reflexão** — comenta uma resposta anterior. `depth` é `simple`\|`complex`, `perspective` é `student` (autorreflexão) \|`teacher` (reflexão externa) |
-| `build_eval_prompt(item, reflections, source_questions=..., source_was_correct=...)` | **avaliação com reflexão** — injeta as k reflexões recuperadas (em similaridade crescente) antes da questão nova. Sem `reflections`, devolve `build_answer_prompt()` byte a byte |
+- `build_answer_prompt` para respostas;
+- `build_reflection_prompt(..., perspective="student")` para autorreflexão;
+- `build_reflection_prompt(..., perspective="teacher")` para o professor;
+- `build_transfer_prompt` para validação com o par top-1.
 
-`RMCQ_EVAL_PROMPT=v1` volta ao layout antigo (reflexões antes do
-enquadramento); o padrão é `v2` (enquadramento primeiro, question por
-último, neutralização de letra). Ver o cabeçalho de cada seção do arquivo
-para o porquê de cada decisão.
+O prompt de transferência inclui, obrigatoriamente, enunciado recuperado,
+resposta correta, resposta anterior, resultado e reflexão. A resposta correta
+serve para interpretar o caso anterior; a instrução deixa explícito que sua
+conclusão e suas letras não se transferem para a questão nova.
 
-`example_reflection.py` exercita os três prompts de ponta a ponta contra um
-backend de verdade: baseline -> reflexão -> avaliação.
+## Thinking
+
+O pipeline usa duas defesas complementares:
+
+1. `RMCQ_OLLAMA_THINK=0` envia `think: false` ao Ollama. Em versões atuais, o
+   raciocínio é separado de `message.content` e pode ser desativado.
+2. Todo backend remove blocos `<think>...</think>` antes de persistir ou
+   reutilizar a resposta. Um bloco aberto e truncado vira resposta vazia, nunca
+   uma reflexão aparentemente válida.
+
+No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
+`RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
+salvo, mas ainda consome tokens do orçamento.
+
+### Bloqueios do filtro de conteúdo do Azure
+
+`RMCQ_AZURE_CONTINUE_ON_CONTENT_FILTER=1` impede que um único
+`ResponsibleAIPolicyViolation` derrube toda a grade. Somente erros reconhecidos
+como política de conteúdo são convertidos em item não resolvido; erros de
+credencial, TLS, deployment ou rede continuam falhando normalmente.
+
+Uma resposta ou reflexão filtrada nunca é reutilizada como memória. As
+condições dependentes ficam com `correct=null` e um `eval_method` explícito,
+como `source_answer_content_filter` ou `source_reflection_content_filter`.
+`accuracy.csv` apresenta também a cobertura (`resolved / n`) e a lista detalhada
+fica em `analysis/content_filter_audit.jsonl`.
+
+## Instalação e configuração
 
 ```bash
-python example_reflection.py phi4-mini
-RMCQ_BACKEND=stub python example_reflection.py phi4-mini   # sem GPU
+pip install -r requirements.txt
+cp .env.example .env
+ollama pull deepseek-r1:8b-llama-distill-fp16
 ```
 
-## Experimento 08 em `tmux`
+Aceite a licença do Llama 3.1 no Hugging Face e configure `HF_TOKEN`. No
+servidor Petrobras, configure `AZURE_OPENAI_BASE_URL` (ou
+`AZURE_OPENAI_ENDPOINT`) e `AZURE_OPENAI_API_KEY`. Nunca faça commit do `.env`.
 
-O pipeline completo de threshold roda sem Jupyter em
-`run_similarity_threshold.py`. Ele salva um checkpoint depois de cada lote;
-depois de uma queda, execute novamente o mesmo comando para continuar.
-
-```bash
-mkdir -p logs
-tmux new -s threshold08
-python -u run_similarity_threshold.py --gpu 3 2>&1 | tee logs/threshold08.log
-```
-
-Use `Ctrl-b d` para sair do `tmux` sem interromper e depois:
-
-```bash
-tmux attach -t threshold08
-```
-
-Ensaio menor com um modelo e um dataset:
-
-```bash
-python -u run_similarity_threshold.py \
-  --gpu 3 \
-  --models phi4-mini \
-  --datasets aqua \
-  --validation-cap 100
-```
-
-Não use `--fresh` ao retomar: essa opção ignora os checkpoints. Veja todas as
-opções com `python run_similarity_threshold.py --help`.
-
-Depois que o runner terminar, abra
-`notebooks/08_similarity_reflection_threshold_plots.ipynb`. Esse notebook não
-carrega modelos: ele encontra a execução concluída mais recente e apenas lê os
-CSVs, recria as figuras e apresenta os resumos. Para abrir uma execução
-específica, preencha `EXPERIMENT_ID` na primeira célula de configuração.
-
-## Estrutura
-
-```
-rmcq/
-├── __init__.py           # carrega o .env antes de qualquer import de torch/vllm
-├── config.py              # MODELS (registro central) + runtime de cada backend
-├── store.py                # logger e barra de progresso
-├── prompts.py               # baseline, reflexão e avaliação-com-reflexão (notebook 07)
-└── backends/
-    ├── base.py              # Backend (ABC), Generation, GenParams — o contrato
-    ├── __init__.py          # get_backend(): resolve provider/kind para a implementação certa
-    ├── hf.py                 # transformers, batching ordenado por tamanho
-    ├── vllm_backend.py       # vLLM, continuous batching — use para volume
-    ├── azure.py               # Azure OpenAI: retry, cache em disco, detecção de reasoning
-    ├── ollama.py               # HTTP para `ollama serve`
-    └── stub.py                 # determinístico, sem GPU nem rede — para testar a integração
-
-example.py                # uso mínimo de ponta a ponta (um backend, um prompt solto)
-example_reflection.py     # ciclo completo: baseline -> reflexão -> avaliação
-```
-
-## O contrato `Backend`
-
-Toda implementação garante três coisas (ver docstring em [rmcq/backends/base.py](rmcq/backends/base.py)):
-
-1. `generate()` devolve os resultados **na mesma ordem** dos prompts recebidos.
-2. O chat template do modelo é aplicado **dentro** do backend — quem chama passa o conteúdo da mensagem, não texto pré-formatado.
-3. `unload()` libera o recurso de verdade (VRAM local, ou pede ao servidor remoto para descarregar), para permitir carregar o próximo modelo no mesmo processo.
-
-`get_backend(model_key, kind=None, **kwargs)` decide qual implementação usar:
-modelos `provider="azure"` ou `provider="ollama"` sempre vão para o backend
-do seu provider (não faz sentido pedir um deployment Azure via `--backend
-vllm`); modelos `provider="hf"` (pesos locais) usam o engine pedido em `kind`
-ou em `RMCQ_BACKEND`. `--backend stub` é a exceção deliberada — troca
-qualquer modelo pelo stub, para testar a integração sem gastar GPU nem API.
-
-## O `.env`
-
-Copie de `.env.example`. Ele é lido em `rmcq/__init__.py` **antes** de
-qualquer import de torch, que é a única janela em que `CUDA_VISIBLE_DEVICES`
-ainda tem efeito — por isso todo entrypoint deve `import rmcq` primeiro.
-
-| variável | para quê |
-|---|---|
-| `CUDA_VISIBLE_DEVICES` | qual GPU usar (backends hf/vLLM). `0`, `0,1` (tensor parallel), `""` para CPU |
-| `HF_TOKEN` | necessário para modelos gated no Hub |
-| `RMCQ_BACKEND` | `vllm` \| `hf` \| `stub`, para modelos `provider="hf"` |
-| `RMCQ_AZURE_DEPLOYMENTS` | deployments Azure a registrar em `MODELS` |
-| `RMCQ_OLLAMA_MODELS` | tags Ollama a registrar em `MODELS` |
-| `RMCQ_OLLAMA_BASE_URL` | onde está o `ollama serve` (padrão: `http://localhost:11434`) |
-
-Variáveis passadas na linha de comando ganham do `.env`.
-
-## Diagnóstico
-
-```python
-from rmcq.backends import available_backends
-print(available_backends())
-# {'stub': 'ok (sem GPU)', 'hf': 'ok', 'vllm': 'ok (vllm 0.6.x)',
-#  'azure': 'indisponível: falta AZURE_OPENAI_API_KEY no .env',
-#  'ollama': 'ok (6 modelo(s) no servidor http://localhost:11434)'}
-```
-
-## Experimento 08 com reflexão externa via Azure
-
-Para gerar `external_reflection` com um deployment Azure em outro servidor e
-depois concluir a avaliação nos estudantes locais, siga o fluxo versionado em
-[docs/external_reflection_workflow.md](docs/external_reflection_workflow.md).
-O Git transporta apenas pedidos e reflexões com hashes; credenciais e a pasta
-local `data/results` não são versionadas.
+Os backends disponíveis são vLLM, Transformers, Ollama, Azure OpenAI e `stub`.
+Todos implementam o mesmo contrato em `rmcq/backends/base.py`.

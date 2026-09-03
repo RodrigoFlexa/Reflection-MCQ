@@ -60,7 +60,10 @@ class StubBackend(Backend):
         return max(1, len(text) // 4)
 
     def _labels_in(self, prompt: str) -> list[str]:
-        found = _OPTION_LINE.findall(prompt)
+        # A transfer prompt contains options for the source and target. Only
+        # the final block belongs to the question that must be answered.
+        target = prompt.split("Now answer the validation question independently.")[-1]
+        found = _OPTION_LINE.findall(target)
         return found or list("ABCD")
 
     def _gold_hint(self, prompt: str) -> str | None:
@@ -84,11 +87,14 @@ class StubBackend(Backend):
 
         for prompt in prompts:
             labels = self._labels_in(prompt)
-            has_reflection = "[Lesson " in prompt
-            is_reflection_task = "Write a brief reflection" in prompt or "Write a detailed reflection" in prompt
+            has_reflection = "<retrieved_training_question>" in prompt
+            is_reflection_task = (
+                "Correct answer (private feedback):" in prompt
+                or "Student's previous answer:" in prompt
+            )
 
             if is_reflection_task:
-                depth = "detailed" if "Write a detailed reflection" in prompt else "brief"
+                depth = "detailed" if "Analyze your reasoning in detail" in prompt or "Write a detailed reflection" in prompt else "brief"
                 n_sent = 8 if depth == "detailed" else 4
                 body = " ".join(
                     f"Sentence {i} of a {depth} synthetic reflection about the reasoning used."
