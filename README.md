@@ -148,6 +148,10 @@ somente um item truncado com 768; reflexões complexas usam 768 e repetem com
 como `length_exhausted`. Ela não é avaliada, não gera reflexão e não é usada
 como memória, mas o restante do experimento continua.
 
+O mesmo vale para uma saída que continue vazia depois da repetição: ela recebe
+`empty_exhausted` e é excluída sem interromper o lote. Essa regra vale para
+respostas, reflexões e julgamentos.
+
 O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
 recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure
 encerrar por comprimento, o item também é descartado.

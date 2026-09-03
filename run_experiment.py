@@ -225,8 +225,7 @@ def reflection_budget(model_key: str, depth: str) -> int:
 
 def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_tokens: int,
                     batch_size: int, fresh: bool, description: str,
-                    temperature: float = ANSWER_TEMPERATURE,
-                    allow_unresolved: bool = False) -> dict[str, dict[str, Any]]:
+                    temperature: float = ANSWER_TEMPERATURE) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
 
     max_len = getattr(backend, "max_len", None)
@@ -340,24 +339,16 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                 flush=True,
             )
         if empty_failed:
-            if allow_unresolved:
-                for key in empty_failed:
-                    cached[key]["text"] = ""
-                    cached[key]["finish_reason"] = "empty_exhausted"
-                    cached[key]["discarded"] = True
-                save_jsonl(path, cached.values())
-                print(
-                    f"{description}: discarded {len(empty_failed)} item(s) still empty "
-                    "after the final attempt",
-                    flush=True,
-                )
-            else:
-                first = empty_failed[0]
-                raise RuntimeError(
-                    f"{description}: empty={len(empty_failed)} after the available token "
-                    f"budget; first key={first!r}. "
-                    "The partial checkpoint was kept, but it will not be reused as valid output."
-                )
+            for key in empty_failed:
+                cached[key]["text"] = ""
+                cached[key]["finish_reason"] = "empty_exhausted"
+                cached[key]["discarded"] = True
+            save_jsonl(path, cached.values())
+            print(
+                f"{description}: discarded {len(empty_failed)} item(s) still empty "
+                "after the final attempt",
+                flush=True,
+            )
     return {key: cached[key] for key in prompts}
 
 
@@ -368,7 +359,9 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
     results: dict[str, dict[str, Any]] = {}
     judge_prompts = {}
     for key, row in generated.items():
-        if row.get("finish_reason") in {"content_filter", "length_exhausted"}:
+        if row.get("finish_reason") in {
+            "content_filter", "length_exhausted", "empty_exhausted",
+        }:
             method = row["finish_reason"]
             results[key] = {
                 "selected_answer": None, "correct": None,
@@ -382,8 +375,7 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
             results[key] = {"selected_answer": answer, "correct": answer == items[key]["answerKey"], "eval_method": "parser"}
     if judge_prompts:
         judged = cached_generate(backend, cache_dir / f"judge_{stage}.jsonl", judge_prompts,
-                                  128, batch_size, fresh, f"judge {stage}",
-                                  allow_unresolved=True)
+                                  128, batch_size, fresh, f"judge {stage}")
         for key, row in judged.items():
             if row.get("finish_reason") in {"length_exhausted", "empty_exhausted"}:
                 results[key] = {
@@ -407,12 +399,14 @@ def reflection_status(outputs: dict[str, dict[str, dict[str, Any]]], uid: str) -
 def unavailable_memory_method(
     attempt_row: dict[str, Any], reflection_row: dict[str, Any] | None, depth: str
 ) -> str:
-    if attempt_row.get("eval_method") in {"content_filter", "length_exhausted"}:
+    if attempt_row.get("eval_method") in {
+        "content_filter", "length_exhausted", "empty_exhausted",
+    }:
         return f"source_answer_{attempt_row['eval_method']}"
     if "correct" in attempt_row and attempt_row["correct"] is None:
         return f"source_answer_{attempt_row.get('eval_method') or 'unresolved'}"
     status = (reflection_row or {}).get("reflection_status", {}).get(depth)
-    if status in {"content_filter", "length_exhausted"}:
+    if status in {"content_filter", "length_exhausted", "empty_exhausted"}:
         return f"source_reflection_{status}"
     return "source_reflection_unavailable"
 

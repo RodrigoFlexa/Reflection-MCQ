@@ -83,6 +83,10 @@ truncar, seu texto é apagado, o item recebe `length_exhausted` e todas as
 condições dependentes ficam não resolvidas. O lote continua e a cobertura final
 torna a exclusão visível.
 
+Se a segunda tentativa continuar vazia, o tratamento é idêntico, com status
+`empty_exhausted`. Isso se aplica a respostas, reflexões e ao classificador
+auxiliar (`judge`).
+
 No Azure, os defaults são `RMCQ_AZURE_MAX_TOKENS=1024` e
 `RMCQ_AZURE_REASONING_MIN_TOKENS=4000`; portanto, o GPT-5-4 recebe um teto
 efetivo de 4000 tokens, incluindo raciocínio interno. O parâmetro por chamada
