@@ -32,3 +32,6 @@ backups/*
 backup/*
 data/*
 logs/threshold08.log
+config-v1.x.ini
+config-v1.x.ini:Zone.Identifier
+config.ini
