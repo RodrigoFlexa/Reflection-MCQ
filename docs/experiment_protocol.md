@@ -87,6 +87,11 @@ Se a segunda tentativa continuar vazia, o tratamento é idêntico, com status
 `empty_exhausted`. Isso se aplica a respostas, reflexões e ao classificador
 auxiliar (`judge`).
 
+Quando o orçamento da repetição não cabe na janela do modelo, o item é
+descartado antes da nova geração como `length_exhausted`, com motivo
+`retry_exceeds_context`. O enunciado nunca é truncado para abrir espaço, e os
+outros itens elegíveis seguem para a repetição.
+
 No Azure, os defaults são `RMCQ_AZURE_MAX_TOKENS=1024` e
 `RMCQ_AZURE_REASONING_MIN_TOKENS=4000`; portanto, o GPT-5-4 recebe um teto
 efetivo de 4000 tokens, incluindo raciocínio interno. O parâmetro por chamada

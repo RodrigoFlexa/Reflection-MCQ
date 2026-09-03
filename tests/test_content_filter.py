@@ -185,6 +185,37 @@ def test_second_truncation_is_discarded_and_becomes_unresolved(tmp_path):
     }
 
 
+def test_retry_that_exceeds_context_discards_only_affected_item(tmp_path):
+    class ContextLimitedBackend:
+        key = "phi2"
+        spec = SimpleNamespace(provider="hf")
+        tokenizer = object()
+        max_len = 2048
+
+        def __init__(self):
+            self.calls = []
+
+        def render_token_ids(self, tokenizer, prompt):
+            return list(range(int(prompt)))
+
+        def generate(self, prompts, params, desc=""):
+            self.calls.append((list(prompts), params.max_new_tokens))
+            if len(self.calls) == 1:
+                return [Generation(text="partial", finish_reason="length") for _ in prompts]
+            return [Generation(text="complete", finish_reason="stop") for _ in prompts]
+
+    backend = ContextLimitedBackend()
+    generated = cached_generate(
+        backend, tmp_path / "context_retry.jsonl",
+        {"overflow": "1019", "fits": "800"},
+        max_tokens=768, batch_size=2, fresh=False, description="context retry test",
+    )
+    assert backend.calls == [(["1019", "800"], 768), (["800"], 1152)]
+    assert generated["overflow"]["finish_reason"] == "length_exhausted"
+    assert generated["overflow"]["discard_reason"] == "retry_exceeds_context"
+    assert generated["fits"]["finish_reason"] == "stop"
+
+
 def test_empty_judge_is_unresolved_without_aborting_stage(tmp_path):
     class EmptyJudgeBackend:
         key = "phi2"

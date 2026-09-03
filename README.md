@@ -152,6 +152,11 @@ O mesmo vale para uma saída que continue vazia depois da repetição: ela receb
 `empty_exhausted` e é excluída sem interromper o lote. Essa regra vale para
 respostas, reflexões e julgamentos.
 
+Se o orçamento maior da repetição não couber na janela de contexto do modelo,
+o item também recebe `length_exhausted`, com
+`discard_reason=retry_exceeds_context`. O prompt não é truncado e os demais
+itens do lote são repetidos normalmente.
+
 O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
 recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure
 encerrar por comprimento, o item também é descartado.

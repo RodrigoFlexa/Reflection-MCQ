@@ -294,37 +294,55 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                     if prompt_tokens + retry_tokens > max_len:
                         overflow.append((key, prompt_tokens))
                 if overflow:
-                    key, prompt_tokens = overflow[0]
-                    raise RuntimeError(
-                        f"{description}: retry needs {retry_tokens} output tokens but "
-                        f"{len(overflow)} prompt(s) would exceed context={max_len}; first "
-                        f"key={key!r}, prompt={prompt_tokens}."
+                    overflow_by_key = dict(overflow)
+                    overflow_keys = set(overflow_by_key)
+                    for key in overflow_keys:
+                        cached[key]["text"] = ""
+                        cached[key]["finish_reason"] = "length_exhausted"
+                        cached[key]["discarded"] = True
+                        cached[key]["discard_reason"] = "retry_exceeds_context"
+                        cached[key]["retry_prompt_tokens"] = overflow_by_key[key]
+                        cached[key]["retry_max_new_tokens"] = retry_tokens
+                        cached[key]["model_context_tokens"] = max_len
+                    retry_batch = [
+                        entry for entry in retry_batch if entry[0] not in overflow_keys
+                    ]
+                    save_jsonl(path, cached.values())
+                    print(
+                        f"{description}: discarded {len(overflow_keys)} item(s) because "
+                        f"the retry with max_new_tokens={retry_tokens} would exceed "
+                        f"context={max_len}",
+                        flush=True,
                     )
-            print(
-                f"{description}: retrying {len(retry_batch)} truncated/empty generation(s) "
-                f"with max_new_tokens={retry_tokens}", flush=True,
-            )
-            retried = backend.generate(
-                [prompt for _, prompt, _ in retry_batch],
-                GenParams(max_new_tokens=retry_tokens, temperature=temperature),
-                desc=f"{description} retry",
-            )
-            for (key, _prompt, digest), generation in zip(retry_batch, retried):
-                cached[key] = {
-                    "key": key, "prompt_hash": digest, "text": generation.text,
-                    "prompt_tokens": generation.prompt_tokens,
-                    "completion_tokens": generation.completion_tokens,
-                    "finish_reason": generation.finish_reason,
-                    "max_new_tokens_used": retry_tokens,
-                }
-            save_jsonl(path, cached.values())
-            empty_failed = [
-                key for key, _prompt, _digest in retry_batch if not cached[key]["text"]
-            ]
-            truncated_failed = [
-                key for key, _prompt, _digest in retry_batch
-                if cached[key]["finish_reason"] == "length"
-            ]
+            if retry_batch:
+                print(
+                    f"{description}: retrying {len(retry_batch)} truncated/empty "
+                    f"generation(s) with max_new_tokens={retry_tokens}", flush=True,
+                )
+                retried = backend.generate(
+                    [prompt for _, prompt, _ in retry_batch],
+                    GenParams(max_new_tokens=retry_tokens, temperature=temperature),
+                    desc=f"{description} retry",
+                )
+                for (key, _prompt, digest), generation in zip(retry_batch, retried):
+                    cached[key] = {
+                        "key": key, "prompt_hash": digest, "text": generation.text,
+                        "prompt_tokens": generation.prompt_tokens,
+                        "completion_tokens": generation.completion_tokens,
+                        "finish_reason": generation.finish_reason,
+                        "max_new_tokens_used": retry_tokens,
+                    }
+                save_jsonl(path, cached.values())
+                empty_failed = [
+                    key for key, _prompt, _digest in retry_batch if not cached[key]["text"]
+                ]
+                truncated_failed = [
+                    key for key, _prompt, _digest in retry_batch
+                    if cached[key]["finish_reason"] == "length"
+                ]
+            else:
+                empty_failed = []
+                truncated_failed = []
         if truncated_failed:
             truncated_set = set(truncated_failed)
             for key in truncated_failed:
