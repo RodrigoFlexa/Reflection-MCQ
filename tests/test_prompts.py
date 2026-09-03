@@ -4,6 +4,7 @@ from rmcq.prompts import (
     TEACHER_REFLECTION_PROMPTS,
     build_reflection_prompt,
     build_transfer_prompt,
+    parse_judge_verdict,
 )
 
 
@@ -52,3 +53,9 @@ def test_thinking_is_removed_from_every_generation():
     assert strip_thinking(raw) == "FINAL ANSWER: B"
     assert Generation(raw).text == "FINAL ANSWER: B"
     assert strip_thinking("<think>truncated trace") == ""
+
+
+def test_judge_verdict_requires_a_strict_classifier_response():
+    assert parse_judge_verdict("CORRECT") is True
+    assert parse_judge_verdict("Verdict: INCORRECT.") is False
+    assert parse_judge_verdict("The correct option appears to be A.") is None

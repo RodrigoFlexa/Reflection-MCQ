@@ -185,6 +185,30 @@ def test_second_truncation_is_discarded_and_becomes_unresolved(tmp_path):
     }
 
 
+def test_empty_judge_is_unresolved_without_aborting_stage(tmp_path):
+    class EmptyJudgeBackend:
+        key = "phi2"
+        spec = SimpleNamespace(provider="hf")
+
+        def generate(self, prompts, params, desc=""):
+            return [Generation(text="", finish_reason="stop") for _ in prompts]
+
+    item = {
+        "question": "Q?", "context": None,
+        "choices": [{"label": "A", "text": "x"}, {"label": "B", "text": "y"}],
+        "answerKey": "A",
+    }
+    generated = {"q1": {"text": "I cannot decide.", "finish_reason": "stop"}}
+    verdicts = resolve_answers(
+        EmptyJudgeBackend(), tmp_path, "train", generated, {"q1": item}, 8, False
+    )
+    assert verdicts["q1"] == {
+        "selected_answer": None,
+        "correct": None,
+        "eval_method": "judge_empty_exhausted",
+    }
+
+
 def test_compatible_retrieval_can_be_reused_across_pipeline_versions(tmp_path):
     old_exchange = tmp_path / "old-run"
     (old_exchange / "pairs").mkdir(parents=True)

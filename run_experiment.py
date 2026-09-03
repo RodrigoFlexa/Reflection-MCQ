@@ -225,7 +225,8 @@ def reflection_budget(model_key: str, depth: str) -> int:
 
 def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_tokens: int,
                     batch_size: int, fresh: bool, description: str,
-                    temperature: float = ANSWER_TEMPERATURE) -> dict[str, dict[str, Any]]:
+                    temperature: float = ANSWER_TEMPERATURE,
+                    allow_unresolved: bool = False) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
 
     max_len = getattr(backend, "max_len", None)
@@ -250,7 +251,7 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
         prompt_digest = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
         current = cached.get(key, {})
         terminal_absence = current.get("finish_reason") in {
-            "content_filter", "length_exhausted",
+            "content_filter", "length_exhausted", "empty_exhausted",
         }
         invalid = (
             not current.get("text") and not terminal_absence
@@ -339,12 +340,24 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                 flush=True,
             )
         if empty_failed:
-            first = empty_failed[0]
-            raise RuntimeError(
-                f"{description}: empty={len(empty_failed)} after the available token "
-                f"budget; first key={first!r}. "
-                "The partial checkpoint was kept, but it will not be reused as valid output."
-            )
+            if allow_unresolved:
+                for key in empty_failed:
+                    cached[key]["text"] = ""
+                    cached[key]["finish_reason"] = "empty_exhausted"
+                    cached[key]["discarded"] = True
+                save_jsonl(path, cached.values())
+                print(
+                    f"{description}: discarded {len(empty_failed)} item(s) still empty "
+                    "after the final attempt",
+                    flush=True,
+                )
+            else:
+                first = empty_failed[0]
+                raise RuntimeError(
+                    f"{description}: empty={len(empty_failed)} after the available token "
+                    f"budget; first key={first!r}. "
+                    "The partial checkpoint was kept, but it will not be reused as valid output."
+                )
     return {key: cached[key] for key in prompts}
 
 
@@ -369,8 +382,15 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
             results[key] = {"selected_answer": answer, "correct": answer == items[key]["answerKey"], "eval_method": "parser"}
     if judge_prompts:
         judged = cached_generate(backend, cache_dir / f"judge_{stage}.jsonl", judge_prompts,
-                                  64, batch_size, fresh, f"judge {stage}")
+                                  128, batch_size, fresh, f"judge {stage}",
+                                  allow_unresolved=True)
         for key, row in judged.items():
+            if row.get("finish_reason") in {"length_exhausted", "empty_exhausted"}:
+                results[key] = {
+                    "selected_answer": None, "correct": None,
+                    "eval_method": f"judge_{row['finish_reason']}",
+                }
+                continue
             verdict = parse_judge_verdict(row["text"])
             results[key] = {"selected_answer": None, "correct": verdict,
                             "eval_method": "judge" if verdict is not None else "unresolved"}
@@ -389,6 +409,8 @@ def unavailable_memory_method(
 ) -> str:
     if attempt_row.get("eval_method") in {"content_filter", "length_exhausted"}:
         return f"source_answer_{attempt_row['eval_method']}"
+    if "correct" in attempt_row and attempt_row["correct"] is None:
+        return f"source_answer_{attempt_row.get('eval_method') or 'unresolved'}"
     status = (reflection_row or {}).get("reflection_status", {}).get(depth)
     if status in {"content_filter", "length_exhausted"}:
         return f"source_reflection_{status}"

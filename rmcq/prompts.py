@@ -159,9 +159,11 @@ Correct option: {correct_label}) {correct_text}
 Candidate response:
 {response}
 
-Decide only which option the candidate ultimately selected.
-Return only this line:
-Verdict: <CORRECT or INCORRECT>"""
+Decide only whether the option ultimately selected by the candidate matches the correct option.
+Your entire response must be exactly one word, with no explanation:
+CORRECT
+or
+INCORRECT"""
 
 
 def format_options(choices: Sequence[dict[str, str]]) -> str:
@@ -273,7 +275,9 @@ def build_judge_prompt(item: dict[str, Any], response: str) -> str:
 
 
 _FINAL_ANSWER_RE = re.compile(r"FINAL ANSWER:\s*\(?([A-H])\)?", re.IGNORECASE)
-_VERDICT_RE = re.compile(r"Verdict:\s*(CORRECT|INCORRECT)", re.IGNORECASE)
+_VERDICT_RE = re.compile(
+    r"^\s*(?:Verdict:\s*)?(CORRECT|INCORRECT)\s*[.!]?\s*$", re.IGNORECASE
+)
 
 
 def extract_final_answer(text: str) -> str | None:
