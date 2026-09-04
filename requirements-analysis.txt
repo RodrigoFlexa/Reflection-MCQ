@@ -1,0 +1,4 @@
+# Dependências opcionais para os notebooks de análise e visualização.
+pandas>=2.2.0
+matplotlib>=3.8.0
+jupyterlab>=4.0.0
