@@ -1,239 +1,172 @@
 # Reflection-MCQ
 
-Experimento de transferência de reflexões em questões de múltipla escolha.
-Cada questão de validação recupera **uma única questão de treino: a top-1 por
-similaridade**. O caso recuperado contém enunciado, resposta correta, resposta
-anterior do agente, resultado e reflexão. As alternativas antigas não são
-repetidas.
+Experimento de transferência de reflexões em questões de múltipla escolha, com
+recuperação top-1 de uma questão do treino para cada questão de avaliação.
+A mesma fonte de treino pode ser recuperada por várias questões: cada modelo
+responde e reflete sobre cada fonte única uma única vez.
 
-O pipeline usa três estudantes pequenos:
+## Próxima run: teste + RACE
 
-- `phi2`;
-- `deepseek-r1-distill-llama-8b`;
-- `llama3.1-8b`.
+O roteiro completo para copiar e colar está em [docs/RUNBOOK.md](docs/RUNBOOK.md):
+GPU → GitHub → Petrobras → GitHub → GPU, com execução em segundo plano,
+retomada e instalação do mesmo RACE nos dois servidores.
 
-O `gpt-5-4-petrobras` tem dois papéis: quarto estudante (responde o treino,
-cria autorreflexões e responde a validação) e professor (cria reflexões para
-cada resposta de treino dos três modelos pequenos).
-
-## Condições avaliadas
-
-Para cada modelo pequeno:
-
-1. `baseline`: questão de validação sem memória;
-2. `self_simple` e `self_complex`: reflexão criada pelo próprio estudante;
-3. `teacher_simple` e `teacher_complex`: reflexão criada pelo GPT-5-4 sobre a
-   resposta daquele estudante.
-
-Para o GPT-5-4: `baseline`, `self_simple` e `self_complex`.
-
-Não há mais grade de similaridades, placebo, threshold ou divisão
-calibração/teste. Todos os itens vêm exclusivamente de `validation.jsonl` e
-recebem o vizinho de treino com maior similaridade.
-
-## Execução em dois servidores
-
-O único entrypoint é `run_experiment.py`. Ele grava checkpoints locais em
-`data/results/reflection_top1/` e os artefatos transportáveis pelo Git em
-`experiment_exchange/`.
-
-### 1. Servidor com GPU
+No servidor GPU, dentro do ambiente Python já utilizado:
 
 ```bash
-python -u run_experiment.py prepare --gpu 3
+python setup_server.py gpu --gpu 3
+python experiment_ops.py start prepare --gpu 3
 ```
 
-Para iniciar uma rodada de produção totalmente do zero, sem reaproveitar pares
-ou checkpoints anteriores, acrescente `--fresh` nessa primeira chamada. Nas
-retomadas de uma etapa interrompida, omita `--fresh` para usar os checkpoints
-válidos já concluídos.
+O instalador preserva a pilha GPU existente. `experiment_ops.py share prepare`
+envia artefatos e RACE completo comprimidos ao GitHub. Na Petrobras,
+`python setup_server.py petrobras` instala o RACE desse pacote sem acesso ao
+Hugging Face, e adiciona somente as dependências Azure. `start teacher` e
+`start finish` restauram o pacote da etapa anterior e aplicam os limites do manifesto.
 
-O comando imprime o `experiment_id`. Faça commit e push da pasta indicada:
+As instruções abaixo também documentam o uso manual de `run_experiment.py`.
+Os scripts de operação não substituem esse entrypoint.
+
+O preparador baixa `ehovy/race`, configuração `all` (middle + high), e grava
+`data/processed/race/{train,validation,test}.jsonl`. Ele resolve a revisão do
+Hugging Face para um commit e salva contagens e hashes em `dataset_manifest.json`.
+Os demais datasets continuam usando seus arquivos já preparados.
+
+Os defaults da nova run são:
+
+- datasets: `aqua,arc,logiqa2,openbookqa,race`;
+- modelos: `phi2,deepseek-r1-distill-llama-8b,llama3.1-8b,phi4-mini,mistral-7b-instruct,qwen3-8b`;
+- split: `test`; perfil de geração: `final`.
+
+Os novos checkpoints são `microsoft/Phi-4-mini-instruct`,
+`mistralai/Mistral-7B-Instruct-v0.3` e `Qwen/Qwen3-8B`. A presença dos pesos no
+cache deve ser verificada no servidor GPU. O backend solicitado não é
+substituído automaticamente se estiver indisponível.
+
+Para um piloto em validação, use `--eval-split validation`. `--eval-cap` e
+`--train-cap` existem para ensaios; a produção pesquisa o treino completo e
+avalia o split completo. `--validation-cap` continua sendo um alias de `--eval-cap`.
+
+## Execução nos dois servidores
+
+O prepare imprime o `experiment_id`. Transporte `experiment_exchange/<id>`
+pelo Git. No servidor Petrobras, após configurar o Azure no `.env`:
 
 ```bash
-git add experiment_exchange/<experiment_id>
-git commit -m "data: prepare reflection experiment <experiment_id>"
-git push
+python -u run_experiment.py teacher --experiment-id <id>
 ```
 
-Essa etapa calcula os pares top-1, faz os três estudantes responderem somente
-as questões de treino selecionadas e gera suas autorreflexões simples e
-complexas.
-
-### 2. Servidor Petrobras
-
-Depois de `git pull`, configure as credenciais Azure no `.env` e execute:
+Transporte a pasta `teacher/` e `teacher_receipt.json` de volta ao servidor GPU:
 
 ```bash
-python -u run_experiment.py teacher --experiment-id <experiment_id>
+python -u run_experiment.py finish --experiment-id <id> --gpu 3
 ```
 
-O GPT-5-4:
+As etapas posteriores usam split, modelos, juiz, backend e perfil congelados
+no manifesto. Os limites de ambiente relevantes devem corresponder aos do
+prepare; divergências interrompem a etapa antes da geração.
 
-- responde as questões de treino selecionadas e cria suas autorreflexões;
-- cria reflexões simples/complexas de professor para cada estudante pequeno;
-- responde toda a validação sem memória e com suas duas autorreflexões.
-
-Envie os novos artefatos de volta:
+Resultados: `data/results/reflection_top1/<id>/analysis/all_outcomes.jsonl`
+e `accuracy.csv`. Avaliações individuais usam `test.jsonl` ou `validation.jsonl`
+conforme o manifesto. Para consultar progresso:
 
 ```bash
-git add experiment_exchange/<experiment_id>/teacher \
-        experiment_exchange/<experiment_id>/teacher_receipt.json
-git commit -m "data: add Petrobras stage <experiment_id>"
-git push
+python run_experiment.py status --experiment-id <id>
 ```
 
-### 3. Servidor com GPU novamente
+Retome sem `--fresh` para aproveitar checkpoints. Não use `--fresh` em uma
+execução interrompida: essa opção reinicia os artefatos da etapa.
+
+## Condições mantidas
+
+Estudantes: `baseline`, `self_simple`, `self_complex`, `teacher_simple`,
+`teacher_complex`. GPT-5.4 Petrobras: `baseline`, `self_simple`, `self_complex`.
+Não foi acrescentada uma condição de caso recuperado sem reflexão.
+
+## Perfil final de geração
+
+| Modelo | Respostas de treino/teste | Reflexão simples | Reflexão complexa |
+|---|---:|---:|---:|
+| Phi-2 | 512 | até 768 | até 768 |
+| DeepSeek-R1-Distill-Llama-8B | 4096 | 4096 | 4096 |
+| Llama, Phi-4-mini, Mistral, Qwen3 | 1024 | 1024 | 1024 |
+| GPT-5.4 Petrobras | teto efetivo Azure | teto efetivo Azure | teto efetivo Azure |
+
+O teto efetivo padrão do Azure é 4000, incluindo raciocínio interno. As variáveis
+`RMCQ_AZURE_MAX_TOKENS`, `RMCQ_AZURE_REASONING_MIN_TOKENS` e
+`RMCQ_AZURE_REASONING_EFFORT` são registradas. O perfil final exige teto explícito.
+No Phi-2, somente o orçamento de geração de reflexão se adapta ao espaço
+restante da janela de 2048 tokens. O prompt completo é preservado.
+
+O perfil final faz uma tentativa de geração, sem repetir por comprimento ou
+resposta vazia. Repetições de infraestrutura do Azure continuam separadas.
+Respostas usam temperatura 0; reflexões locais usam 0.7, configurável por
+`--reflection-temperature`. GPT-5 não recebe temperatura. Essa configuração
+não constitui uma busca pelo melhor desempenho do DeepSeek em temperatura.
+
+Qwen3 recebe `enable_thinking=False`. Blocos think são separados da saída
+utilizada em todos os backends, com texto bruto e contagens preservados nos
+checkpoints do perfil final. O raciocínio privado da API não é exposto.
+
+Saídas completas são mantidas mesmo que estejam erradas. Saídas incompletas
+são guardadas para auditoria, mas não avaliadas ou transferidas como memórias.
+Prompts que não cabem recebem uma marcação por item; o lote continua.
+Memórias não são recortadas no perfil final.
+
+## Gráficos e filtros
+
+Instale `requirements-analysis.txt` e use
+`validation_accuracy_by_similarity.ipynb`, agora compatível com teste e validação.
+Configure `EXPERIMENT_ID` e os filtros no início:
+
+- `EXCLUDE_FLAGS`: por exemplo `length_exhausted`, `partial_think`,
+  `context_exceeded`, `content_filter`, `budget_reduced_for_context`,
+  `thinking_removed`, `embedding_truncated`, `judge_fallback` ou `unresolved`;
+- `EXCLUDE_METHODS`: motivos específicos em `eval_method`;
+- `CONDITIONS`: condições a comparar;
+- `RACE_SUBSETS`: `middle`, `high` ou ambos;
+- `PAIRED=True`: mesmas questões entre as condições de cada modelo;
+- `RESOLVED_ONLY=True`: somente questões resolvidas; combine com `PAIRED` para
+  uma interseção resolvida nas condições comparadas;
+- `PLOT_METRIC`: `accuracy_all` (acertos/selecionadas) ou `accuracy`
+  (acertos/resolvidas).
+
+O padrão inclui todas as marcações. Os quantis de similaridade são fixados no
+conjunto original. Cada seleção salva figuras, métricas e filtros em uma pasta
+própria, com total original, selecionado, excluído e cobertura.
+
+Também é possível exportar uma seleção sem abrir o notebook:
 
 ```bash
-git pull
-python -u run_experiment.py finish --experiment-id <experiment_id> --gpu 3
+python analyze_experiment.py --outcomes data/results/reflection_top1/<id>/analysis/all_outcomes.jsonl --exclude-flags length_exhausted,context_exceeded --paired --resolved-only
 ```
 
-Os resultados finais ficam em:
+Um filtro não transforma uma saída descartada em resposta resolvida. Para
+medir o efeito de usar uma reflexão incompleta, é necessária outra execução das
+condições dependentes. O notebook `high_budget_reflection_experiment.ipynb`
+continua sendo uma variante separada que aceita truncamentos e recorta memórias.
 
-```text
-data/results/reflection_top1/<experiment_id>/analysis/accuracy.csv
-data/results/reflection_top1/<experiment_id>/analysis/all_outcomes.jsonl
-```
+## RACE e contexto
 
-Para conferir o andamento em qualquer máquina:
+O artigo completo vira `context`; cada pergunta tem UID próprio, mesmo quando
+compartilha `example_id` com outras perguntas. A divisão middle/high e um hash
+do artigo são preservados. Artigos do RACE presentes no split de avaliação são
+excluídos dos candidatos de treino e a remoção é auditada.
+
+A recuperação mantém `BAAI/bge-large-en-v1.5` e o texto contexto + pergunta +
+alternativas, sem gabarito ou justificativa. O limite do embedder pode cortar
+textos longos antes de chegar à pergunta; os pares registram contagens e
+`embedding_truncated`. Essa marcação é independente do contexto do gerador.
+
+## Histórico e verificações
+
+O protocolo novo é v5. Ele não retoma gerações v4 misturando parâmetros. As
+runs antigas continuam disponíveis para status e análise; para continuar uma
+run v4, use a revisão de código correspondente. `--generation-profile legacy`
+reproduz os limites anteriores em uma nova run v5, sem alterar os artefatos antigos.
+
+Detalhes: `docs/experiment_protocol.md`; histórico: `docs/experiment_protocol_v4.md`.
 
 ```bash
-python run_experiment.py status --experiment-id <experiment_id>
+python -m pytest -q -p no:cacheprovider
 ```
-
-Um ensaio rápido, sem GPU/API e sem representar o experimento real:
-
-```bash
-python run_experiment.py prepare --backend stub --models phi2 \
-  --datasets arc --validation-cap 5 --train-cap 20 --embedding-device cpu
-```
-
-`--train-cap` existe apenas para smoke tests. Não o use na rodada de produção,
-pois ela precisa procurar o top-1 no conjunto de treino completo.
-
-## Prompts
-
-Os textos canônicos ficam em `rmcq/prompts.py`:
-
-- `build_answer_prompt` para respostas;
-- `build_reflection_prompt(..., perspective="student")` para autorreflexão;
-- `build_reflection_prompt(..., perspective="teacher")` para o professor;
-- `build_transfer_prompt` para validação com o par top-1.
-
-O prompt de transferência inclui, obrigatoriamente, enunciado recuperado,
-resposta correta, resposta anterior, resultado e reflexão. A resposta correta
-serve para interpretar o caso anterior; a instrução deixa explícito que sua
-conclusão e suas letras não se transferem para a questão nova.
-
-## Thinking
-
-O pipeline usa duas defesas complementares, mas hoje só a segunda está ativa:
-
-1. `RMCQ_OLLAMA_THINK=0` envia `think: false` ao Ollama. Só vale para modelos
-   com `provider="ollama"` em `rmcq/config.py`; nenhum modelo do registro
-   padrão usa mais Ollama (o DeepSeek foi movido para vLLM — ver abaixo), então
-   esta defesa está inativa até que algum modelo Ollama volte a ser declarado.
-2. Todo backend remove blocos `<think>...</think>` antes de persistir ou
-   reutilizar a resposta. Um bloco aberto e truncado vira resposta vazia, nunca
-   uma reflexão aparentemente válida. Esta é a única defesa em vigor para o
-   DeepSeek-R1-distill: a destilação embute o raciocínio de forma
-   incondicional, sem alternância para desativá-lo (diferente de, por exemplo,
-   Qwen3), então todo backend — Ollama ou vLLM — sempre abre um bloco
-   `<think>`.
-
-No Azure, modelos da família GPT-5 mantêm raciocínio interno; use
-`RMCQ_AZURE_REASONING_EFFORT=low`. Esse raciocínio não aparece no conteúdo
-salvo, mas ainda consome tokens do orçamento.
-
-Respostas e reflexões têm limites explícitos e uma única segunda tentativa
-com orçamento maior. Por exemplo, o Phi-2 usa 512 tokens na resposta de treino e repete
-somente um item truncado com 768. Suas reflexões simples usam 256 → 384 tokens,
-e as complexas usam 384 → 512. O DeepSeek/Llama usa 1024 → 2048 na resposta de
-treino — mais alto porque o DeepSeek-R1-distill gasta orçamento dentro de
-`<think>`, removido antes de salvar; truncar ali não sobra resposta parcial,
-sobra resposta vazia. Se a segunda tentativa também truncar, a saída é descartada e marcada
-como `length_exhausted`. Ela não é avaliada, não gera reflexão e não é usada
-como memória, mas o restante do experimento continua.
-
-O Phi-2 também usa três stop sequences (`\nInstruct:`, `\nExercise`,
-`\nQuestion:`) em toda geração sua, porque sendo um modelo base sem EOS
-confiável ele tende a inventar um novo exercício depois de terminar a
-resposta real, em vez de parar.
-
-O `judge` — segunda geração acionada quando o parser não acha
-`FINAL ANSWER: <letter>` — não é mais o próprio modelo que respondeu. Um
-piloto do DeepSeek mostrou dois problemas: ele quase nunca usa o literal
-`FINAL ANSWER:` (cai no `judge` em ~95% dos casos) e, quando cai, o `judge`
-sofre do mesmo problema do `<think>` — mesmo pedindo uma palavra só, ele abre
-um bloco de raciocínio antes de responder (40% de `length_exhausted` no
-piloto, com o teto antigo de 128 → 256 igual pra todo modelo). Subir o budget
-resolvia só a segunda metade; a primeira (não seguir o formato pedido) não é
-corrigível por budget. Por isso o `judge` virou um `--judge-model` fixo
-(padrão `llama3.1-8b`, configurável) que julga a resposta de todo mundo,
-inclusive a própria — um modelo que ignora instrução de formato não deveria
-ser também quem decide se acertou.
-
-O mesmo vale para uma saída que continue vazia depois da repetição: ela recebe
-`empty_exhausted` e é excluída sem interromper o lote. Essa regra vale para
-respostas, reflexões e julgamentos.
-
-Se o orçamento maior da repetição não couber na janela de contexto do modelo,
-o item também recebe `length_exhausted`, com
-`discard_reason=retry_exceeds_context`. O prompt não é truncado e os demais
-itens do lote são repetidos normalmente.
-
-Na validação, memórias com mais de 512 tokens não são fornecidas ao Phi-2. O
-prompt completo também é medido antes de gerar: uma condição que não caiba é
-marcada como `transfer_context_exceeded`, enquanto as outras continuam. Llama
-3.1 e DeepSeek mantêm seus tetos maiores, adequados à janela operacional de
-8192 tokens dos dois, mas passam pela mesma verificação do prompt completo.
-
-Os prompts de reflexão trazem uma faixa de frases e palavras (por exemplo,
-"3–5 sentences (about 60–100 words)") para reduzir divagação. Nenhum limite
-bruto de tokens é acrescentado ao texto — esse controle continua exclusivo dos
-parâmetros de geração.
-
-O GPT-5-4 usa o teto efetivo do Azure. Com os defaults, modelos de raciocínio
-recebem 4000 tokens, incluindo os tokens internos de raciocínio. Se o Azure
-encerrar por comprimento, o item também é descartado.
-
-Respostas das questões e julgamentos usam `temperature=0.0`. Autorreflexões dos
-três estudantes pequenos usam `temperature=0.7`, configurável com
-`--reflection-temperature`. O GPT-5-4 Petrobras é reconhecido como modelo de
-raciocínio e nunca recebe o parâmetro `temperature`; suas reflexões usam o
-comportamento padrão do deployment.
-
-Quando uma mudança de prompt cria um novo `experiment_id`, o `prepare` procura
-pares top-1 de uma execução anterior com os mesmos datasets, limites, seed e
-modelo de embeddings. Execute sem `--fresh` para reaproveitar esses pares e
-evitar recalcular a busca de similaridade.
-
-### Bloqueios do filtro de conteúdo do Azure
-
-`RMCQ_AZURE_CONTINUE_ON_CONTENT_FILTER=1` impede que um único
-`ResponsibleAIPolicyViolation` derrube toda a grade. Somente erros reconhecidos
-como política de conteúdo são convertidos em item não resolvido; erros de
-credencial, TLS, deployment ou rede continuam falhando normalmente.
-
-Uma resposta ou reflexão filtrada nunca é reutilizada como memória. As
-condições dependentes ficam com `correct=null` e um `eval_method` explícito,
-como `source_answer_content_filter` ou `source_reflection_content_filter`.
-`accuracy.csv` apresenta também a cobertura (`resolved / n`) e a lista detalhada
-fica em `analysis/content_filter_audit.jsonl`.
-
-## Instalação e configuração
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env
-```
-
-Aceite a licença do Llama 3.1 no Hugging Face e configure `HF_TOKEN` (o
-DeepSeek-R1-Distill-Llama-8B roda via vLLM com pesos próprios, sem gate). No
-servidor Petrobras, configure `AZURE_OPENAI_BASE_URL` (ou
-`AZURE_OPENAI_ENDPOINT`) e `AZURE_OPENAI_API_KEY`. Nunca faça commit do `.env`.
-
-Os backends disponíveis são vLLM, Transformers, Ollama, Azure OpenAI e `stub`.
-Todos implementam o mesmo contrato em `rmcq/backends/base.py`.

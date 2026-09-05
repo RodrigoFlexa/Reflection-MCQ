@@ -27,11 +27,14 @@ DEFAULT_MODELS = (
     "phi2",
     "deepseek-r1-distill-llama-8b",
     "llama3.1-8b",
+    "phi4-mini",
+    "mistral-7b-instruct",
+    "qwen3-8b",
 )
-DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa")
+DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa", "race")
 DEFAULT_TEACHER = "gpt-5-4-petrobras"
 DEFAULT_JUDGE = "llama3.1-8b"
-PIPELINE_VERSION = "top1-two-server-v4"
+PIPELINE_VERSION = "top1-two-server-v5"
 ANSWER_TEMPERATURE = 0.0
 REFLECTION_TEMPERATURE = 0.7
 PHI2_TRANSFER_REFLECTION_MAX_TOKENS = 512
@@ -63,7 +66,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backend", choices=("vllm", "hf", "stub"), default=None)
     parser.add_argument("--teacher-backend", choices=("azure", "stub"), default="azure")
     parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "0"))
-    parser.add_argument("--validation-cap", type=int)
+    parser.add_argument("--eval-split", choices=("validation", "test"), default="test")
+    parser.add_argument("--generation-profile", choices=("legacy", "final"), default="final")
+    parser.add_argument("--eval-cap", "--validation-cap", dest="validation_cap", type=int)
     parser.add_argument("--train-cap", type=int, help="Smoke tests only; production must use all training items.")
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--embedding-model", default="BAAI/bge-large-en-v1.5")
@@ -72,9 +77,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exchange-root", default="experiment_exchange")
     parser.add_argument("--results-root", default="data/results/reflection_top1")
     parser.add_argument("--fresh", action="store_true")
+    parser.add_argument("--write-id", type=Path, help="Write the prepared experiment id before generation starts.")
     args = parser.parse_args()
     if not 0.0 <= args.reflection_temperature <= 2.0:
         parser.error("--reflection-temperature must be between 0.0 and 2.0")
+    if args.batch_size <= 0 or any(v is not None and v <= 0 for v in (args.validation_cap, args.train_cap)):
+        parser.error("Batch size and optional data caps must be positive")
     return args
 
 
@@ -124,6 +132,8 @@ def save_json(path: Path, value: Any) -> None:
 
 def normalize_stem(item: dict[str, Any]) -> str:
     value = f"{item.get('context') or ''}\n{item.get('question') or ''}"
+    if item.get("dataset") == "race":
+        value += "\n" + " | ".join(c["text"] for c in item["choices"])
     return " ".join(value.casefold().split())
 
 
@@ -139,16 +149,21 @@ def dedupe(items: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
 
 
 def load_splits(root: Path, datasets: list[str], cap: int | None,
-                train_cap: int | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+                train_cap: int | None = None, eval_split: str = "validation") -> tuple[dict[str, Any], list[dict[str, Any]]]:
     state: dict[str, Any] = {}
     audit = []
     for dataset in datasets:
         folder = root / "data" / "processed" / dataset
         train = load_jsonl(folder / "train.jsonl")
-        validation_path = folder / "validation.jsonl"
+        validation_path = folder / f"{eval_split}.jsonl"
         if not validation_path.exists():
-            raise FileNotFoundError(f"{dataset} has no validation.jsonl; this protocol uses validation only")
+            raise FileNotFoundError(f"Missing {validation_path}; for RACE run python prepare_datasets.py")
         validation = load_jsonl(validation_path)
+        for expected_split, items in (("train", train), (eval_split, validation)):
+            if any(item["split"] != expected_split for item in items):
+                raise ValueError(f"{dataset}: split metadata does not match {expected_split}.jsonl")
+            if len({item["uid"] for item in items}) != len(items):
+                raise ValueError(f"{dataset}/{expected_split}: duplicate question identifiers")
         if cap is not None and len(validation) > cap:
             validation = random.Random(42).sample(validation, cap)
         train, train_duplicates = dedupe(train)
@@ -156,16 +171,26 @@ def load_splits(root: Path, datasets: list[str], cap: int | None,
         validation_stems = {normalize_stem(item) for item in validation}
         before = len(train)
         train = [item for item in train if normalize_stem(item) not in validation_stems]
+        cross_split_removed = before - len(train)
+        article_overlap_removed = 0
+        if dataset == "race":
+            eval_articles = {item["article_uid"] for item in validation}
+            before_articles = len(train)
+            train = [item for item in train if item["article_uid"] not in eval_articles]
+            article_overlap_removed = before_articles - len(train)
         if train_cap is not None and len(train) > train_cap:
             train = random.Random(42).sample(train, train_cap)
-        state[dataset] = {"train": train, "validation": validation}
+        if not train or not validation:
+            raise ValueError(f"{dataset}: no training candidates or evaluation items after filtering")
+        state[dataset] = {"train": train, "validation": validation, "eval_split": eval_split}
         audit.append({
             "dataset": dataset,
             "train": len(train),
             "validation": len(validation),
             "train_duplicates_removed": train_duplicates,
             "validation_duplicates_removed": validation_duplicates,
-            "cross_split_removed": before - len(train),
+            "cross_split_removed": cross_split_removed,
+            "article_overlap_removed": article_overlap_removed, "eval_split": eval_split,
         })
     return state, audit
 
@@ -185,15 +210,25 @@ def retrieve_top1(state: dict[str, Any], model_name: str, device: str) -> list[d
     model = SentenceTransformer(model_name, device=device)
     rows: list[dict[str, Any]] = []
     query_prefix = "Represent this sentence for searching relevant passages: " if "bge" in model_name.lower() else ""
+    def token_lengths(texts):
+        lengths = []
+        for start in range(0, len(texts), 128):
+            encoded = model.tokenizer(texts[start:start + 128], truncation=False, padding=False)
+            lengths.extend(len(ids) for ids in encoded["input_ids"])
+        return lengths
+
     for dataset, splits in state.items():
         train = splits["train"]
         validation = splits["validation"]
+        train_texts = [embedding_text(item) for item in train]
+        query_texts = [query_prefix + embedding_text(item) for item in validation]
+        train_lengths, query_lengths = token_lengths(train_texts), token_lengths(query_texts)
         train_embeddings = model.encode(
-            [embedding_text(item) for item in train], batch_size=128,
+            train_texts, batch_size=128,
             normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=True,
         )
         validation_embeddings = model.encode(
-            [query_prefix + embedding_text(item) for item in validation], batch_size=128,
+            query_texts, batch_size=128,
             normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=True,
         )
         # Chunked multiplication avoids materializing the complete validation x train matrix.
@@ -205,6 +240,12 @@ def retrieve_top1(state: dict[str, Any], model_name: str, device: str) -> list[d
                 source_item = train[int(source_index)]
                 rows.append({
                     "dataset": dataset,
+                    "eval_split": splits.get("eval_split", "validation"),
+                    "eval_uid": val_item["uid"],
+                    "embedding_source_tokens": train_lengths[int(source_index)],
+                    "embedding_query_tokens": query_lengths[start + offset],
+                    "embedding_max_tokens": model.max_seq_length,
+                    "embedding_truncated": max(train_lengths[int(source_index)], query_lengths[start + offset]) > model.max_seq_length,
                     "val_uid": val_item["uid"],
                     "source_uid": source_item["uid"],
                     "similarity": float(scores[offset, source_index]),
@@ -227,7 +268,10 @@ def cache_key(*parts: str) -> str:
     return json.dumps(parts, ensure_ascii=False, separators=(",", ":"))
 
 
-def training_answer_budget(model_key: str) -> int:
+def training_answer_budget(model_key: str, profile: str = "legacy") -> int:
+    if profile == "final":
+        from rmcq.generation import final_budget
+        return final_budget(model_key, "answer")
     return 512 if model_key == "phi2" else 1024
 
 
@@ -244,7 +288,9 @@ def training_answer_retry_budget(model_key: str) -> int:
     return 2048
 
 
-def validation_answer_budget(model_key: str) -> int:
+def validation_answer_budget(model_key: str, profile: str = "legacy") -> int:
+    if profile == "final":
+        return training_answer_budget(model_key, profile)
     return 384 if model_key == "phi2" else 512
 
 
@@ -265,7 +311,10 @@ def judge_retry_budget(model_key: str) -> int:
     return 2048
 
 
-def reflection_budget(model_key: str, depth: str) -> int:
+def reflection_budget(model_key: str, depth: str, profile: str = "legacy") -> int:
+    if profile == "final":
+        from rmcq.generation import final_budget
+        return final_budget(model_key, "reflection")
     if model_key == "phi2":
         return 256 if depth == "simple" else 384
     return 768 if depth == "simple" else 1024
@@ -282,8 +331,13 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
                     batch_size: int, fresh: bool, description: str,
                     temperature: float = ANSWER_TEMPERATURE,
                     retry_max_tokens: int | None = None,
-                    stop: tuple[str, ...] = ()) -> dict[str, dict[str, Any]]:
+                    stop: tuple[str, ...] = (), profile: str = "legacy",
+                    adapt_to_context: bool = False) -> dict[str, dict[str, Any]]:
     from rmcq.backends.base import GenParams
+    if profile == "final":
+        from rmcq.generation import generate_once
+        return generate_once(backend, path, prompts, max_tokens, batch_size, fresh,
+                             description, temperature, stop, adapt_to_context)
 
     max_len = getattr(backend, "max_len", None)
     if max_len and hasattr(backend, "tokenizer"):
@@ -437,14 +491,15 @@ def cached_generate(backend: Any, path: Path, prompts: dict[str, str], max_token
 
 
 def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[str, dict[str, Any]],
-                    items: dict[str, dict[str, Any]], batch_size: int, fresh: bool) -> dict[str, dict[str, Any]]:
+                    items: dict[str, dict[str, Any]], batch_size: int, fresh: bool,
+                    profile: str = "legacy") -> dict[str, dict[str, Any]]:
     from rmcq.prompts import build_judge_prompt, extract_final_answer, parse_judge_verdict
 
     results: dict[str, dict[str, Any]] = {}
     judge_prompts = {}
     for key, row in generated.items():
         if row.get("finish_reason") in {
-            "content_filter", "length_exhausted", "empty_exhausted",
+            "content_filter", "length_exhausted", "empty_exhausted", "prompt_context_exceeded",
         }:
             method = row["finish_reason"]
             results[key] = {
@@ -463,9 +518,10 @@ def resolve_answers(backend: Any, cache_dir: Path, stage: str, generated: dict[s
             judge_budget(backend.key), batch_size, fresh, f"judge {stage}",
             retry_max_tokens=None if backend.key == "phi2" else judge_retry_budget(backend.key),
             stop=PHI2_STOP_SEQUENCES if backend.key == "phi2" else (),
+            profile=profile,
         )
         for key, row in judged.items():
-            if row.get("finish_reason") in {"length_exhausted", "empty_exhausted"}:
+            if row.get("finish_reason") in {"length_exhausted", "empty_exhausted", "prompt_context_exceeded", "content_filter"}:
                 results[key] = {
                     "selected_answer": None, "correct": None,
                     "eval_method": f"judge_{row['finish_reason']}",
@@ -488,13 +544,13 @@ def unavailable_memory_method(
     attempt_row: dict[str, Any], reflection_row: dict[str, Any] | None, depth: str
 ) -> str:
     if attempt_row.get("eval_method") in {
-        "content_filter", "length_exhausted", "empty_exhausted",
+        "content_filter", "length_exhausted", "empty_exhausted", "prompt_context_exceeded",
     }:
         return f"source_answer_{attempt_row['eval_method']}"
     if "correct" in attempt_row and attempt_row["correct"] is None:
         return f"source_answer_{attempt_row.get('eval_method') or 'unresolved'}"
     status = (reflection_row or {}).get("reflection_status", {}).get(depth)
-    if status in {"content_filter", "length_exhausted", "empty_exhausted"}:
+    if status in {"content_filter", "length_exhausted", "empty_exhausted", "prompt_context_exceeded"}:
         return f"source_reflection_{status}"
     return "source_reflection_unavailable"
 
@@ -506,10 +562,11 @@ def validation_prompt_issue(
     condition: str,
     reflection: str | None,
     answer_tokens: int,
+    profile: str = "legacy",
 ) -> dict[str, Any] | None:
     """Return why a validation prompt must be skipped, without truncating it."""
     reflection_tokens = None
-    if reflection and model_key == "phi2":
+    if reflection and model_key == "phi2" and profile == "legacy":
         reflection_tokens = backend.count_tokens(reflection)
         if reflection_tokens > PHI2_TRANSFER_REFLECTION_MAX_TOKENS:
             return {
@@ -550,7 +607,10 @@ def unique_sources(pairs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
-    from rmcq.config import BACKEND
+    from rmcq.config import (
+        BACKEND, MODELS, MAX_MODEL_LEN, AZURE_MAX_TOKENS, AZURE_REASONING_MIN_TOKENS,
+        AZURE_REASONING_EFFORT, SEED, TORCH_DTYPE, VLLM_DETERMINISTIC, VLLM_MAX_NUM_SEQS,
+    )
     from rmcq.prompts import (
         ANSWER_PROMPT, STUDENT_REFLECTION_PROMPTS, TEACHER_REFLECTION_PROMPTS, TRANSFER_PROMPT,
     )
@@ -558,6 +618,22 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "pipeline_version": PIPELINE_VERSION,
         "models": split_csv(args.models), "datasets": split_csv(args.datasets),
         "teacher_model": args.teacher_model, "judge_model": args.judge_model,
+        "eval_split": args.eval_split, "generation_profile": args.generation_profile,
+        "generation_policy": {
+            "length_retries": 0 if args.generation_profile == "final" else 1,
+            "keep_incomplete_as_memory": False, "clip_transfer_memory": False,
+            "preserve_raw_text": args.generation_profile == "final",
+        },
+        "model_specs": {
+            model: {"repo_id": MODELS[model].repo_id, "extra_kwargs": MODELS[model].extra_kwargs}
+            for model in sorted(set(split_csv(args.models) + [args.teacher_model, args.judge_model]))
+        },
+        "runtime_limits": {"max_model_len": MAX_MODEL_LEN,
+                           "generation_seed": SEED, "dtype": TORCH_DTYPE,
+                           "vllm_deterministic": VLLM_DETERMINISTIC, "vllm_max_num_seqs": VLLM_MAX_NUM_SEQS,
+                           "azure_max_tokens": AZURE_MAX_TOKENS,
+                           "azure_reasoning_min_tokens": AZURE_REASONING_MIN_TOKENS,
+                           "azure_reasoning_effort": AZURE_REASONING_EFFORT},
         "validation_cap": args.validation_cap,
         "train_cap": args.train_cap,
         "student_backend": args.backend or BACKEND,
@@ -568,30 +644,30 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
             "gpt_5_4_petrobras": "provider_default; temperature omitted",
         },
         "training_answer_max_tokens": {
-            model: training_answer_budget(model) for model in split_csv(args.models)
+            model: training_answer_budget(model, args.generation_profile) for model in split_csv(args.models)
         },
         "training_answer_retry_max_tokens": {
-            model: training_answer_retry_budget(model) for model in split_csv(args.models)
+            model: training_answer_retry_budget(model) if args.generation_profile == "legacy" else None for model in split_csv(args.models)
         },
         "validation_answer_max_tokens": {
-            model: validation_answer_budget(model) for model in split_csv(args.models)
+            model: validation_answer_budget(model, args.generation_profile) for model in split_csv(args.models)
         },
         "judge_max_tokens": {
             model: judge_budget(model) for model in split_csv(args.models)
         },
         "judge_retry_max_tokens": {
-            model: judge_retry_budget(model) for model in split_csv(args.models)
+            model: judge_retry_budget(model) if args.generation_profile == "legacy" else None for model in split_csv(args.models)
         },
         "phi2_stop_sequences": list(PHI2_STOP_SEQUENCES),
         "reflection_max_tokens": {
             model: {
-                depth: reflection_budget(model, depth) for depth in ("simple", "complex")
+                depth: reflection_budget(model, depth, args.generation_profile) for depth in ("simple", "complex")
             }
             for model in split_csv(args.models)
         },
         "reflection_retry_max_tokens": {
             model: {
-                depth: reflection_retry_budget(model, depth)
+                depth: reflection_retry_budget(model, depth) if args.generation_profile == "legacy" else None
                 for depth in ("simple", "complex")
             }
             for model in split_csv(args.models)
@@ -637,6 +713,10 @@ def find_compatible_pair_exchange(
         "embedding_model": args.embedding_model,
         "seed": 42,
     }
+    if hasattr(args, "eval_split"):
+        expected["eval_split"] = args.eval_split
+    if hasattr(args, "data_fingerprints"):
+        expected["data_fingerprints"] = args.data_fingerprints
     if not exchange.parent.exists():
         return None
     manifests = sorted(
@@ -686,7 +766,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                 flush=True,
             )
         else:
-            state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap)
+            state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap, args.eval_split)
             pairs = retrieve_top1(state, args.embedding_model, args.embedding_device)
             for dataset in datasets:
                 save_jsonl(
@@ -725,10 +805,11 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
         with get_backend(model_key, kind=args.backend) as backend:
             generated_by_model[model_key] = cached_generate(
                 backend, model_cache / "train_answers.jsonl", answer_prompts,
-                training_answer_budget(model_key), args.batch_size, args.fresh,
+                training_answer_budget(model_key, args.generation_profile), args.batch_size, args.fresh,
                 f"{model_key} training answers",
                 retry_max_tokens=None if model_key == "phi2" else training_answer_retry_budget(model_key),
                 stop=PHI2_STOP_SEQUENCES if model_key == "phi2" else (),
+                profile=args.generation_profile,
             )
 
     # Pass 2: one fixed judge model decides selected-option match for every
@@ -741,6 +822,7 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
             verdicts_by_model[model_key] = resolve_answers(
                 judge_backend, model_caches[model_key], "train",
                 generated_by_model[model_key], sources, args.batch_size, args.fresh,
+                profile=args.generation_profile,
             )
 
     # Pass 3: each model reflects on its own (now-judged) training answers.
@@ -757,11 +839,12 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                 }
                 reflection_outputs[depth] = cached_generate(
                     backend, model_cache / f"self_{depth}.jsonl", prompts,
-                    reflection_budget(model_key, depth),
+                    reflection_budget(model_key, depth, args.generation_profile),
                     args.batch_size, args.fresh, f"{model_key} self reflection {depth}",
                     temperature=args.reflection_temperature,
                     retry_max_tokens=reflection_retry_budget(model_key, depth),
                     stop=PHI2_STOP_SEQUENCES if model_key == "phi2" else (),
+                    profile=args.generation_profile, adapt_to_context=model_key == "phi2",
                 )
         rows = []
         for uid, item in sources.items():
@@ -775,6 +858,8 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
                     for depth in REFLECTION_DEPTHS
                 },
                 "reflection_status": reflection_status(reflection_outputs, uid),
+                "answer_generation": generated[uid],
+                "reflection_generations": {depth: reflection_outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
             })
         content_filter_count += sum(
             row["answer_finish_reason"] == "content_filter"
@@ -810,10 +895,11 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
     cache_dir = results / "work" / "teacher"
     with get_backend(teacher_model, kind=args.teacher_backend) as backend:
         prompts = {uid: build_answer_prompt(item) for uid, item in sources.items()}
-        generated = cached_generate(backend, cache_dir / "train_answers.jsonl", prompts, 1024,
-                                    args.batch_size, args.fresh, "teacher training answers")
+        generated = cached_generate(backend, cache_dir / "train_answers.jsonl", prompts,
+                                    training_answer_budget(teacher_model, args.generation_profile),
+                                    args.batch_size, args.fresh, "teacher training answers", profile=args.generation_profile)
         verdicts = resolve_answers(backend, cache_dir, "train", generated, sources,
-                                   args.batch_size, args.fresh)
+                                   args.batch_size, args.fresh, profile=args.generation_profile)
         self_reflections: dict[str, dict[str, dict[str, Any]]] = {}
         for depth in REFLECTION_DEPTHS:
             reflection_prompts = {
@@ -822,9 +908,10 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
             }
             self_reflections[depth] = cached_generate(
                 backend, cache_dir / f"self_{depth}.jsonl", reflection_prompts,
-                1024 if depth == "simple" else 2048, args.batch_size, args.fresh,
+                reflection_budget(teacher_model, depth, "final") if args.generation_profile == "final" else (1024 if depth == "simple" else 2048), args.batch_size, args.fresh,
                 f"teacher self reflection {depth}",
                 temperature=args.reflection_temperature,
+                profile=args.generation_profile,
             )
 
         teacher_rows_by_model: dict[str, list[dict[str, Any]]] = {}
@@ -839,15 +926,17 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 }
                 outputs[depth] = cached_generate(
                     backend, cache_dir / student_model / f"teacher_{depth}.jsonl", teacher_prompts,
-                    1024 if depth == "simple" else 2048, args.batch_size, args.fresh,
+                    reflection_budget(teacher_model, depth, "final") if args.generation_profile == "final" else (1024 if depth == "simple" else 2048), args.batch_size, args.fresh,
                     f"teacher reflection for {student_model} {depth}",
                     temperature=args.reflection_temperature,
+                    profile=args.generation_profile,
                 )
             teacher_rows_by_model[student_model] = [{
                 "dataset": sources[uid]["dataset"], "source_uid": uid,
                 "student_model": student_model,
                 "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
                 "reflection_status": reflection_status(outputs, uid),
+                "reflection_generations": {depth: outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
             } for uid in student_by_uid]
 
         condition_prompts: dict[str, str] = {}
@@ -887,12 +976,15 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 condition_items[key] = item
                 condition_meta[key] = {"condition": condition, "pair": pair}
         condition_generated = cached_generate(
-            backend, cache_dir / "validation.jsonl", condition_prompts, 1024,
-            args.batch_size, args.fresh, "teacher validation",
+            backend, cache_dir / f"{args.eval_split}.jsonl", condition_prompts,
+            training_answer_budget(teacher_model, args.generation_profile),
+            args.batch_size, args.fresh, f"teacher {args.eval_split}",
+            profile=args.generation_profile,
         )
         condition_verdicts = resolve_answers(
-            backend, cache_dir, "validation", condition_generated, condition_items,
+            backend, cache_dir, args.eval_split, condition_generated, condition_items,
             args.batch_size, args.fresh,
+            profile=args.generation_profile,
         )
 
     teacher_train = [{
@@ -901,6 +993,8 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
         "answer_finish_reason": generated[uid]["finish_reason"], **verdicts[uid],
         "reflections": {depth: self_reflections[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
         "reflection_status": reflection_status(self_reflections, uid),
+        "answer_generation": generated[uid],
+        "reflection_generations": {depth: self_reflections[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
     } for uid, item in sources.items()]
     save_jsonl(exchange / "teacher" / "train.jsonl", teacher_train)
     for model, rows in teacher_rows_by_model.items():
@@ -913,9 +1007,13 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
             "source_uid": pair["source_uid"], "similarity": pair["similarity"],
             "condition": meta["condition"], "response": condition_generated[key]["text"],
             "finish_reason": condition_generated[key]["finish_reason"],
+            "evaluation_generation": condition_generated[key],
             **condition_verdicts[key],
         })
-    save_jsonl(exchange / "teacher" / "validation.jsonl", validation_rows)
+    from rmcq.analysis import annotate_outcomes
+    validation_rows = annotate_outcomes(validation_rows, pairs,
+        {teacher_model: {row["source_uid"]: row for row in teacher_train}}, {})
+    save_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl", validation_rows)
     teacher_filter_events = (
         sum(row["answer_finish_reason"] == "content_filter" for row in teacher_train)
         + sum(status == "content_filter" for row in teacher_train for status in row["reflection_status"].values())
@@ -950,6 +1048,7 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "n": len(group), "resolved": len(resolved),
             "coverage": len(resolved) / len(group),
             "accuracy": (sum(bool(row["correct"]) for row in resolved) / len(resolved)) if resolved else None,
+            "accuracy_all": sum(bool(row["correct"]) for row in resolved) / len(group),
         })
     return summary
 
@@ -977,7 +1076,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl")}
         for model in manifest["models"]
     }
-    all_rows = load_jsonl(exchange / "teacher" / "validation.jsonl")
+    all_rows = load_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl")
     models = manifest["models"]
     cache_dirs: dict[str, Path] = {}
     generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
@@ -1029,7 +1128,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         cache_dir = results / "work" / "finish" / model
         cache_dirs[model] = cache_dir
         with get_backend(model, kind=args.backend) as backend:
-            answer_tokens = validation_answer_budget(model)
+            answer_tokens = validation_answer_budget(model, args.generation_profile)
             accepted_prompts: dict[str, str] = {}
             accepted_items: dict[str, dict[str, Any]] = {}
             accepted_metadata: dict[str, dict[str, Any]] = {}
@@ -1038,6 +1137,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                 issue = validation_prompt_issue(
                     backend, model, prompt, meta["condition"], meta["reflection"],
                     answer_tokens,
+                    profile=args.generation_profile,
                 )
                 if issue is None:
                     accepted_prompts[key] = prompt
@@ -1054,9 +1154,10 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                 })
             prompts, items, metadata = accepted_prompts, accepted_items, accepted_metadata
             generated_by_model[model] = cached_generate(
-                backend, cache_dir / "validation.jsonl", prompts, answer_tokens,
-                args.batch_size, args.fresh, f"{model} validation",
+                backend, cache_dir / f"{args.eval_split}.jsonl", prompts, answer_tokens,
+                args.batch_size, args.fresh, f"{model} {args.eval_split}",
                 stop=PHI2_STOP_SEQUENCES if model == "phi2" else (),
+                profile=args.generation_profile,
             )
         items_by_model[model] = items
         metadata_by_model[model] = metadata
@@ -1068,9 +1169,10 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     with get_backend(args.judge_model, kind=args.backend) as judge_backend:
         for model in models:
             verdicts_by_model[model] = resolve_answers(
-                judge_backend, cache_dirs[model], "validation",
+                judge_backend, cache_dirs[model], args.eval_split,
                 generated_by_model[model], items_by_model[model],
                 args.batch_size, args.fresh,
+                profile=args.generation_profile,
             )
 
     for model in models:
@@ -1085,9 +1187,12 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                 "source_uid": pair["source_uid"], "similarity": pair["similarity"],
                 "condition": meta["condition"], "response": generated[key]["text"],
                 "finish_reason": generated[key]["finish_reason"],
+                "evaluation_generation": generated[key],
                 **verdicts[key],
             })
-        save_jsonl(results / "models" / model / "validation.jsonl", model_rows)
+        from rmcq.analysis import annotate_outcomes
+        model_rows = annotate_outcomes(model_rows, pairs, student_rows_by_model, teacher_rows_by_model)
+        save_jsonl(results / "models" / model / f"{args.eval_split}.jsonl", model_rows)
         all_rows.extend(model_rows)
     save_jsonl(results / "analysis" / "all_outcomes.jsonl", all_rows)
     summary = summarize(all_rows)
@@ -1123,6 +1228,15 @@ def main() -> None:
     import rmcq  # noqa: F401 - loads .env before local model libraries
 
     payload = manifest_payload(args)
+    if args.stage == "prepare":
+        args.data_fingerprints = {}
+        for dataset in split_csv(args.datasets):
+            for split in ("train", args.eval_split):
+                path = root / "data" / "processed" / dataset / f"{split}.jsonl"
+                if not path.exists():
+                    raise FileNotFoundError(f"Missing {path}. Prepare RACE with python prepare_datasets.py.")
+                args.data_fingerprints[f"{dataset}/{split}"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        payload["data_fingerprints"] = args.data_fingerprints
     experiment_id = args.experiment_id or json_hash(payload)
     if not re.fullmatch(r"[0-9a-f]{12}", experiment_id):
         raise ValueError("experiment id must be the 12-character hexadecimal id printed by prepare")
@@ -1139,6 +1253,9 @@ def main() -> None:
         exchange.mkdir(parents=True, exist_ok=True)
         payload["experiment_id"] = experiment_id
         save_json(manifest_path, payload)
+        if args.write_id:
+            args.write_id.parent.mkdir(parents=True, exist_ok=True)
+            args.write_id.write_text(experiment_id + "\n", encoding="utf-8")
         print(f"experiment_id: {experiment_id}", flush=True)
         stage_prepare(root, exchange, results, args)
         print(f"commit and push: {display_path(exchange, root)}")
@@ -1148,7 +1265,34 @@ def main() -> None:
         raise ValueError(f"{args.stage} requires --experiment-id")
     if manifest is None:
         raise FileNotFoundError(f"missing manifest: {manifest_path}")
+    if args.stage == "status":
+        stage_status(exchange, results, manifest)
+        return
     assert_manifest_compatible(manifest)
+    # Later stages consume the frozen configuration, not argparse defaults.
+    args.eval_split = manifest["eval_split"]
+    args.generation_profile = manifest["generation_profile"]
+    args.reflection_temperature = manifest["generation_temperatures"]["student_reflection"]
+    args.judge_model = manifest["judge_model"]
+    args.backend = manifest["student_backend"]
+    args.models = ",".join(manifest["models"])
+    args.datasets = ",".join(manifest["datasets"])
+    args.teacher_model = manifest["teacher_model"]
+    expected = manifest_payload(args)
+    for name in ("generation_policy", "training_answer_max_tokens", "training_answer_retry_max_tokens",
+                 "validation_answer_max_tokens", "judge_max_tokens", "judge_retry_max_tokens",
+                 "reflection_max_tokens", "reflection_retry_max_tokens", "phi2_stop_sequences"):
+        if manifest[name] != expected[name]:
+            raise RuntimeError(f"Generation policy {name} changed since prepare; use the matching code revision.")
+    from rmcq.config import MODELS
+    for model, spec in manifest["model_specs"].items():
+        if model not in MODELS or spec != {"repo_id": MODELS[model].repo_id, "extra_kwargs": MODELS[model].extra_kwargs}:
+            raise RuntimeError(f"Model configuration changed since prepare: {model}")
+    relevant_limits = ["max_model_len", "generation_seed", "dtype", "vllm_deterministic", "vllm_max_num_seqs"] if args.stage == "finish" else [
+        "azure_max_tokens", "azure_reasoning_min_tokens", "azure_reasoning_effort"]
+    for name in relevant_limits:
+        if payload["runtime_limits"][name] != manifest["runtime_limits"][name]:
+            raise RuntimeError(f"Runtime setting {name} differs from frozen manifest; align the server configuration.")
     if args.stage == "teacher":
         stage_teacher(exchange, results, args, manifest)
         print(f"commit and push: {display_path(exchange / 'teacher', root)}")

@@ -78,8 +78,19 @@ class Generation:
     latency_s: float = 0.0
     finish_reason: str = ""
     samples: list[str] = field(default_factory=list)  # preenchido quando n > 1
+    raw_text: str | None = None
+    thinking_removed: bool = False
+    partial_think: bool = False
 
     def __post_init__(self) -> None:
+        if self.raw_text is None:
+            self.raw_text = self.text
+        self.thinking_removed = self.thinking_removed or bool(
+            re.search(r"</?think\b", self.raw_text, re.IGNORECASE)
+        )
+        self.partial_think = self.partial_think or bool(
+            _THINK_START.match(self.raw_text) and "</think>" not in self.raw_text.lower()
+        )
         self.text = strip_thinking(self.text)
         if self.samples:
             self.samples = [strip_thinking(sample) for sample in self.samples]
@@ -126,7 +137,7 @@ class Backend(ABC):
 
     def template_kwargs(self) -> dict[str, Any]:
         """Optional chat-template controls for locally loaded models."""
-        return {}
+        return dict(self.spec.extra_kwargs.get("chat_template_kwargs", {}))
 
     def render(self, tokenizer: Any, prompt: str, system: str | None = None) -> str:
         """Render a chat prompt as text for APIs that explicitly need text."""

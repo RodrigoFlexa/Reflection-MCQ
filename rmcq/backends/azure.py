@@ -390,6 +390,7 @@ class AzureBackend(Backend):
             return None  # cache corrompido é como cache ausente
         return Generation(
             text=row["text"],
+            raw_text=row.get("raw_text", row["text"]),
             prompt_tokens=row.get("prompt_tokens", 0),
             completion_tokens=row.get("completion_tokens", 0),
             latency_s=row.get("latency_s", 0.0),
@@ -408,6 +409,7 @@ class AzureBackend(Backend):
                 json.dumps(
                     {
                         "text": gen.text,
+                        "raw_text": gen.raw_text,
                         "prompt_tokens": gen.prompt_tokens,
                         "completion_tokens": gen.completion_tokens,
                         "latency_s": gen.latency_s,
@@ -543,6 +545,10 @@ class AzureBackend(Backend):
         # descarta esse item como length_exhausted sem interromper o restante.
         if gen.finish_reason == "length":
             log.warning("resposta vazia por limite de comprimento; item será descartado")
+            return
+
+        if getattr(self, "audit_empty_outputs", False):
+            log.warning("resposta vazia; perfil final registra empty_exhausted e continua")
             return
 
         diagnosis = self._diagnose(gen, response)

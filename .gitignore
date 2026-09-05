@@ -38,3 +38,4 @@ config.ini
 logs/
 .tmp_test_exchange/
 .tmp_test_results/
+.run_state/

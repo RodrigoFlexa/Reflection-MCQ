@@ -87,8 +87,8 @@ def get_backend(model_key: str, kind: str | None = None, **kwargs) -> Backend:
     via --backend vllm. A exceção deliberada é --backend stub: troca QUALQUER
     modelo pelo stub, para testar a integração sem gastar GPU nem API.
 
-    Se o vLLM foi pedido para um modelo local (provider="hf") mas não importa,
-    caímos para transformers com um aviso em vez de abortar.
+    Se vLLM foi pedido, uma falha de importação interrompe a etapa. O backend
+    científico declarado não pode ser substituído silenciosamente.
     """
     kind = (kind or BACKEND).lower()
     if kind not in _BACKENDS:
@@ -125,9 +125,8 @@ def get_backend(model_key: str, kind: str | None = None, **kwargs) -> Backend:
             from rmcq.backends.vllm_backend import VLLMBackend
 
             return VLLMBackend(model_key, **kwargs)
-        except ImportError:
-            log.warning("vLLM não importou; caindo para o backend transformers")
-            kind = "hf"
+        except ImportError as exc:
+            raise RuntimeError("vLLM solicitado, mas indisponível. Instale as dependências no servidor GPU.") from exc
 
     from rmcq.backends.hf import HFBackend
 

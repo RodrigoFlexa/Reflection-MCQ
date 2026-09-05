@@ -85,11 +85,15 @@ Discuss:
 - The main factors that influenced their answer.
 - Any assumptions or uncertainties they had.
 - How the feedback supports or challenges their approach.
-- One lesson they would apply when answering similar questions in the future.
+- One concrete, general reasoning action they would apply when answering similar questions in the future.
 
-If the answer was correct, explain why their approach was effective and note any remaining uncertainty.
+Base your diagnosis on the student's written response. If it does not reveal their reasoning, acknowledge that limitation rather than inventing steps or intentions.
+
+If the answer was correct, identify which written reasoning steps were sound and any remaining gaps. Correct-answer feedback alone does not establish that the reasoning was valid.
 
 If the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.
+
+Stay within the requested length; avoid repeating the question or the same lesson.
 
 **Do not answer the question again or identify which option is correct.**""",
     "complex": """You are given:
@@ -106,11 +110,15 @@ Analyze:
 - Any assumptions, heuristics, or uncertainties that affected their judgment.
 - How the feedback confirms or contradicts their reasoning.
 - Whether their conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.
-- How they would improve their reasoning process for similar problems in the future.
+- How they would improve their reasoning process for similar problems in the future, ending with one precise, general reasoning rule.
 
-If the answer was correct, explain which parts of their reasoning were reliable and whether their confidence was appropriately calibrated.
+Base your diagnosis on the student's written response. If it does not reveal their reasoning, acknowledge that limitation rather than inventing steps or intentions.
+
+If the answer was correct, identify which written reasoning steps were reliable, any remaining gaps, and whether their confidence was appropriately calibrated. Correct-answer feedback alone does not establish that the reasoning was valid.
 
 If the answer was incorrect, explain what aspect of their reasoning should change rather than merely noting the correct outcome.
+
+Stay within the requested length; avoid repeating the question or the same lesson.
 
 **Do not answer the question again, identify the correct option, or speculate about what the correct answer is.**""",
 }
@@ -139,7 +147,7 @@ Reflection:
 {reflection}
 </training_case>
 
-Now answer the validation question independently.
+Now answer the new question independently.
 
 Question: {question}
 

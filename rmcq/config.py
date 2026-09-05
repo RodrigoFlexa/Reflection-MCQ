@@ -101,6 +101,18 @@ class ModelSpec:
 # Alguns modelos de exemplo, prontos para rodar via vLLM ou transformers
 # (provider="hf" == pesos locais). Apague os que não usar, adicione os seus.
 MODELS: dict[str, ModelSpec] = {
+    "phi4-mini": ModelSpec(
+        key="phi4-mini", repo_id="microsoft/Phi-4-mini-instruct",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "mistral-7b-instruct": ModelSpec(
+        key="mistral-7b-instruct", repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "qwen3-8b": ModelSpec(
+        key="qwen3-8b", repo_id="Qwen/Qwen3-8B",
+        extra_kwargs={"max_model_len": 8192, "chat_template_kwargs": {"enable_thinking": False}},
+    ),
     "gpt-5-4-petrobras": ModelSpec(
         key="gpt-5-4-petrobras",
         repo_id="azure://gpt-5-4-petrobras",
