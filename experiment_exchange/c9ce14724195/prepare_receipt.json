@@ -1,0 +1,10 @@
+{
+  "pairs": 200,
+  "unique_training_sources": 171,
+  "student_models": [
+    "deepseek-r1-distill-llama-8b"
+  ],
+  "judge_model": "llama3.1-8b",
+  "content_filter_events": 0,
+  "complete": true
+}

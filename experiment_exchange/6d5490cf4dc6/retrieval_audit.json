@@ -1,0 +1,34 @@
+[
+  {
+    "dataset": "aqua",
+    "train": 300,
+    "validation": 50,
+    "train_duplicates_removed": 15888,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 78751
+  },
+  {
+    "dataset": "arc",
+    "train": 300,
+    "validation": 50,
+    "train_duplicates_removed": 1,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 816
+  },
+  {
+    "dataset": "logiqa2",
+    "train": 300,
+    "validation": 50,
+    "train_duplicates_removed": 926,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 11311
+  },
+  {
+    "dataset": "openbookqa",
+    "train": 300,
+    "validation": 50,
+    "train_duplicates_removed": 126,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 4528
+  }
+]

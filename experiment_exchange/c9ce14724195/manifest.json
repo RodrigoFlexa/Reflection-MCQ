@@ -1,0 +1,69 @@
+{
+  "pipeline_version": "top1-two-server-v4",
+  "models": [
+    "deepseek-r1-distill-llama-8b"
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa"
+  ],
+  "teacher_model": "gpt-5-4-petrobras",
+  "judge_model": "llama3.1-8b",
+  "validation_cap": 50,
+  "train_cap": 300,
+  "student_backend": "vllm",
+  "generation_temperatures": {
+    "student_answer": 0.0,
+    "student_judge": 0.0,
+    "student_reflection": 0.7,
+    "gpt_5_4_petrobras": "provider_default; temperature omitted"
+  },
+  "training_answer_max_tokens": {
+    "deepseek-r1-distill-llama-8b": 1024
+  },
+  "training_answer_retry_max_tokens": {
+    "deepseek-r1-distill-llama-8b": 2048
+  },
+  "validation_answer_max_tokens": {
+    "deepseek-r1-distill-llama-8b": 512
+  },
+  "judge_max_tokens": {
+    "deepseek-r1-distill-llama-8b": 512
+  },
+  "judge_retry_max_tokens": {
+    "deepseek-r1-distill-llama-8b": 2048
+  },
+  "phi2_stop_sequences": [
+    "\nInstruct:",
+    "\nExercise",
+    "\nQuestion:"
+  ],
+  "reflection_max_tokens": {
+    "deepseek-r1-distill-llama-8b": {
+      "simple": 768,
+      "complex": 1024
+    }
+  },
+  "reflection_retry_max_tokens": {
+    "deepseek-r1-distill-llama-8b": {
+      "simple": 1152,
+      "complex": 1536
+    }
+  },
+  "embedding_model": "BAAI/bge-large-en-v1.5",
+  "answer_prompt": "You are answering a multiple-choice question.\n\nQuestion: {question}\n\nOptions:\n{options}\n\nRespond in exactly two parts. Keep the reasoning to at most 60 words.\nReasoning: <brief reasoning>\nFINAL ANSWER: <letter>",
+  "student_reflection_prompts": {
+    "simple": "You are given:\n\n1. The question and answer choices.\n2. Your previous answer.\n3. Whether your answer was correct or incorrect.\n4. The correct answer.\n\nReflect on your reasoning in 3–5 sentences (about 60–100 words).\n\nAnalyze:\n\n- Approach: What reasoning approach did you use?\n- Key factor: What fact, relationship, constraint, or clue affected your decision?\n- Error/Success: If incorrect, what specific reasoning mistake caused the error? If correct, what reasoning step helped?\n- Lesson: What one general reasoning rule should you use for similar problems?\n\nThe lesson must describe what to do differently, not just “be careful” or “think harder.”\n\nFocus on reasoning, not the answer.\n\nDo not solve the question again or state the correct answer.",
+    "complex": "You are given:\n\n1. The question and answer choices.\n2. Your previous answer.\n3. Whether your answer was correct or incorrect.\n4. The correct answer.\n\nAnalyze your reasoning in detail.\n\nReflect on your reasoning in 8–12 sentences (about 160–240 words).\n\nConsider:\n\n- Interpretation: What was the question asking? Did you interpret it correctly?\n- Strategy: What reasoning strategy did you use? Was it appropriate?\n- Evidence: Which facts, relationships, or constraints did you use or miss?\n- Assumptions: What assumptions or shortcuts affected your reasoning?\n- Alternatives: Which other possibilities should you have considered?\n- Diagnosis: What specifically caused the error, or what made the reasoning successful?\n- Improvement: What should you change when solving similar problems?\n- Lesson: State a precise, general reasoning rule that can transfer to other problems.\n\nDo not give vague advice such as “be more careful.” Focus on how to reason, not on the specific answer.\n\nDo not solve the question again or state the correct answer."
+  },
+  "teacher_reflection_prompts": {
+    "simple": "You are given:\n1. The original multiple-choice question.\n2. The student's previous answer.\n3. Feedback indicating whether the student's answer was correct or incorrect.\n\nWrite a brief reflection (3–6 sentences, about 60–120 words) on the student's previous response.\n\nDiscuss:\n\n- The main factors that influenced their answer.\n- Any assumptions or uncertainties they had.\n- How the feedback supports or challenges their approach.\n- One lesson they would apply when answering similar questions in the future.\n\nIf the answer was correct, explain why their approach was effective and note any remaining uncertainty.\n\nIf the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.\n\n**Do not answer the question again or identify which option is correct.**",
+    "complex": "You are given:\n1. The original multiple-choice question.\n2. The student's previous answer.\n3. Feedback indicating whether the student's answer was correct or incorrect.\n\nWrite a detailed reflection (8–12 sentences, about 160–240 words) on the student's previous response.\n\nAnalyze:\n\n- The reasoning strategy they used to reach their answer.\n- The evidence or cues from the question that influenced their decision.\n- Any assumptions, heuristics, or uncertainties that affected their judgment.\n- How the feedback confirms or contradicts their reasoning.\n- Whether their conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.\n- How they would improve their reasoning process for similar problems in the future.\n\nIf the answer was correct, explain which parts of their reasoning were reliable and whether their confidence was appropriately calibrated.\n\nIf the answer was incorrect, explain what aspect of their reasoning should change rather than merely noting the correct outcome.\n\n**Do not answer the question again, identify the correct option, or speculate about what the correct answer is.**"
+  },
+  "transfer_prompt": "You are answering a new multiple-choice question.\n\nFirst, review one related training case. It is context for how to reason, not a demonstration whose conclusion should be copied. Its answer labels belong only to that earlier case.\n\n<training_case>\nQuestion:\n{source_question}\n\nCorrect answer:\n{source_correct_answer}\n\nAgent's previous response:\n{source_response}\n\nOutcome:\n{source_outcome}\n\nReflection:\n{reflection}\n</training_case>\n\nNow answer the validation question independently.\n\nQuestion: {question}\n\nOptions:\n{options}\n\nRespond in exactly two parts. Keep the reasoning to at most 60 words.\nReasoning: <brief reasoning>\nFINAL ANSWER: <letter>",
+  "thinking_policy": "request disabled when supported; strip embedded <think> blocks",
+  "seed": 42,
+  "experiment_id": "c9ce14724195"
+}
