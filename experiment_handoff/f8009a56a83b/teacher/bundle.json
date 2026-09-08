@@ -1,0 +1,65 @@
+{
+  "experiment_id": "f8009a56a83b",
+  "stage": "teacher",
+  "git_commit": "77fd942b90804fcd28ba44c3b18d616d548d8f2c",
+  "format": 1,
+  "files": [
+    {
+      "path": "experiment_exchange/f8009a56a83b/manifest.json",
+      "sha256": "0c7919c26dcefd7626ccf3c4df46ec0897e510580b238bdde959a3e18dad84c7"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/deepseek-r1-distill-llama-8b.jsonl",
+      "sha256": "c8bb54fdd628d8ad83457da622330de712272e55d93dd64d4f625928b382e277"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/llama3.1-8b.jsonl",
+      "sha256": "f18f34a6ccb16a86503caaa0a3a7e84a26ae9d9a523f8a848f031023921c8558"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/mistral-7b-instruct.jsonl",
+      "sha256": "dd38ea0d98fcec3fc57947691841b69dcf9d034f1287987b60c2ffe4bcb5947a"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/phi2.jsonl",
+      "sha256": "8824f44136702f23690ee29dc3da9e5e38241af51d8ce1da67a4d36217549a9e"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/phi4-mini.jsonl",
+      "sha256": "7f2edce537c79b43b99f2d819e39d752c1273229dd876e8ec4b1d7acfa9df8ad"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/student_reflections/qwen3-8b.jsonl",
+      "sha256": "7c399e1a64c37b3ae05c37cd6517a3e148384c4ad938b87ab2ab589ad8eca42b"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/test.jsonl",
+      "sha256": "2f1aa4df2f14ed0243e02502582abff9e9cf6b23de8c9c32e84b1b1ffa504263"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher/train.jsonl",
+      "sha256": "b1860267cd13d03b6ba7874cdf2228cee01f3733f04eca219085e245b7677e14"
+    },
+    {
+      "path": "experiment_exchange/f8009a56a83b/teacher_receipt.json",
+      "sha256": "6ce5a8ca39ecaa5a4296437015821d7fd9da146ce566e0146b2c7d5a357b2943"
+    }
+  ],
+  "parts": [
+    {
+      "name": "payload.part0000",
+      "sha256": "ca64b0fdab401b13df5ee706af1b66ee0dcaf790d68685e3827117f63935487c",
+      "bytes": 20971520
+    },
+    {
+      "name": "payload.part0001",
+      "sha256": "1bfdc87d89ee5ffbd7bb51b1054093a2c36c4e1e04e828fa87c11f37f355a11d",
+      "bytes": 20971520
+    },
+    {
+      "name": "payload.part0002",
+      "sha256": "e8e5587e753bbffdc7af9954267820916e7dabe837e34380acfeda67e1d852f2",
+      "bytes": 2368782
+    }
+  ]
+}
