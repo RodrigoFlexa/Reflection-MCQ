@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import json
-from pathlib import Path
+import os
 import subprocess
 import sys
 
@@ -43,13 +42,35 @@ def part_receipt(experiment_id, stage, part):
     return path.with_name(path.name.replace(".json", f".{part}.json"))
 
 
+def liveness(job):
+    """Say whether the worker is actually alive, not just what it last wrote.
+
+    A job file says `running` until something updates it, so a killed worker
+    keeps claiming to run. The PID is the only honest answer.
+    """
+    status, pid = job.get("status"), job.get("pid")
+    if status not in ("starting", "running"):
+        return status
+    if os.name != "posix":
+        return f"{status} (cannot verify the PID on this machine)"
+    if ops.is_alive(pid):
+        return f"{status}, PID {pid} alive"
+    return f"{status} BUT PID {pid} IS GONE: the worker died; inspect the log and start it again"
+
+
+def describe(job):
+    part = job.get("part") or "single"
+    return (f"{part}: {liveness(job)} | GPU {job.get('gpu', '?')} | "
+            f"{job.get('stage')} | log {job.get('log')}")
+
+
 def show_status(explicit=None):
     jobs = [state for _, state in ops.job_states()]
+    for job in jobs:
+        print(describe(job))
     try:
         experiment_id = validation_id(explicit)
     except ValidationNotReady as exc:
-        for job in jobs:
-            print(json.dumps(job, indent=2))
         print(str(exc))
         return
     exchange, _ = ops.paths(experiment_id)
@@ -57,8 +78,6 @@ def show_status(explicit=None):
     if manifest_path.exists() and ops.read(manifest_path).get("eval_split") != "validation":
         raise ValueError("The selected run is not validation")
     print(f"Validation: {experiment_id}")
-    for job in jobs:
-        print(json.dumps(job, indent=2))
     for stage in ops.STAGES:
         path = ops.receipt(experiment_id, stage)
         done = path.exists() and ops.read(path).get("complete")
