@@ -1,8 +1,14 @@
 # Validação: GPU primeiro; professor opcional depois
 
 Execute na pasta `Reflection-MCQ`. Branch de compartilhamento: `lean-backends`.
-A GPU padrão dos comandos é 3; altere `--gpu` se necessário. Os nove estudantes
-rodam sequencialmente, com batching do vLLM. Não carregamos os nove ao mesmo tempo.
+A GPU padrão dos comandos é 3; altere `--gpu` se necessário. Os estudantes rodam
+sequencialmente dentro de cada processo, com batching do vLLM. Nunca carregamos
+dois modelos ao mesmo tempo na mesma GPU.
+
+Há dois modos: **uma GPU** (seção 1) roda os nove estudantes em sequência;
+**duas GPUs** (seção 1b) divide a grade em duas partições que rodam ao mesmo
+tempo, em GPUs diferentes, e depois são unidas por `merge`. As duas produzem a
+mesma run, com o mesmo ID e os mesmos resultados.
 
 ## Grade congelada
 
@@ -82,6 +88,64 @@ O ID aparece no log e fica em `.run_state/validation_experiment_id` quando o
 prepare termina. Enquanto prepara, também está em `.run_state/experiment_id`.
 Para verificar a fila antes de o ID existir, consulte o log ou
 `python experiment_ops.py status`.
+
+## 1b. Duas GPUs em paralelo
+
+A divisão é por modelo, porque o vLLM já carrega um motor por modelo: nada passa
+a ser carregado duas vezes e cada artefato de geração já é gravado por modelo.
+A grade congelada continua sendo a mesma nove; só o trabalho é dividido.
+
+| Partição | Estudantes | Peso |
+|---|---|---|
+| `p1` | deepseek-r1-0528-qwen3-8b, phi2, llama3.2-3b, qwen2.5-3b, ministral-3-3b | 1 modelo 8B com thinking + 4 pequenos |
+| `p2` | deepseek-r1-distill-qwen-1.5b, llama3.1-8b, qwen2.5-7b, ministral-3-8b | 3 modelos 8B + 1 pequeno com thinking |
+
+Para mudar quem fica em cada lado, edite `VALIDATION_PARTITIONS` em
+`run_experiment.py`; um teste falha se a divisão deixar de cobrir a grade
+exatamente uma vez. O juiz fixo (llama3.1-8b) é carregado nas duas GPUs, porque
+cada processo resolve as próprias respostas não parseadas.
+
+Abra dois terminais no **mesmo checkout**, cada um com o ambiente ativado:
+
+```bash
+# terminal 1
+python validation_ops.py start local --p1 --gpu 3
+
+# terminal 2
+python validation_ops.py start local --p2 --gpu 7
+```
+
+O ID da run é derivado da configuração congelada dos nove modelos, então as duas
+partições calculam o mesmo ID e escrevem na mesma run. Quem chegar primeiro
+calcula a recuperação top-1; a outra espera nesse ponto e reaproveita os mesmos
+pares, sem embutir o corpus duas vezes. Cada partição tem o próprio lock, o
+próprio `job.<partição>.json` e o próprio log:
+
+```bash
+python validation_ops.py status
+tail -n 80 .run_state/validation-local.p1.log
+tail -n 80 .run_state/validation-local.p2.log
+```
+
+Nenhuma das duas escreve `prepare_receipt.json` nem `self_eval_receipt.json`:
+cada uma escreve o recibo da própria partição. Isso é proposital, para que uma
+run pela metade nunca pareça inteira e para que nenhuma GPU espere a outra na
+fronteira entre prepare e self-eval. Quando as duas terminarem:
+
+```bash
+python validation_ops.py merge
+```
+
+`merge` não gera nada: confere que os nove modelos estão presentes, concatena
+`models/<modelo>/validation.jsonl` em `all_outcomes.jsonl`, recalcula
+`accuracy.csv`, escreve os recibos da run inteira e roda a análise. Se faltar
+alguma partição, ele diz quais modelos está esperando e não escreve recibo. O
+restante do roteiro (seções 2 a 4) não muda; `share`, `teacher` e `finish`
+continuam agindo sobre a run inteira e não aceitam `--part`.
+
+Retomada: se uma partição falhar, repita apenas o `start local` dela, com a
+mesma GPU. As chamadas já concluídas vêm do cache e a outra partição não é
+afetada.
 
 ## 2. Analisar e compartilhar a etapa parcial
 
@@ -196,6 +260,49 @@ condições; continua sem linhas GPT estudante.
 
 ## Retomada e identidade
 
+### Onde o preflight guarda o erro
+
+Cada modelo é verificado em um processo próprio e a saída inteira é preservada.
+Se algum falhar, o traceback completo vai para
+`.run_state/validation_preflight_error.json` (ou `..._error.<partição>.json`),
+junto com o comando de correção quando a falha é conhecida (FlashInfer,
+falta de VRAM, checkpoint restrito). O log também imprime `DIAGNOSIS:` nessas
+linhas, então `tail` curto já mostra o que fazer.
+
+### FlashInfer: `array.array[int]` no Python 3.10/3.11
+
+A causa é o próprio FlashInfer: `flashinfer/comm/fd_exchange.py` anota
+`_fd_ancillary` com `tuple[tuple[int, int, array.array[int]]]`, e `array.array`
+só aceita subscrito no Python 3.12+. Sem PEP 563, a anotação é avaliada ao
+importar o módulo, então o vLLM nem chega a carregar pesos. A mensagem exata
+`TypeError: 'type' object is not subscriptable` é a forma do Python 3.10
+(no 3.11 ela nomeia `array.array`). O upstream corrigiu importando anotações
+adiadas; o script abaixo aplica exatamente essa linha no ambiente ativo.
+
+Execute no mesmo ambiente virtual GPU (neste exemplo, `venv`, GPU 7):
+
+```bash
+git pull --ff-only origin lean-backends
+source venv/bin/activate
+python repair_flashinfer_annotations.py
+python repair_flashinfer_annotations.py --check
+python validation_ops.py start local --gpu 7
+python validation_ops.py status
+tail -n 80 .run_state/validation-local.log
+```
+
+O script acrescenta `from __future__ import annotations`, como no
+[código oficial do FlashInfer](https://github.com/flashinfer-ai/flashinfer/blob/main/flashinfer/comm/fd_exchange.py).
+Só modifica a assinatura conhecida dentro do ambiente ativo; preserva o arquivo
+original em um backup adjacente e registra versão, caminho e hashes em
+`.run_state/flashinfer_annotation_repair.json`. É idempotente, não reinstala
+bibliotecas e não altera prompts, limites, judge ou kernels. A verificação local
+dos nove modelos continua obrigatória. Se usar outro ambiente GPU depois, confira
+essa compatibilidade nele também. O preflight agora detecta esse defeito antes
+de carregar pesos e registra o hash do arquivo FlashInfer no relatório.
+
+### Etapas interrompidas
+
 - Falha durante a preparação: corrija o problema indicado e repita `start local`
   com a mesma configuração. As chamadas concluídas são recuperadas do cache.
 - Prepare concluído, avaliação local interrompida: `python validation_ops.py start self-eval --gpu 3`.
@@ -204,9 +311,11 @@ condições; continua sem linhas GPT estudante.
 - Use `--experiment-id <ID>` com status/share/restore/analyze ou com start
   self-eval/teacher/finish para selecionar explicitamente uma run e evitar depender
   do ponteiro mais recente. Não use `--fresh` para a extensão opcional.
-- Um lock local impede dois jobs simultâneos no mesmo checkout. Ele não coordena
-  checkouts diferentes. Uma execução interrompida pode exigir esperar o worker
-  encerrar antes de retomá-la.
+- Um lock local impede dois jobs iguais simultâneos no mesmo checkout. O lock é
+  por partição: `p1` e `p2` rodam lado a lado de propósito, mas um segundo `p1`
+  no mesmo checkout continua sendo recusado. Ele não coordena checkouts
+  diferentes. Uma execução interrompida pode exigir esperar o worker encerrar
+  antes de retomá-la.
 - Os parâmetros científicos e fingerprints dos dados são congelados no manifesto.
   As versões de vLLM, torch, Transformers e mistral-common também entram na
   identidade da nova run e são conferidas nas etapas GPU seguintes.

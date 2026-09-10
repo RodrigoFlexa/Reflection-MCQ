@@ -15,11 +15,26 @@ ROOT = Path(__file__).resolve().parent
 STATE = ROOT / ".run_state"
 SHARED = ROOT / "experiment_handoff"
 STAGES = ("prepare", "self-eval", "teacher", "finish")
-JOB_STAGES = STAGES + ("validation-local",)
+JOB_STAGES = STAGES + ("validation-local", "merge")
+PARTS = ("p1", "p2")
 
 
 def read(path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def suffix(part):
+    return "" if part is None else f".{part}"
+
+
+def job_path(part=None):
+    """One job file and one lock per partition, so two GPUs share a checkout."""
+    return STATE / f"job{suffix(part)}.json"
+
+
+def job_states():
+    """Every job file that exists now, as (part, state) pairs."""
+    return [(part, read(job_path(part))) for part in (None, *PARTS) if job_path(part).exists()]
 
 
 def write(path, value):
@@ -78,10 +93,10 @@ def restore(experiment_id, stage):
 
 def share(experiment_id, stage, publish=True):
     from rmcq.handoff import pack
-    if (STATE / "job.json").exists():
-        latest = read(STATE / "job.json")
+    for part, latest in job_states():
         if latest.get("stage") in (stage, "validation-local") and latest.get("status") != "complete":
-            raise RuntimeError("The latest local job for this stage has not completed; inspect its log before sharing.")
+            label = "The latest local job" if part is None else f"Partition {part}"
+            raise RuntimeError(f"{label} for this stage has not completed; inspect its log before sharing.")
     require_complete(experiment_id, stage)
     exchange, results = paths(experiment_id)
     if stage == "prepare":
@@ -144,29 +159,38 @@ def frozen_environment(manifest):
     return environment
 
 
-def work(stage, experiment_id, gpu, lock_fd=None):
-    state = read(STATE / "job.json")
+def work(stage, experiment_id, gpu, lock_fd=None, part=None):
+    job = job_path(part)
+    state = read(job)
     state.update(pid=os.getpid(), status="running", started_at=time.time())
-    write(STATE / "job.json", state)
+    write(job, state)
+    partition = ["--part", part] if part else []
     try:
         if stage == "validation-local":
             # Separate processes release every CUDA engine between phases.
-            subprocess.run([sys.executable, "validation_preflight.py", "--gpu", gpu], cwd=ROOT, check=True)
+            subprocess.run([sys.executable, "validation_preflight.py", "--gpu", gpu, *partition],
+                           cwd=ROOT, check=True)
             subprocess.run([sys.executable, "-u", "run_experiment.py", "prepare",
-                            "--preset", "validation-threshold", "--gpu", gpu,
+                            "--preset", "validation-threshold", "--gpu", gpu, *partition,
                             "--write-id", str(STATE / "experiment_id")], cwd=ROOT, check=True)
             experiment_id = active_id()
             (STATE / "validation_experiment_id").write_text(experiment_id + "\n", encoding="utf-8")
             manifest = read(paths(experiment_id)[0] / "manifest.json")
             subprocess.run([sys.executable, "-u", "run_experiment.py", "self-eval",
-                            "--experiment-id", experiment_id, "--gpu", gpu], cwd=ROOT,
+                            "--experiment-id", experiment_id, "--gpu", gpu, *partition], cwd=ROOT,
                            env=frozen_environment(manifest), check=True)
-            subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
-                           cwd=ROOT, check=True)
+            # A partition holds only half the models, so plotting it alone would
+            # show half a run. `merge` runs the analysis once both are in.
+            if part is None:
+                subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
+                               cwd=ROOT, check=True)
             state.update(status="complete", experiment_id=experiment_id, exit_code=0, ended_at=time.time())
-            write(STATE / "job.json", state)
+            write(job, state)
+            if part is not None:
+                print(f"Partition {part} complete. When the other partition finishes: "
+                      f"python validation_ops.py merge", flush=True)
             return 0
-        command = [sys.executable, "-u", "run_experiment.py", stage, "--gpu", gpu]
+        command = [sys.executable, "-u", "run_experiment.py", stage, "--gpu", gpu, *partition]
         environment = os.environ.copy()
         if stage == "prepare":
             command += ["--eval-split", "test", "--generation-profile", "final", "--backend", "vllm",
@@ -176,7 +200,8 @@ def work(stage, experiment_id, gpu, lock_fd=None):
             environment = frozen_environment(manifest)
             command += ["--experiment-id", experiment_id]
         exit_code = subprocess.run(command, cwd=ROOT, env=environment).returncode
-        if exit_code == 0 and stage in ("finish", "self-eval") and manifest.get("experiment_preset") == "validation-threshold":
+        if (exit_code == 0 and part is None and stage in ("finish", "self-eval")
+                and manifest.get("experiment_preset") == "validation-threshold"):
             exit_code = subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
                                        cwd=ROOT).returncode
         state.update(status="complete" if exit_code == 0 else "failed", exit_code=exit_code, ended_at=time.time())
@@ -184,28 +209,39 @@ def work(stage, experiment_id, gpu, lock_fd=None):
             state["experiment_id"] = active_id(experiment_id)
         except RuntimeError:
             pass
-        write(STATE / "job.json", state)
+        write(job, state)
         return exit_code
     except BaseException as exc:
         state.update(status="failed", error=str(exc), ended_at=time.time())
-        write(STATE / "job.json", state)
+        write(job, state)
         raise
     finally:
         if lock_fd is not None:
             os.close(lock_fd)
 
 
-def start(stage, explicit, gpu, restore_artifacts=True):
+def sibling_running(part):
+    """True while another partition's worker is still alive in this checkout."""
+    for other, state in job_states():
+        if other != part and state.get("status") in ("starting", "running") and is_alive(state.get("pid")):
+            return True
+    return False
+
+
+def start(stage, explicit, gpu, restore_artifacts=True, part=None):
     if os.name != "posix":
         raise RuntimeError("Start runs on the Linux GPU/Petrobras server, in its activated Python environment.")
     import fcntl
     STATE.mkdir(parents=True, exist_ok=True)
-    fd = os.open(STATE / "job.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    # The lock is per partition: p1 and p2 are meant to run side by side here,
+    # while a second p1 in the same checkout is still refused.
+    fd = os.open(STATE / f"job{suffix(part)}.lock", os.O_CREAT | os.O_RDWR, 0o600)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         os.close(fd)
-        raise RuntimeError("A job is already running in this repository; inspect experiment_ops.py status.") from None
+        label = "A job" if part is None else f"Partition {part}"
+        raise RuntimeError(f"{label} is already running in this repository; inspect experiment_ops.py status.") from None
     experiment_id = None
     if stage not in ("prepare", "validation-local"):
         experiment_id = active_id(explicit, shared_first=True)
@@ -213,24 +249,32 @@ def start(stage, explicit, gpu, restore_artifacts=True):
         # Local self-eval can start without a handoff. Other transitions import a newer package if present.
         if restore_artifacts and (SHARED / experiment_id / previous_stage / "bundle.json").exists():
             restore(experiment_id, previous_stage)
-        require_complete(experiment_id, previous_stage)
-    log = STATE / f"{stage}.log"
-    if stage in ("prepare", "validation-local"):
+        # A partition is gated on its own prepare receipt inside run_experiment,
+        # so neither GPU waits at the prepare boundary. The teacher stage is
+        # never partitioned, so `finish` still requires the whole teacher.
+        if part is None or previous_stage != "prepare":
+            require_complete(experiment_id, previous_stage)
+    log = STATE / f"{stage}{suffix(part)}.log"
+    # Clearing the pointer would erase the id the sibling partition just wrote.
+    if stage in ("prepare", "validation-local") and not sibling_running(part):
         (STATE / "experiment_id").unlink(missing_ok=True)
     command = [sys.executable, str(Path(__file__).resolve()), "work", stage, "--gpu", gpu, "--lock-fd", str(fd)]
     if experiment_id:
         command += ["--experiment-id", experiment_id]
+    if part:
+        command += ["--part", part]
     # Inherit the OS lock. It is released even if the worker crashes; no PID race.
-    write(STATE / "job.json", {"stage": stage, "status": "starting", "pid": os.getpid(), "log": str(log)})
+    write(job_path(part), {"stage": stage, "part": part, "gpu": gpu, "status": "starting",
+                           "pid": os.getpid(), "log": str(log)})
     try:
         with log.open("a", encoding="utf-8") as stream:
-            stream.write(f"\nStarting {stage} at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            stream.write(f"\nStarting {stage}{suffix(part)} on GPU {gpu} at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             stream.flush()
             child = subprocess.Popen(command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream,
                                      stderr=subprocess.STDOUT, start_new_session=True, pass_fds=(fd,))
     finally:
         os.close(fd)
-    print(f"Started {stage}, PID {child.pid}. Disconnecting SSH will not stop it.")
+    print(f"Started {stage}{suffix(part)} on GPU {gpu}, PID {child.pid}. Disconnecting SSH will not stop it.")
     print(f"Log: {log}\nCheck: python experiment_ops.py status")
 
 
@@ -241,14 +285,18 @@ def main():
     parser.add_argument("--experiment-id")
     parser.add_argument("--gpu", default="3")
     parser.add_argument("--pack-only", action="store_true", help="Prepare a handoff without committing or pushing.")
+    parser.add_argument("--part", choices=PARTS, help="Run only this partition of the model grid.")
+    for name in PARTS:
+        parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
+                            help=f"Shorthand for --part {name}")
     parser.add_argument("--lock-fd", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.action == "status":
-        if (STATE / "job.json").exists():
-            state = read(STATE / "job.json")
+        for part, state in job_states():
             print(json.dumps(state, indent=2))
             if os.name == "posix" and state.get("status") == "running" and not is_alive(state.get("pid")):
-                print("Worker is no longer running; inspect the log and resume the same stage.")
+                label = "Worker" if part is None else f"Partition {part} worker"
+                print(f"{label} is no longer running; inspect the log and resume the same stage.")
         try:
             experiment_id = active_id(args.experiment_id)
             print(f"Experiment: {experiment_id}")
@@ -260,12 +308,14 @@ def main():
         return
     if args.stage is None:
         parser.error("A stage is required")
-    if args.stage == "validation-local" and args.action not in ("start", "work"):
+    if args.stage in ("validation-local", "merge") and args.action not in ("start", "work"):
         parser.error("Share/restore the prepare or self-eval artifacts of validation-local")
+    if args.part and args.stage in ("teacher", "merge"):
+        parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
     if args.action == "start":
-        start(args.stage, args.experiment_id, args.gpu)
+        start(args.stage, args.experiment_id, args.gpu, part=args.part)
     elif args.action == "work":
-        sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd))
+        sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd, part=args.part))
     else:
         experiment_id = active_id(args.experiment_id, shared_first=args.action == "restore")
         if args.action == "restore":

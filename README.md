@@ -191,6 +191,17 @@ python validation_ops.py start local --gpu 3
 python validation_ops.py status
 ```
 
+Com duas GPUs livres, a mesma run pode ser dividida em duas partições de modelos
+que rodam ao mesmo tempo, no mesmo checkout, e são unidas no fim:
+
+```bash
+python validation_ops.py start local --p1 --gpu 3   # terminal 1
+python validation_ops.py start local --p2 --gpu 7   # terminal 2
+python validation_ops.py merge                      # quando as duas terminarem
+```
+
+O ID da run e os resultados são idênticos aos de uma GPU só; muda só o tempo.
+
 São nove estudantes via vLLM, cinco datasets e três condições locais. GPT-5.4
 é somente professor: a etapa opcional acrescenta as duas condições externas sem
 regenerar baseline/autorreflexão. O notebook `validation_accuracy_by_similarity.ipynb`

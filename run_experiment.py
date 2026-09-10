@@ -12,6 +12,7 @@ Stages:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import hashlib
 import json
@@ -38,6 +39,18 @@ VALIDATION_MODELS = (
     "llama3.1-8b", "llama3.2-3b", "qwen2.5-3b", "qwen2.5-7b",
     "ministral-3-3b", "ministral-3-8b",
 )
+# Two GPUs, one process each, no shared engine. The split is by model because a
+# vLLM engine is loaded per model anyway: nothing gets loaded that was not
+# already loaded once per model, and every generation artifact is already stored
+# per model on disk. The experiment id stays derived from the full nine-model
+# configuration, so both partitions write into the same run; only the work is
+# divided. Balance: p1 carries the heavy 8B reasoning student plus the four
+# small ones, p2 carries three 8B instruct students plus the 1.5B reasoning one.
+VALIDATION_PARTITIONS: dict[str, tuple[str, ...]] = {
+    "p1": ("deepseek-r1-0528-qwen3-8b", "phi2", "llama3.2-3b", "qwen2.5-3b", "ministral-3-3b"),
+    "p2": ("deepseek-r1-distill-qwen-1.5b", "llama3.1-8b", "qwen2.5-7b", "ministral-3-8b"),
+}
+PARTITION_NAMES = tuple(VALIDATION_PARTITIONS)
 SELF_CONDITIONS = ("baseline", "self_simple", "self_complex")
 EXTERNAL_CONDITIONS = ("teacher_simple", "teacher_complex")
 DEFAULT_TEACHER = "gpt-5-4-petrobras"
@@ -55,9 +68,30 @@ PHI2_TRANSFER_REFLECTION_MAX_TOKENS = 512
 PHI2_STOP_SEQUENCES = ("\nInstruct:", "\nExercise", "\nQuestion:")
 
 
+def assert_partitions_cover_validation() -> None:
+    """A partition that silently drops or duplicates a model would corrupt the run."""
+    assigned = [model for models in VALIDATION_PARTITIONS.values() for model in models]
+    if sorted(assigned) != sorted(VALIDATION_MODELS):
+        raise RuntimeError("VALIDATION_PARTITIONS must partition VALIDATION_MODELS exactly")
+
+
+def partition_models(part: str | None, models: list[str]) -> list[str]:
+    """Models this process executes. `models` stays the full frozen list."""
+    if part is None:
+        return models
+    assert_partitions_cover_validation()
+    if sorted(models) != sorted(VALIDATION_MODELS):
+        raise ValueError("--part only applies to the frozen nine-model validation grid")
+    return [model for model in models if model in VALIDATION_PARTITIONS[part]]
+
+
+def part_suffix(part: str | None) -> str:
+    return "" if part is None else f".{part}"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("prepare", "self-eval", "teacher", "finish", "status"))
+    parser.add_argument("stage", choices=("prepare", "self-eval", "teacher", "finish", "merge", "status"))
     parser.add_argument("--preset", choices=("validation-threshold",))
     parser.add_argument("--experiment-id", help="Required after prepare; printed by that stage.")
     parser.add_argument("--models")
@@ -88,6 +122,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--results-root", default="data/results/reflection_top1")
     parser.add_argument("--fresh", action="store_true")
     parser.add_argument("--write-id", type=Path, help="Write the prepared experiment id before generation starts.")
+    parser.add_argument("--part", choices=PARTITION_NAMES,
+                        help="Run only this partition's models, on this --gpu. The run id is unchanged.")
+    for name in PARTITION_NAMES:
+        parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
+                            help=f"Shorthand for --part {name}: {', '.join(VALIDATION_PARTITIONS[name])}")
     args = parser.parse_args()
     validation_preset = args.preset == "validation-threshold"
     args.models = args.models or ",".join(VALIDATION_MODELS if validation_preset else DEFAULT_MODELS)
@@ -103,7 +142,41 @@ def parse_args() -> argparse.Namespace:
         parser.error("--reflection-temperature must be between 0.0 and 2.0")
     if args.batch_size <= 0 or any(v is not None and v <= 0 for v in (args.validation_cap, args.train_cap)):
         parser.error("Batch size and optional data caps must be positive")
+    if args.part is not None:
+        if args.stage in ("teacher", "merge", "status"):
+            parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
+        # Later stages take their model list from the frozen manifest, which is
+        # only read in main(); partition_models validates the grid there.
+        if validation_preset:
+            try:
+                partition_models(args.part, split_csv(args.models))
+            except (ValueError, RuntimeError) as exc:
+                parser.error(str(exc))
     return args
+
+
+@contextlib.contextmanager
+def exclusive(path: Path):
+    """Serialize the once-per-run work two partitions would otherwise both do.
+
+    Retrieval, the manifest and the RACE fingerprints are shared by both
+    partitions; the per-model generation that follows is not. On POSIX this is a
+    real advisory lock on `path`; elsewhere (single-process runs, Windows
+    checkouts, tests) it is a no-op, because partitions only ever start from
+    experiment_ops, which already refuses to run outside Linux.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        import fcntl
+    except ImportError:
+        yield
+        return
+    handle = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(handle)
 
 
 def find_root() -> Path:
@@ -766,40 +839,48 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
     from rmcq.prompts import REFLECTION_DEPTHS, build_answer_prompt, build_reflection_prompt
 
     datasets = split_csv(args.datasets)
+    part = getattr(args, "part", None)
     compatible: Path | None = None
     pair_paths = [exchange / "pairs" / f"{dataset}.jsonl" for dataset in datasets]
-    if not args.fresh and all(path.exists() for path in pair_paths):
-        pairs = load_pairs(exchange, datasets)
-        print(f"top-1 retrieval: reused {len(pairs)} cached pairs", flush=True)
-    else:
-        compatible = None if args.fresh else find_compatible_pair_exchange(exchange, datasets, args)
-        if compatible is not None:
-            for dataset in datasets:
-                destination = exchange / "pairs" / f"{dataset}.jsonl"
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(compatible / "pairs" / f"{dataset}.jsonl", destination)
-            audit_source = compatible / "retrieval_audit.json"
-            if audit_source.exists():
-                shutil.copy2(audit_source, exchange / "retrieval_audit.json")
+    # Retrieval is identical for every partition and must happen exactly once.
+    # Whichever partition arrives first computes it; the other waits here and
+    # then reads the same frozen pairs, instead of embedding the corpus twice.
+    with exclusive(exchange / "pairs.lock"):
+        if not args.fresh and all(path.exists() for path in pair_paths):
             pairs = load_pairs(exchange, datasets)
-            print(
-                f"top-1 retrieval: reused {len(pairs)} compatible pairs from "
-                f"{compatible.name}",
-                flush=True,
-            )
+            print(f"top-1 retrieval: reused {len(pairs)} cached pairs", flush=True)
         else:
-            state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap, args.eval_split)
-            pairs = retrieve_top1(state, args.embedding_model, args.embedding_device)
-            for dataset in datasets:
-                save_jsonl(
-                    exchange / "pairs" / f"{dataset}.jsonl",
-                    [p for p in pairs if p["dataset"] == dataset],
+            compatible = None if args.fresh else find_compatible_pair_exchange(exchange, datasets, args)
+            if compatible is not None:
+                for dataset in datasets:
+                    destination = exchange / "pairs" / f"{dataset}.jsonl"
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(compatible / "pairs" / f"{dataset}.jsonl", destination)
+                audit_source = compatible / "retrieval_audit.json"
+                if audit_source.exists():
+                    shutil.copy2(audit_source, exchange / "retrieval_audit.json")
+                pairs = load_pairs(exchange, datasets)
+                print(
+                    f"top-1 retrieval: reused {len(pairs)} compatible pairs from "
+                    f"{compatible.name}",
+                    flush=True,
                 )
-            save_json(exchange / "retrieval_audit.json", audit)
+            else:
+                state, audit = load_splits(root, datasets, args.validation_cap, args.train_cap, args.eval_split)
+                pairs = retrieve_top1(state, args.embedding_model, args.embedding_device)
+                for dataset in datasets:
+                    save_jsonl(
+                        exchange / "pairs" / f"{dataset}.jsonl",
+                        [p for p in pairs if p["dataset"] == dataset],
+                    )
+                save_json(exchange / "retrieval_audit.json", audit)
 
     sources = unique_sources(pairs)
     content_filter_count = 0
-    models = split_csv(args.models)
+    models = partition_models(part, split_csv(args.models))
+    if part is not None:
+        print(f"partition {part}: {len(models)} of {len(split_csv(args.models))} students "
+              f"on GPU {args.gpu}: {', '.join(models)}", flush=True)
     model_caches: dict[str, Path] = {}
     generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -891,9 +972,11 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
             for row in rows for status in row["reflection_status"].values()
         )
         save_jsonl(exchange / "students" / model_key / "train.jsonl", rows)
-    save_json(exchange / "prepare_receipt.json", {
+    # A partition receipt only certifies its own students. `merge` turns the set
+    # of partition receipts into the run-wide prepare_receipt.json.
+    save_json(exchange / f"prepare_receipt{part_suffix(part)}.json", {
         "pairs": len(pairs), "unique_training_sources": len(sources),
-        "student_models": models, "judge_model": args.judge_model,
+        "part": part, "student_models": models, "judge_model": args.judge_model,
         "content_filter_events": content_filter_count, "complete": True,
     })
 
@@ -1138,23 +1221,32 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     from rmcq.prompts import build_answer_prompt, build_transfer_prompt
 
     self_only = getattr(args, "stage", "finish") == "self-eval"
+    part = getattr(args, "part", None)
     self_root = results / "self_eval"
     destination = self_root if self_only else results
-    self_receipt = self_root / "self_eval_receipt.json"
+    # With partitions the run-wide receipt only exists after `merge`, so each
+    # partition reads back its own snapshot instead.
+    self_receipt = self_root / f"self_eval_receipt{part_suffix(part)}.json"
     reuse_self = (not self_only and not args.fresh and self_receipt.exists()
                   and json.loads(self_receipt.read_text(encoding="utf-8")).get("complete") is True)
     pairs = load_pairs(exchange, manifest["datasets"])
+    models = partition_models(part, manifest["models"])
+    if part is not None:
+        print(f"partition {part}: {len(models)} of {len(manifest['models'])} students "
+              f"on GPU {args.gpu}: {', '.join(models)}", flush=True)
     student_rows_by_model = {
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "students" / model / "train.jsonl")}
-        for model in manifest["models"]
+        for model in models
     }
     teacher_rows_by_model = {} if self_only else {
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl")}
-        for model in manifest["models"]
+        for model in models
     }
+    # The GPT reference rows belong to the run, not to a partition: with
+    # partitions they are attached once, by merge.
     all_rows = (load_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl")
-                if not self_only and manifest.get("teacher_role", "reference") == "reference" else [])
-    models = manifest["models"]
+                if not self_only and part is None
+                and manifest.get("teacher_role", "reference") == "reference" else [])
     cache_dirs: dict[str, Path] = {}
     generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
     items_by_model: dict[str, dict[str, dict[str, Any]]] = {}
@@ -1281,22 +1373,111 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         model_rows = preserved_rows[model] + model_rows
         save_jsonl(destination / "models" / model / f"{args.eval_split}.jsonl", model_rows)
         all_rows.extend(model_rows)
-    save_jsonl(destination / "analysis" / "all_outcomes.jsonl", all_rows)
+    suffix = part_suffix(part)
+    # A partition writes only its own slice of the analysis; the canonical
+    # all_outcomes.jsonl and accuracy.csv are written by merge, once both
+    # partitions are on disk, so a half-finished run never looks whole.
+    save_jsonl(destination / "analysis" / f"all_outcomes{suffix}.jsonl", all_rows)
     summary = summarize(all_rows)
-    save_csv(destination / "analysis" / "accuracy.csv", summary)
+    save_csv(destination / "analysis" / f"accuracy{suffix}.csv", summary)
     filter_audit = [
         row for row in all_rows if "content_filter" in (row.get("eval_method") or "")
     ]
-    save_jsonl(destination / "analysis" / "content_filter_audit.jsonl", filter_audit)
-    save_json(destination / ("self_eval_receipt.json" if self_only else "finish_receipt.json"), {
+    save_jsonl(destination / "analysis" / f"content_filter_audit{suffix}.jsonl", filter_audit)
+    name = "self_eval_receipt" if self_only else "finish_receipt"
+    save_json(destination / f"{name}{suffix}.json", {
         "experiment_id": manifest.get("experiment_id"), "eval_split": args.eval_split,
         "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
-        "self_snapshot_reused": bool(reuse_self),
+        "self_snapshot_reused": bool(reuse_self), "part": part, "models": models,
         "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
         "unresolved_conditions": sum(row.get("correct") is None for row in all_rows),
         "complete": True,
     })
     print(f"completed: {destination}", flush=True)
+    if part is not None:
+        print(f"partition {part} done; run merge once the other partition finishes.", flush=True)
+
+
+def merge_receipts(exchange: Path, results: Path, phase: str) -> list[dict[str, Any]]:
+    location = {
+        "prepare": (exchange, "prepare_receipt"),
+        "self-eval": (results / "self_eval", "self_eval_receipt"),
+        "finish": (results, "finish_receipt"),
+    }.get(phase)
+    if location is None:  # the teacher stage is never partitioned
+        return []
+    folder, name = location
+    return [json.loads(path.read_text(encoding="utf-8"))
+            for part in PARTITION_NAMES
+            for path in [folder / f"{name}.{part}.json"] if path.exists()]
+
+
+def merge_phase(exchange: Path, results: Path, args: argparse.Namespace,
+                manifest: dict[str, Any], phase: str) -> dict[str, Any]:
+    """Turn per-partition artifacts into the run-wide ones, or say what is missing.
+
+    Merging is a pure file operation: nothing is regenerated, and a phase is
+    only declared complete when every model in the frozen manifest is present.
+    """
+    split = manifest["eval_split"]
+    models = manifest["models"]
+    receipts = merge_receipts(exchange, results, phase)
+    if not receipts:
+        return {"phase": phase, "status": "no_partition_receipts"}
+    if phase == "prepare":
+        missing = [m for m in models if not (exchange / "students" / m / "train.jsonl").exists()]
+        if missing:
+            return {"phase": phase, "status": "incomplete", "missing_models": missing}
+        save_json(exchange / "prepare_receipt.json", {
+            "pairs": receipts[0]["pairs"],
+            "unique_training_sources": receipts[0]["unique_training_sources"],
+            "student_models": models, "judge_model": manifest["judge_model"],
+            "content_filter_events": sum(r["content_filter_events"] for r in receipts),
+            "merged_from": [r["part"] for r in receipts], "complete": True,
+        })
+        return {"phase": phase, "status": "merged", "models": len(models)}
+
+    destination = results / "self_eval" if phase == "self-eval" else results
+    missing = [m for m in models if not (destination / "models" / m / f"{split}.jsonl").exists()]
+    if missing:
+        return {"phase": phase, "status": "incomplete", "missing_models": missing}
+    reference = (load_jsonl(exchange / "teacher" / f"{split}.jsonl")
+                 if phase == "finish" and manifest.get("teacher_role", "reference") == "reference"
+                 and (exchange / "teacher" / f"{split}.jsonl").exists() else [])
+    all_rows = list(reference)
+    for model in models:
+        all_rows.extend(load_jsonl(destination / "models" / model / f"{split}.jsonl"))
+    save_jsonl(destination / "analysis" / "all_outcomes.jsonl", all_rows)
+    save_csv(destination / "analysis" / "accuracy.csv", summarize(all_rows))
+    filter_audit = [row for row in all_rows if "content_filter" in (row.get("eval_method") or "")]
+    save_jsonl(destination / "analysis" / "content_filter_audit.jsonl", filter_audit)
+    self_only = phase == "self-eval"
+    save_json(destination / ("self_eval_receipt.json" if self_only else "finish_receipt.json"), {
+        "experiment_id": manifest.get("experiment_id"), "eval_split": split,
+        "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
+        "self_snapshot_reused": all(r.get("self_snapshot_reused") for r in receipts),
+        "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
+        "unresolved_conditions": sum(row.get("correct") is None for row in all_rows),
+        "merged_from": [r["part"] for r in receipts], "complete": True,
+    })
+    return {"phase": phase, "status": "merged", "models": len(models), "rows": len(all_rows)}
+
+
+def stage_merge(exchange: Path, results: Path, args: argparse.Namespace,
+                manifest: dict[str, Any]) -> None:
+    report = [merge_phase(exchange, results, args, manifest, phase)
+              for phase in ("prepare", "self-eval", "finish")]
+    for entry in report:
+        detail = ""
+        if entry["status"] == "incomplete":
+            detail = f" (waiting for {', '.join(entry['missing_models'])})"
+        elif entry["status"] == "merged":
+            detail = f" ({entry['models']} models" + (f", {entry['rows']} rows)" if "rows" in entry else ")")
+        print(f"{entry['phase']}: {entry['status']}{detail}", flush=True)
+    save_json(results / "merge_report.json", {"experiment_id": manifest.get("experiment_id"),
+                                              "phases": report})
+    if all(entry["status"] != "merged" for entry in report):
+        raise RuntimeError("Nothing to merge yet; run the partitions first, or check their logs.")
 
 
 def stage_status(exchange: Path, results: Path, manifest: dict[str, Any] | None) -> None:
@@ -1308,7 +1489,10 @@ def stage_status(exchange: Path, results: Path, manifest: dict[str, Any] | None)
         ("teacher", exchange / "teacher_receipt.json"),
         ("finish", results / "finish_receipt.json"),
     ):
-        print(f"{name}: {'complete' if path.exists() else 'pending'}")
+        parts = [receipt["part"] for receipt in merge_receipts(exchange, results, name)
+                 if receipt.get("complete")]
+        detail = f" (partitions done: {', '.join(parts)}; run merge)" if parts and not path.exists() else ""
+        print(f"{name}: {'complete' if path.exists() else 'pending'}{detail}")
 
 
 def main() -> None:
@@ -1332,7 +1516,7 @@ def main() -> None:
                     raise FileNotFoundError(f"Missing {path}. Prepare RACE with python prepare_datasets.py.")
                 args.data_fingerprints[f"{dataset}/{split}"] = hashlib.sha256(path.read_bytes()).hexdigest()
         payload["data_fingerprints"] = args.data_fingerprints
-        preflight = root / ".run_state/validation_preflight.json"
+        preflight = root / f".run_state/validation_preflight{part_suffix(args.part)}.json"
         if args.preset == "validation-threshold" and preflight.exists():
             args.preflight_report = json.loads(preflight.read_text(encoding="utf-8"))
         if args.preset == "validation-threshold" and args.backend == "vllm":
@@ -1354,9 +1538,22 @@ def main() -> None:
             shutil.rmtree(exchange)
         exchange.mkdir(parents=True, exist_ok=True)
         payload["experiment_id"] = experiment_id
-        if getattr(args, "preflight_report", None):
-            payload["preflight_report"] = args.preflight_report
-        save_json(manifest_path, payload)
+        report = getattr(args, "preflight_report", None)
+        # Both partitions write the same manifest, byte for byte, except for the
+        # preflight report: each one only smoke-tested its own models. Keep both,
+        # keyed by partition, under the same lock that serializes retrieval.
+        with exclusive(exchange / "pairs.lock"):
+            existing = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+            if args.part is None:
+                if report:
+                    payload["preflight_report"] = report
+            else:
+                reports = dict(existing.get("preflight_reports") or {})
+                if report:
+                    reports[args.part] = report
+                if reports:
+                    payload["preflight_reports"] = reports
+            save_json(manifest_path, payload)
         if args.write_id:
             args.write_id.parent.mkdir(parents=True, exist_ok=True)
             args.write_id.write_text(experiment_id + "\n", encoding="utf-8")
@@ -1371,6 +1568,10 @@ def main() -> None:
         raise FileNotFoundError(f"missing manifest: {manifest_path}")
     if args.stage == "status":
         stage_status(exchange, results, manifest)
+        return
+    if args.stage == "merge":
+        # merge writes the run-wide receipts, so it cannot require them first.
+        stage_merge(exchange, results, args, manifest)
         return
     assert_manifest_compatible(manifest)
     # Later stages consume the frozen configuration, not argparse defaults.
@@ -1404,9 +1605,12 @@ def main() -> None:
         for package, version in manifest["runtime_versions"].items():
             if importlib.metadata.version(package) != version:
                 raise RuntimeError(f"GPU package {package} differs from prepare ({version}); use the same environment")
-    prepare_receipt = exchange / "prepare_receipt.json"
+    # A partition evaluates only its own students, so it is gated on its own
+    # prepare receipt: neither GPU has to wait at the prepare/self-eval boundary
+    # for the other one. The run-wide receipt is written by merge.
+    prepare_receipt = exchange / f"prepare_receipt{part_suffix(args.part)}.json"
     if not prepare_receipt.exists() or not json.loads(prepare_receipt.read_text(encoding="utf-8")).get("complete"):
-        raise RuntimeError("prepare is not complete; resume it before evaluating or teaching")
+        raise RuntimeError(f"{prepare_receipt.name} is missing or incomplete; resume prepare before evaluating or teaching")
     if args.stage == "self-eval":
         stage_finish(exchange, results, args, manifest)
     elif args.stage == "teacher":
