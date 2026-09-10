@@ -80,6 +80,8 @@ def main():
     parser.add_argument("--pack-only", action="store_true")
     parser.add_argument("--part", choices=ops.PARTS,
                         help="Run only this partition's models on --gpu, so two GPUs share one run.")
+    parser.add_argument("--skip-gated", action="store_true",
+                        help="Leave out checkpoints this token cannot read yet; the same command fills them in later.")
     for name in ops.PARTS:
         parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
                             help=f"Shorthand for --part {name}")
@@ -92,7 +94,7 @@ def main():
     if args.action == "start" and args.stage == "local":
         if args.experiment_id:
             parser.error("local derives the run id from the frozen preparation parameters; do not pass an id")
-        ops.start("validation-local", None, args.gpu, part=args.part)
+        ops.start("validation-local", None, args.gpu, part=args.part, skip_gated=args.skip_gated)
         return
     if args.action == "merge":
         experiment_id = validation_id(args.experiment_id)
@@ -128,7 +130,8 @@ def main():
         ops.share(experiment_id, args.stage, publish=not args.pack_only)
     elif args.action == "start":
         ops.start(args.stage, experiment_id, args.gpu,
-                  restore_artifacts=args.stage not in ("teacher", "finish"), part=args.part)
+                  restore_artifacts=args.stage not in ("teacher", "finish"), part=args.part,
+                  skip_gated=args.skip_gated)
 
 
 if __name__ == "__main__":

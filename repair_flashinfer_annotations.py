@@ -83,7 +83,14 @@ def main():
     parser.add_argument("--check", action="store_true", help="Check without changing installed files")
     args = parser.parse_args()
     if args.check:
-        print(json.dumps(check_compatibility(), indent=2))
+        # --check answers a question, so a file that needs repair is a finding to
+        # report, not a crash. Exit 1 keeps it usable from a script.
+        try:
+            print(json.dumps({"status": "ok", **check_compatibility()}, indent=2))
+        except RuntimeError as exc:
+            print(json.dumps({"status": "needs_repair", "reason": str(exc),
+                              "fix": "python repair_flashinfer_annotations.py"}, indent=2))
+            raise SystemExit(1) from None
         return
     installed = installed_target()
     if installed is None:

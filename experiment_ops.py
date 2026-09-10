@@ -159,12 +159,12 @@ def frozen_environment(manifest):
     return environment
 
 
-def work(stage, experiment_id, gpu, lock_fd=None, part=None):
+def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False):
     job = job_path(part)
     state = read(job)
     state.update(pid=os.getpid(), status="running", started_at=time.time())
     write(job, state)
-    partition = ["--part", part] if part else []
+    partition = (["--part", part] if part else []) + (["--skip-gated"] if skip_gated else [])
     try:
         if stage == "validation-local":
             # Separate processes release every CUDA engine between phases.
@@ -228,7 +228,7 @@ def sibling_running(part):
     return False
 
 
-def start(stage, explicit, gpu, restore_artifacts=True, part=None):
+def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=False):
     if os.name != "posix":
         raise RuntimeError("Start runs on the Linux GPU/Petrobras server, in its activated Python environment.")
     import fcntl
@@ -263,9 +263,11 @@ def start(stage, explicit, gpu, restore_artifacts=True, part=None):
         command += ["--experiment-id", experiment_id]
     if part:
         command += ["--part", part]
+    if skip_gated:
+        command += ["--skip-gated"]
     # Inherit the OS lock. It is released even if the worker crashes; no PID race.
     write(job_path(part), {"stage": stage, "part": part, "gpu": gpu, "status": "starting",
-                           "pid": os.getpid(), "log": str(log)})
+                           "skip_gated": skip_gated, "pid": os.getpid(), "log": str(log)})
     try:
         with log.open("a", encoding="utf-8") as stream:
             stream.write(f"\nStarting {stage}{suffix(part)} on GPU {gpu} at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -289,6 +291,8 @@ def main():
     for name in PARTS:
         parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
                             help=f"Shorthand for --part {name}")
+    parser.add_argument("--skip-gated", action="store_true",
+                        help="Leave out checkpoints this token cannot read; fill them in on a later run.")
     parser.add_argument("--lock-fd", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.action == "status":
@@ -313,9 +317,10 @@ def main():
     if args.part and args.stage in ("teacher", "merge"):
         parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
     if args.action == "start":
-        start(args.stage, args.experiment_id, args.gpu, part=args.part)
+        start(args.stage, args.experiment_id, args.gpu, part=args.part, skip_gated=args.skip_gated)
     elif args.action == "work":
-        sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd, part=args.part))
+        sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd, part=args.part,
+                      skip_gated=args.skip_gated))
     else:
         experiment_id = active_id(args.experiment_id, shared_first=args.action == "restore")
         if args.action == "restore":

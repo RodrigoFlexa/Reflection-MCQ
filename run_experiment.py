@@ -89,6 +89,33 @@ def part_suffix(part: str | None) -> str:
     return "" if part is None else f".{part}"
 
 
+def gated_skips(root: Path, part: str | None, enabled: bool) -> list[str]:
+    """Models the preflight found unreadable on the Hub, so this pass leaves them out.
+
+    The decision is the preflight's, taken once against the Hub and written to
+    disk; nothing here infers it from an exception. The file is rewritten on
+    every preflight, so once access is granted the same command finds an empty
+    list and runs the model that was missing.
+    """
+    if not enabled:
+        return []
+    path = root / f".run_state/validation_gated_skips{part_suffix(part)}.json"
+    if not path.exists():
+        return []
+    return list(json.loads(path.read_text(encoding="utf-8")).get("skipped") or [])
+
+
+def announce_plan(part: str | None, gpu: str, models: list[str],
+                  done: list[str], skipped: list[str]) -> None:
+    where = f"partition {part}" if part else "run"
+    print(f"{where} on GPU {gpu}: {len(models)} to generate"
+          f"{', ' + str(len(done)) + ' already complete' if done else ''}"
+          f"{', ' + str(len(skipped)) + ' skipped' if skipped else ''}", flush=True)
+    for label, group in (("generating", models), ("already complete", done), ("skipped", skipped)):
+        if group:
+            print(f"  {label}: {', '.join(group)}", flush=True)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("prepare", "self-eval", "teacher", "finish", "merge", "status"))
@@ -124,6 +151,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--write-id", type=Path, help="Write the prepared experiment id before generation starts.")
     parser.add_argument("--part", choices=PARTITION_NAMES,
                         help="Run only this partition's models, on this --gpu. The run id is unchanged.")
+    parser.add_argument("--skip-gated", action="store_true",
+                        help="Leave out checkpoints the preflight could not read, and fill them in on a later run.")
     for name in PARTITION_NAMES:
         parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
                             help=f"Shorthand for --part {name}: {', '.join(VALIDATION_PARTITIONS[name])}")
@@ -877,10 +906,23 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
 
     sources = unique_sources(pairs)
     content_filter_count = 0
-    models = partition_models(part, split_csv(args.models))
-    if part is not None:
-        print(f"partition {part}: {len(models)} of {len(split_csv(args.models))} students "
-              f"on GPU {args.gpu}: {', '.join(models)}", flush=True)
+    assigned = partition_models(part, split_csv(args.models))
+    skipped = [key for key in assigned if key in gated_skips(root, part, args.skip_gated)]
+    # A model whose train.jsonl already covers every source is finished: skipping
+    # it saves loading its engine again on a resume, and its rows are read back
+    # from disk so the receipt still counts them.
+    done, models = [], []
+    for key in [k for k in assigned if k not in skipped]:
+        path = exchange / "students" / key / "train.jsonl"
+        if not args.fresh and path.exists() and {row["source_uid"] for row in load_jsonl(path)} >= set(sources):
+            done.append(key)
+        else:
+            models.append(key)
+    announce_plan(part, args.gpu, models, done, skipped)
+    for key in done:
+        rows = load_jsonl(exchange / "students" / key / "train.jsonl")
+        content_filter_count += sum(row["answer_finish_reason"] == "content_filter" for row in rows) + sum(
+            status == "content_filter" for row in rows for status in row["reflection_status"].values())
     model_caches: dict[str, Path] = {}
     generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -972,13 +1014,18 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
             for row in rows for status in row["reflection_status"].values()
         )
         save_jsonl(exchange / "students" / model_key / "train.jsonl", rows)
-    # A partition receipt only certifies its own students. `merge` turns the set
-    # of partition receipts into the run-wide prepare_receipt.json.
+    # `complete` says this pass ran to the end, not that the grid is whole:
+    # a skipped model leaves no train.jsonl, and merge checks the artifacts of
+    # all nine, so a run with a gap can never be closed or shared by accident.
     save_json(exchange / f"prepare_receipt{part_suffix(part)}.json", {
         "pairs": len(pairs), "unique_training_sources": len(sources),
-        "part": part, "student_models": models, "judge_model": args.judge_model,
-        "content_filter_events": content_filter_count, "complete": True,
+        "part": part, "student_models": sorted(models + done), "skipped_models": skipped,
+        "judge_model": args.judge_model, "content_filter_events": content_filter_count,
+        "complete": True,
     })
+    if skipped:
+        print(f"Gap remaining: {', '.join(skipped)} left out for lack of Hub access. "
+              f"Request it, then run the same command again to fill the gap.", flush=True)
 
 
 def load_pairs(exchange: Path, datasets: list[str]) -> list[dict[str, Any]]:
@@ -1230,10 +1277,24 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     reuse_self = (not self_only and not args.fresh and self_receipt.exists()
                   and json.loads(self_receipt.read_text(encoding="utf-8")).get("complete") is True)
     pairs = load_pairs(exchange, manifest["datasets"])
-    models = partition_models(part, manifest["models"])
-    if part is not None:
-        print(f"partition {part}: {len(models)} of {len(manifest['models'])} students "
-              f"on GPU {args.gpu}: {', '.join(models)}", flush=True)
+    assigned = partition_models(part, manifest["models"])
+    conditions = SELF_CONDITIONS if self_only else (EXTERNAL_CONDITIONS if reuse_self else SELF_CONDITIONS + EXTERNAL_CONDITIONS)
+    expected_rows = {(p["val_uid"], c) for p in pairs
+                     for c in (SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS)}
+    # A model with no training attempts on disk was skipped in prepare and has
+    # nothing to evaluate; one whose outcome file already covers every condition
+    # is finished. Neither needs its engine loaded again.
+    skipped, done, models = [], [], []
+    for key in assigned:
+        outcome = destination / "models" / key / f"{args.eval_split}.jsonl"
+        if not (exchange / "students" / key / "train.jsonl").exists():
+            skipped.append(key)
+        elif not args.fresh and outcome.exists() and {
+                (r["val_uid"], r["condition"]) for r in load_jsonl(outcome)} >= expected_rows:
+            done.append(key)
+        else:
+            models.append(key)
+    announce_plan(part, args.gpu, models, done, skipped)
     student_rows_by_model = {
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "students" / model / "train.jsonl")}
         for model in models
@@ -1263,7 +1324,6 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
             actual_keys = [(r["val_uid"], r["condition"]) for r in preserved_rows[model]]
             if len(actual_keys) != len(expected_keys) or set(actual_keys) != expected_keys:
                 raise RuntimeError(f"Incomplete self-eval snapshot for {model}; cannot complete this run")
-        conditions = SELF_CONDITIONS if self_only else (EXTERNAL_CONDITIONS if reuse_self else SELF_CONDITIONS + EXTERNAL_CONDITIONS)
         prompts: dict[str, str] = {}
         items: dict[str, dict[str, Any]] = {}
         metadata: dict[str, dict[str, Any]] = {}
@@ -1373,6 +1433,8 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         model_rows = preserved_rows[model] + model_rows
         save_jsonl(destination / "models" / model / f"{args.eval_split}.jsonl", model_rows)
         all_rows.extend(model_rows)
+    for model in done:
+        all_rows.extend(load_jsonl(destination / "models" / model / f"{args.eval_split}.jsonl"))
     suffix = part_suffix(part)
     # A partition writes only its own slice of the analysis; the canonical
     # all_outcomes.jsonl and accuracy.csv are written by merge, once both
@@ -1388,12 +1450,16 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     save_json(destination / f"{name}{suffix}.json", {
         "experiment_id": manifest.get("experiment_id"), "eval_split": args.eval_split,
         "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
-        "self_snapshot_reused": bool(reuse_self), "part": part, "models": models,
+        "self_snapshot_reused": bool(reuse_self), "part": part,
+        "models": sorted(models + done), "skipped_models": skipped,
         "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
         "unresolved_conditions": sum(row.get("correct") is None for row in all_rows),
         "complete": True,
     })
     print(f"completed: {destination}", flush=True)
+    if skipped:
+        print(f"Gap remaining: {', '.join(skipped)} has no training attempts yet. "
+              f"Once its checkpoint is readable, run the same command again.", flush=True)
     if part is not None:
         print(f"partition {part} done; run merge once the other partition finishes.", flush=True)
 

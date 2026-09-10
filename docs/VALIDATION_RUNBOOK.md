@@ -260,6 +260,53 @@ condições; continua sem linhas GPT estudante.
 
 ## Retomada e identidade
 
+### Checkpoints com autorização
+
+Dos nove estudantes, só os dois `meta-llama` são gated. Os demais são abertos:
+Qwen 2.5 e Ministral 3 sob Apache 2.0, DeepSeek e Phi-2 sob MIT.
+
+| Checkpoint | Precisa de autorização |
+|---|---|
+| meta-llama/Llama-3.1-8B-Instruct | sim, licença Llama 3.1 |
+| meta-llama/Llama-3.2-3B-Instruct | sim, licença Llama 3.2, **pedido separado** |
+| os outros sete | não |
+
+A autorização é **por repositório**. Ter acesso ao Llama 3.1 não dá acesso ao
+Llama 3.2. Peça em cada página, logado na mesma conta Hugging Face que emitiu o
+`HF_TOKEN` do `.env` deste servidor. Para saber qual conta é essa:
+
+```bash
+huggingface-cli whoami
+```
+
+O preflight consulta o Hub antes de carregar qualquer peso e lista de uma vez
+todos os repositórios que o token não consegue ler, com a URL de cada um. Sem
+rede, ele apenas registra `NOTE: could not confirm Hub access` e segue, para não
+travar um servidor que já tem tudo em cache.
+
+#### Começar sem esperar a autorização
+
+`--skip-gated` deixa de fora os checkpoints que o token ainda não lê, em vez de
+parar a run:
+
+```bash
+python validation_ops.py start local --p1 --gpu 4 --skip-gated
+```
+
+O modelo pulado aparece como `SKIPPING <modelo>` no log e em `skipped_models`
+no recibo da partição. Ele simplesmente não tem artefatos ainda.
+
+Quando a autorização sair, **rode exatamente o mesmo comando**. O preflight
+consulta o Hub de novo, encontra a lista de bloqueados vazia, e as etapas geram
+só o que falta: um modelo cujo `students/<modelo>/train.jsonl` já cobre todas as
+fontes é considerado pronto e nem tem o motor carregado de novo. Com a lacuna
+preenchida, o `merge` fecha a run normalmente.
+
+Enquanto faltar qualquer um dos nove, o `merge` recusa fechar a run e diz quais
+modelos está esperando, e o `share` continua bloqueado. A flag é explícita de
+propósito: deixar um modelo de fora de uma run científica não deve acontecer em
+silêncio. Sem ela, a falta de autorização volta a parar a execução.
+
 ### Onde o preflight guarda o erro
 
 Cada modelo é verificado em um processo próprio e a saída inteira é preservada.
