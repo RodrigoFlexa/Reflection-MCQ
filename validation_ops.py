@@ -11,6 +11,10 @@ import sys
 import experiment_ops as ops
 
 
+class ValidationNotReady(RuntimeError):
+    """Expected absence of a run id, not a failure of the status command."""
+
+
 def validation_id(explicit=None, incoming=False):
     if explicit:
         return ops.active_id(explicit)
@@ -20,8 +24,8 @@ def validation_id(explicit=None, incoming=False):
     job = ops.read(ops.STATE / "job.json") if (ops.STATE / "job.json").exists() else {}
     running_id = ops.STATE / "experiment_id"
     if (not incoming and job.get("stage") == "validation-local"
-            and job.get("status") in ("starting", "running") and not running_id.exists()):
-        raise RuntimeError("Validation preflight is running; the id is assigned when prepare starts. See .run_state/validation-local.log")
+            and job.get("status") in ("starting", "running", "failed") and not running_id.exists()):
+        raise ValidationNotReady("Validation ID not assigned yet. It is created when prepare starts, after preflight. See .run_state/validation-local.log")
     if not incoming and job.get("stage") == "validation-local" and running_id.exists():
         return ops.active_id(running_id.read_text(encoding="utf-8").strip())
     candidates = [shared, local] if incoming else [local, shared]
@@ -29,7 +33,29 @@ def validation_id(explicit=None, incoming=False):
         if path.exists():
             value = ops.read(path)["experiment_id"] if path.suffix == ".json" else path.read_text(encoding="utf-8").strip()
             return ops.active_id(value)
-    raise RuntimeError("No validation run selected; start local, pull its handoff, or pass --experiment-id")
+    raise ValidationNotReady("No validation run selected; start local, pull its handoff, or pass --experiment-id")
+
+
+def show_status(explicit=None):
+    job_path = ops.STATE / "job.json"
+    job = ops.read(job_path) if job_path.exists() else {}
+    try:
+        experiment_id = validation_id(explicit)
+    except ValidationNotReady as exc:
+        if job:
+            print(json.dumps(job, indent=2))
+        print(str(exc))
+        return
+    exchange, _ = ops.paths(experiment_id)
+    manifest_path = exchange / "manifest.json"
+    if manifest_path.exists() and ops.read(manifest_path).get("eval_split") != "validation":
+        raise ValueError("The selected run is not validation")
+    print(f"Validation: {experiment_id}")
+    if job:
+        print(json.dumps(job, indent=2))
+    for stage in ops.STAGES:
+        path = ops.receipt(experiment_id, stage)
+        print(f"{stage}: {'complete' if path.exists() and ops.read(path).get('complete') else 'pending'}")
 
 
 def main():
@@ -40,6 +66,9 @@ def main():
     parser.add_argument("--gpu", default="3")
     parser.add_argument("--pack-only", action="store_true")
     args = parser.parse_args()
+    if args.action == "status":
+        show_status(args.experiment_id)
+        return
     if args.action == "start" and args.stage == "local":
         if args.experiment_id:
             parser.error("local derives the run id from the frozen preparation parameters; do not pass an id")
@@ -63,14 +92,7 @@ def main():
         manifest = ops.read(manifest_path)
         if manifest.get("teacher_role") != "teacher-only" or manifest.get("experiment_preset") != "validation-threshold":
             raise ValueError("Use the validation-threshold preset: this command never starts GPT reference evaluations")
-    if args.action == "status":
-        print(f"Validation: {experiment_id}")
-        if (ops.STATE / "job.json").exists():
-            print(json.dumps(ops.read(ops.STATE / "job.json"), indent=2))
-        for stage in ops.STAGES:
-            path = ops.receipt(experiment_id, stage)
-            print(f"{stage}: {'complete' if path.exists() and ops.read(path).get('complete') else 'pending'}")
-    elif args.action == "analyze":
+    if args.action == "analyze":
         command = [sys.executable, "analyze_validation.py", "--experiment-id", experiment_id]
         subprocess.run(command, cwd=ops.ROOT, check=True)
     elif args.action == "restore":
