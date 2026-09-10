@@ -158,6 +158,45 @@ alternativas, sem gabarito ou justificativa. O limite do embedder pode cortar
 textos longos antes de chegar à pergunta; os pares registram contagens e
 `embedding_truncated`. Essa marcação é independente do contexto do gerador.
 
+## Notebook de análise final
+
+Abra `test_accuracy_by_similarity.ipynb` e execute as células em ordem. Ele lê a
+run de teste `f8009a56a83b` e restaura seu pacote `finish` local automaticamente
+se os resultados ainda não estiverem extraídos. Não faz chamadas aos modelos.
+
+O controle inicial `USE_BASELINE_ON_FAILURE=True` substitui respostas
+experimentais indisponíveis, rejeitadas pelos filtros ou abaixo do threshold
+pelo baseline da mesma questão/modelo. Se o baseline também falhar, mantém a
+questão no denominador como erro. Com `False`, exclui esses casos e permite
+amostras diferentes entre condições; respostas erradas válidas são preservadas.
+
+As seções apresentam auditoria, conjunto completo, filtros de qualidade,
+quantis de similaridade, thresholds e médias macro/micro. A escolha de threshold
+usa apenas combinações disponíveis na validação `91ccab5e5028`; não estima
+thresholds para combinações sem validação. O delta no teste usa o baseline nas
+mesmas questões selecionadas. As diferenças de protocolo entre runs ficam
+explicitadas no notebook.
+
+Tabelas, decisões por questão e figuras são salvas em
+`data/results/reflection_top1/<id>/analysis/test_notebook_<config>/`.
+As dependências estão em `requirements-analysis.txt`.
+
+## Nova grade de validação com professor opcional
+
+O roteiro completo, incluindo instalação, execução local, retomada e passagem
+GPU → GitHub → Petrobras → GPU, está em [docs/VALIDATION_RUNBOOK.md](docs/VALIDATION_RUNBOOK.md).
+
+```bash
+python validation_ops.py start local --gpu 3
+python validation_ops.py status
+```
+
+São nove estudantes via vLLM, cinco datasets e três condições locais. GPT-5.4
+é somente professor: a etapa opcional acrescenta as duas condições externas sem
+regenerar baseline/autorreflexão. O notebook `validation_accuracy_by_similarity.ipynb`
+aceita tanto a etapa parcial quanto a final e compara com o baseline nas mesmas
+questões. O antigo notebook está preservado com o sufixo `_legacy`.
+
 ## Histórico e verificações
 
 O protocolo novo é v5. Ele não retoma gerações v4 misturando parâmetros. As

@@ -14,7 +14,8 @@ import time
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / ".run_state"
 SHARED = ROOT / "experiment_handoff"
-STAGES = ("prepare", "teacher", "finish")
+STAGES = ("prepare", "self-eval", "teacher", "finish")
+JOB_STAGES = STAGES + ("validation-local",)
 
 
 def read(path):
@@ -56,6 +57,8 @@ def paths(experiment_id):
 
 def receipt(experiment_id, stage):
     exchange, results = paths(experiment_id)
+    if stage == "self-eval":
+        return results / "self_eval" / "self_eval_receipt.json"
     return (results if stage == "finish" else exchange) / f"{stage}_receipt.json"
 
 
@@ -77,7 +80,7 @@ def share(experiment_id, stage, publish=True):
     from rmcq.handoff import pack
     if (STATE / "job.json").exists():
         latest = read(STATE / "job.json")
-        if latest.get("stage") == stage and latest.get("status") != "complete":
+        if latest.get("stage") in (stage, "validation-local") and latest.get("status") != "complete":
             raise RuntimeError("The latest local job for this stage has not completed; inspect its log before sharing.")
     require_complete(experiment_id, stage)
     exchange, results = paths(experiment_id)
@@ -89,6 +92,10 @@ def share(experiment_id, stage, publish=True):
     elif stage == "teacher":
         files = [p for p in (exchange / "teacher").rglob("*") if p.is_file() and p.suffix in (".json", ".jsonl")]
         files += [exchange / "teacher_receipt.json", exchange / "manifest.json"]
+    elif stage == "self-eval":
+        files = [p for p in (results / "self_eval").rglob("*")
+                 if p.is_file() and p.suffix in (".json", ".jsonl", ".csv")]
+        files += [exchange / "manifest.json"]
     else:
         files = [p for folder in (results / "analysis", results / "models") for p in folder.rglob("*")
                  if p.is_file() and p.suffix in (".json", ".jsonl", ".csv")]
@@ -100,10 +107,14 @@ def share(experiment_id, stage, publish=True):
     revision = git("rev-parse", "HEAD", capture=True)
     manifest = pack(ROOT, files, destination, {"experiment_id": experiment_id, "stage": stage, "git_commit": revision})
     write(SHARED / "current.json", {"experiment_id": experiment_id, "stage": stage, "git_commit": revision})
+    validation = read(exchange / "manifest.json").get("eval_split") == "validation"
+    if validation:
+        write(SHARED / "current_validation.json", {"experiment_id": experiment_id, "stage": stage, "git_commit": revision})
     print(f"Packed {len(files)} files into {len(manifest['parts'])} parts, at most 20 MiB each.", flush=True)
     if publish:
         # Stage only the handoff; never credentials, caches or unrelated changes.
-        git("add", "--", destination.relative_to(ROOT).as_posix(), "experiment_handoff/current.json")
+        git("add", "--", destination.relative_to(ROOT).as_posix(), "experiment_handoff/current.json",
+            *(["experiment_handoff/current_validation.json"] if validation else []))
         if git("diff", "--cached", "--name-only", capture=True):
             git("commit", "-m", f"data: share {stage} for experiment {experiment_id}")
         git("push", "origin", "HEAD")
@@ -138,6 +149,23 @@ def work(stage, experiment_id, gpu, lock_fd=None):
     state.update(pid=os.getpid(), status="running", started_at=time.time())
     write(STATE / "job.json", state)
     try:
+        if stage == "validation-local":
+            # Separate processes release every CUDA engine between phases.
+            subprocess.run([sys.executable, "validation_preflight.py", "--gpu", gpu], cwd=ROOT, check=True)
+            subprocess.run([sys.executable, "-u", "run_experiment.py", "prepare",
+                            "--preset", "validation-threshold", "--gpu", gpu,
+                            "--write-id", str(STATE / "experiment_id")], cwd=ROOT, check=True)
+            experiment_id = active_id()
+            (STATE / "validation_experiment_id").write_text(experiment_id + "\n", encoding="utf-8")
+            manifest = read(paths(experiment_id)[0] / "manifest.json")
+            subprocess.run([sys.executable, "-u", "run_experiment.py", "self-eval",
+                            "--experiment-id", experiment_id, "--gpu", gpu], cwd=ROOT,
+                           env=frozen_environment(manifest), check=True)
+            subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
+                           cwd=ROOT, check=True)
+            state.update(status="complete", experiment_id=experiment_id, exit_code=0, ended_at=time.time())
+            write(STATE / "job.json", state)
+            return 0
         command = [sys.executable, "-u", "run_experiment.py", stage, "--gpu", gpu]
         environment = os.environ.copy()
         if stage == "prepare":
@@ -148,6 +176,9 @@ def work(stage, experiment_id, gpu, lock_fd=None):
             environment = frozen_environment(manifest)
             command += ["--experiment-id", experiment_id]
         exit_code = subprocess.run(command, cwd=ROOT, env=environment).returncode
+        if exit_code == 0 and stage in ("finish", "self-eval") and manifest.get("experiment_preset") == "validation-threshold":
+            exit_code = subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
+                                       cwd=ROOT).returncode
         state.update(status="complete" if exit_code == 0 else "failed", exit_code=exit_code, ended_at=time.time())
         try:
             state["experiment_id"] = active_id(experiment_id)
@@ -164,7 +195,7 @@ def work(stage, experiment_id, gpu, lock_fd=None):
             os.close(lock_fd)
 
 
-def start(stage, explicit, gpu):
+def start(stage, explicit, gpu, restore_artifacts=True):
     if os.name != "posix":
         raise RuntimeError("Start runs on the Linux GPU/Petrobras server, in its activated Python environment.")
     import fcntl
@@ -176,13 +207,15 @@ def start(stage, explicit, gpu):
         os.close(fd)
         raise RuntimeError("A job is already running in this repository; inspect experiment_ops.py status.") from None
     experiment_id = None
-    if stage != "prepare":
+    if stage not in ("prepare", "validation-local"):
         experiment_id = active_id(explicit, shared_first=True)
-        previous_stage = "prepare" if stage == "teacher" else "teacher"
-        restore(experiment_id, previous_stage)
+        previous_stage = "prepare" if stage in ("teacher", "self-eval") else "teacher"
+        # Local self-eval can start without a handoff. Other transitions import a newer package if present.
+        if restore_artifacts and (SHARED / experiment_id / previous_stage / "bundle.json").exists():
+            restore(experiment_id, previous_stage)
         require_complete(experiment_id, previous_stage)
     log = STATE / f"{stage}.log"
-    if stage == "prepare":
+    if stage in ("prepare", "validation-local"):
         (STATE / "experiment_id").unlink(missing_ok=True)
     command = [sys.executable, str(Path(__file__).resolve()), "work", stage, "--gpu", gpu, "--lock-fd", str(fd)]
     if experiment_id:
@@ -204,7 +237,7 @@ def start(stage, explicit, gpu):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("start", "work", "share", "restore", "status"))
-    parser.add_argument("stage", choices=STAGES, nargs="?")
+    parser.add_argument("stage", choices=JOB_STAGES, nargs="?")
     parser.add_argument("--experiment-id")
     parser.add_argument("--gpu", default="3")
     parser.add_argument("--pack-only", action="store_true", help="Prepare a handoff without committing or pushing.")
@@ -227,6 +260,8 @@ def main():
         return
     if args.stage is None:
         parser.error("A stage is required")
+    if args.stage == "validation-local" and args.action not in ("start", "work"):
+        parser.error("Share/restore the prepare or self-eval artifacts of validation-local")
     if args.action == "start":
         start(args.stage, args.experiment_id, args.gpu)
     elif args.action == "work":

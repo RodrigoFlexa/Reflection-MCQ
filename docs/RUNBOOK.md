@@ -1,5 +1,9 @@
 # Roteiro da run final: GPU → GitHub → Petrobras → GitHub → GPU
 
+Para a **nova grade de validação com nove estudantes e professor opcional**, use
+[VALIDATION_RUNBOOK.md](VALIDATION_RUNBOOK.md). Os comandos abaixo continuam sendo
+o roteiro da run final de teste anterior.
+
 Execute os blocos na pasta `Reflection-MCQ`, com o ambiente Python já usado
 naquele servidor ativado. Branch compartilhada: `lean-backends`.
 GPU selecionada: **3**; troque `--gpu 3` nos dois comandos GPU se necessário.

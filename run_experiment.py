@@ -3,7 +3,8 @@
 
 Stages:
   prepare  GPU server: retrieve pairs, answer training sources, self-reflect.
-  teacher  Petrobras server: GPT answers/reflects, teaches students, evaluates.
+  self-eval GPU server: baseline + self-reflection, no teacher required.
+  teacher  Petrobras server: external reflections (optional GPT reference evaluation).
   finish   GPU server: students evaluate with own and teacher reflections.
   status   Any server: report which artifacts are complete.
 """
@@ -32,6 +33,13 @@ DEFAULT_MODELS = (
     "qwen3-8b",
 )
 DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa", "race")
+VALIDATION_MODELS = (
+    "phi2", "deepseek-r1-0528-qwen3-8b", "deepseek-r1-distill-qwen-1.5b",
+    "llama3.1-8b", "llama3.2-3b", "qwen2.5-3b", "qwen2.5-7b",
+    "ministral-3-3b", "ministral-3-8b",
+)
+SELF_CONDITIONS = ("baseline", "self_simple", "self_complex")
+EXTERNAL_CONDITIONS = ("teacher_simple", "teacher_complex")
 DEFAULT_TEACHER = "gpt-5-4-petrobras"
 DEFAULT_JUDGE = "llama3.1-8b"
 PIPELINE_VERSION = "top1-two-server-v5"
@@ -49,11 +57,13 @@ PHI2_STOP_SEQUENCES = ("\nInstruct:", "\nExercise", "\nQuestion:")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("prepare", "teacher", "finish", "status"))
+    parser.add_argument("stage", choices=("prepare", "self-eval", "teacher", "finish", "status"))
+    parser.add_argument("--preset", choices=("validation-threshold",))
     parser.add_argument("--experiment-id", help="Required after prepare; printed by that stage.")
-    parser.add_argument("--models", default=",".join(DEFAULT_MODELS))
+    parser.add_argument("--models")
     parser.add_argument("--datasets", default=",".join(DEFAULT_DATASETS))
     parser.add_argument("--teacher-model", default=DEFAULT_TEACHER)
+    parser.add_argument("--teacher-role", choices=("reference", "teacher-only"))
     parser.add_argument(
         "--judge-model", default=DEFAULT_JUDGE,
         help=(
@@ -66,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backend", choices=("vllm", "hf", "stub"), default=None)
     parser.add_argument("--teacher-backend", choices=("azure", "stub"), default="azure")
     parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "0"))
-    parser.add_argument("--eval-split", choices=("validation", "test"), default="test")
+    parser.add_argument("--eval-split", choices=("validation", "test"))
     parser.add_argument("--generation-profile", choices=("legacy", "final"), default="final")
     parser.add_argument("--eval-cap", "--validation-cap", dest="validation_cap", type=int)
     parser.add_argument("--train-cap", type=int, help="Smoke tests only; production must use all training items.")
@@ -79,6 +89,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fresh", action="store_true")
     parser.add_argument("--write-id", type=Path, help="Write the prepared experiment id before generation starts.")
     args = parser.parse_args()
+    validation_preset = args.preset == "validation-threshold"
+    args.models = args.models or ",".join(VALIDATION_MODELS if validation_preset else DEFAULT_MODELS)
+    args.eval_split = args.eval_split or ("validation" if validation_preset else "test")
+    args.teacher_role = args.teacher_role or ("teacher-only" if validation_preset else "reference")
+    if validation_preset:
+        if args.eval_split != "validation" or args.teacher_role != "teacher-only" or args.generation_profile != "final":
+            parser.error("validation-threshold requires validation, teacher-only and final generation")
+        if args.backend not in (None, "vllm", "stub"):
+            parser.error("validation-threshold requires vLLM (stub is only for offline tests)")
+        args.backend = args.backend or "vllm"
     if not 0.0 <= args.reflection_temperature <= 2.0:
         parser.error("--reflection-temperature must be between 0.0 and 2.0")
     if args.batch_size <= 0 or any(v is not None and v <= 0 for v in (args.validation_cap, args.train_cap)):
@@ -618,6 +638,8 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "pipeline_version": PIPELINE_VERSION,
         "models": split_csv(args.models), "datasets": split_csv(args.datasets),
         "teacher_model": args.teacher_model, "judge_model": args.judge_model,
+        "teacher_role": getattr(args, "teacher_role", "reference"),
+        "experiment_preset": getattr(args, "preset", None),
         "eval_split": args.eval_split, "generation_profile": args.generation_profile,
         "generation_policy": {
             "length_retries": 0 if args.generation_profile == "final" else 1,
@@ -880,7 +902,55 @@ def load_pairs(exchange: Path, datasets: list[str]) -> list[dict[str, Any]]:
     return [row for dataset in datasets for row in load_jsonl(exchange / "pairs" / f"{dataset}.jsonl")]
 
 
+def stage_teacher_only(exchange: Path, results: Path, args: argparse.Namespace, manifest: dict[str, Any]) -> None:
+    """GPT only reflects on students' training attempts; no GPT answers or judge calls."""
+    from rmcq.backends import get_backend
+    from rmcq.prompts import REFLECTION_DEPTHS, build_reflection_prompt
+
+    models, teacher_model = manifest["models"], manifest["teacher_model"]
+    sources = unique_sources(load_pairs(exchange, manifest["datasets"]))
+    cache_dir = results / "work" / "teacher"
+    with get_backend(teacher_model, kind=args.teacher_backend) as backend:
+        teacher_rows_by_model: dict[str, list[dict[str, Any]]] = {}
+        for student_model in models:
+            student_rows = load_jsonl(exchange / "students" / student_model / "train.jsonl")
+            student_by_uid = {row["source_uid"]: row for row in student_rows}
+            outputs: dict[str, dict[str, dict[str, Any]]] = {}
+            for depth in REFLECTION_DEPTHS:
+                teacher_prompts = {
+                    uid: build_reflection_prompt(sources[uid], row["response"], row["correct"], depth, "teacher")
+                    for uid, row in student_by_uid.items() if row["correct"] is not None
+                }
+                outputs[depth] = cached_generate(
+                    backend, cache_dir / student_model / f"teacher_{depth}.jsonl", teacher_prompts,
+                    reflection_budget(teacher_model, depth, "final") if args.generation_profile == "final" else (1024 if depth == "simple" else 2048), args.batch_size, args.fresh,
+                    f"teacher reflection for {student_model} {depth}",
+                    temperature=args.reflection_temperature,
+                    profile=args.generation_profile,
+                )
+            teacher_rows_by_model[student_model] = [{
+                "dataset": sources[uid]["dataset"], "source_uid": uid,
+                "student_model": student_model,
+                "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
+                "reflection_status": reflection_status(outputs, uid),
+                "reflection_generations": {depth: outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
+            } for uid in student_by_uid]
+
+    for model, rows in teacher_rows_by_model.items():
+        save_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl", rows)
+    save_json(exchange / "teacher_receipt.json", {
+        "teacher_model": teacher_model, "teacher_role": "teacher-only",
+        "training_sources": len(sources), "validation_generations": 0,
+        "training_answer_generations": 0, "student_models_taught": models,
+        "content_filter_events": sum(status == "content_filter" for rows in teacher_rows_by_model.values()
+            for row in rows for status in row["reflection_status"].values()),
+        "complete": True,
+    })
+
+
 def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manifest: dict[str, Any]) -> None:
+    if manifest.get("teacher_role", "reference") == "teacher-only":
+        return stage_teacher_only(exchange, results, args, manifest)
     from rmcq.backends import get_backend
     from rmcq.prompts import (
         REFLECTION_DEPTHS, build_answer_prompt, build_reflection_prompt, build_transfer_prompt,
@@ -1067,25 +1137,41 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     from rmcq.backends import get_backend
     from rmcq.prompts import build_answer_prompt, build_transfer_prompt
 
+    self_only = getattr(args, "stage", "finish") == "self-eval"
+    self_root = results / "self_eval"
+    destination = self_root if self_only else results
+    self_receipt = self_root / "self_eval_receipt.json"
+    reuse_self = (not self_only and not args.fresh and self_receipt.exists()
+                  and json.loads(self_receipt.read_text(encoding="utf-8")).get("complete") is True)
     pairs = load_pairs(exchange, manifest["datasets"])
     student_rows_by_model = {
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "students" / model / "train.jsonl")}
         for model in manifest["models"]
     }
-    teacher_rows_by_model = {
+    teacher_rows_by_model = {} if self_only else {
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl")}
         for model in manifest["models"]
     }
-    all_rows = load_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl")
+    all_rows = (load_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl")
+                if not self_only and manifest.get("teacher_role", "reference") == "reference" else [])
     models = manifest["models"]
     cache_dirs: dict[str, Path] = {}
     generated_by_model: dict[str, dict[str, dict[str, Any]]] = {}
     items_by_model: dict[str, dict[str, dict[str, Any]]] = {}
     metadata_by_model: dict[str, dict[str, dict[str, Any]]] = {}
     unavailable_rows_by_model: dict[str, list[dict[str, Any]]] = {}
+    preserved_rows = {}
 
     # Pass 1: each model answers its own validation prompts. Nobody is judged yet.
     for model in models:
+        preserved_rows[model] = (load_jsonl(self_root / "models" / model / f"{args.eval_split}.jsonl")
+                                 if reuse_self else [])
+        if reuse_self:
+            expected_keys = {(p["val_uid"], c) for p in pairs for c in SELF_CONDITIONS}
+            actual_keys = [(r["val_uid"], r["condition"]) for r in preserved_rows[model]]
+            if len(actual_keys) != len(expected_keys) or set(actual_keys) != expected_keys:
+                raise RuntimeError(f"Incomplete self-eval snapshot for {model}; cannot complete this run")
+        conditions = SELF_CONDITIONS if self_only else (EXTERNAL_CONDITIONS if reuse_self else SELF_CONDITIONS + EXTERNAL_CONDITIONS)
         prompts: dict[str, str] = {}
         items: dict[str, dict[str, Any]] = {}
         metadata: dict[str, dict[str, Any]] = {}
@@ -1093,7 +1179,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         for pair in pairs:
             val_item, source_item = pair["validation_item"], pair["source_item"]
             source_uid = pair["source_uid"]
-            for condition in ("baseline", "self_simple", "self_complex", "teacher_simple", "teacher_complex"):
+            for condition in conditions:
                 key = cache_key(pair["dataset"], pair["val_uid"], condition)
                 reflection = None
                 if condition == "baseline":
@@ -1192,21 +1278,25 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
             })
         from rmcq.analysis import annotate_outcomes
         model_rows = annotate_outcomes(model_rows, pairs, student_rows_by_model, teacher_rows_by_model)
-        save_jsonl(results / "models" / model / f"{args.eval_split}.jsonl", model_rows)
+        model_rows = preserved_rows[model] + model_rows
+        save_jsonl(destination / "models" / model / f"{args.eval_split}.jsonl", model_rows)
         all_rows.extend(model_rows)
-    save_jsonl(results / "analysis" / "all_outcomes.jsonl", all_rows)
+    save_jsonl(destination / "analysis" / "all_outcomes.jsonl", all_rows)
     summary = summarize(all_rows)
-    save_csv(results / "analysis" / "accuracy.csv", summary)
+    save_csv(destination / "analysis" / "accuracy.csv", summary)
     filter_audit = [
         row for row in all_rows if "content_filter" in (row.get("eval_method") or "")
     ]
-    save_jsonl(results / "analysis" / "content_filter_audit.jsonl", filter_audit)
-    save_json(results / "finish_receipt.json", {
+    save_jsonl(destination / "analysis" / "content_filter_audit.jsonl", filter_audit)
+    save_json(destination / ("self_eval_receipt.json" if self_only else "finish_receipt.json"), {
+        "experiment_id": manifest.get("experiment_id"), "eval_split": args.eval_split,
+        "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
+        "self_snapshot_reused": bool(reuse_self),
         "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
         "unresolved_conditions": sum(row.get("correct") is None for row in all_rows),
         "complete": True,
     })
-    print(f"completed: {results}", flush=True)
+    print(f"completed: {destination}", flush=True)
 
 
 def stage_status(exchange: Path, results: Path, manifest: dict[str, Any] | None) -> None:
@@ -1214,6 +1304,7 @@ def stage_status(exchange: Path, results: Path, manifest: dict[str, Any] | None)
     print(f"manifest: {'ok' if manifest else 'missing'}")
     for name, path in (
         ("prepare", exchange / "prepare_receipt.json"),
+        ("self-eval", results / "self_eval" / "self_eval_receipt.json"),
         ("teacher", exchange / "teacher_receipt.json"),
         ("finish", results / "finish_receipt.json"),
     ):
@@ -1228,6 +1319,10 @@ def main() -> None:
     import rmcq  # noqa: F401 - loads .env before local model libraries
 
     payload = manifest_payload(args)
+    if args.preset == "validation-threshold":
+        from rmcq.config import MODELS
+        if any(MODELS[key].provider != "hf" for key in split_csv(args.models) + [args.judge_model]):
+            raise ValueError("All validation students and the fixed judge must use local HF weights via vLLM")
     if args.stage == "prepare":
         args.data_fingerprints = {}
         for dataset in split_csv(args.datasets):
@@ -1237,6 +1332,13 @@ def main() -> None:
                     raise FileNotFoundError(f"Missing {path}. Prepare RACE with python prepare_datasets.py.")
                 args.data_fingerprints[f"{dataset}/{split}"] = hashlib.sha256(path.read_bytes()).hexdigest()
         payload["data_fingerprints"] = args.data_fingerprints
+        preflight = root / ".run_state/validation_preflight.json"
+        if args.preset == "validation-threshold" and preflight.exists():
+            args.preflight_report = json.loads(preflight.read_text(encoding="utf-8"))
+        if args.preset == "validation-threshold" and args.backend == "vllm":
+            import importlib.metadata
+            payload["runtime_versions"] = {package: importlib.metadata.version(package)
+                for package in ("vllm", "torch", "transformers", "mistral-common")}
     experiment_id = args.experiment_id or json_hash(payload)
     if not re.fullmatch(r"[0-9a-f]{12}", experiment_id):
         raise ValueError("experiment id must be the 12-character hexadecimal id printed by prepare")
@@ -1252,6 +1354,8 @@ def main() -> None:
             shutil.rmtree(exchange)
         exchange.mkdir(parents=True, exist_ok=True)
         payload["experiment_id"] = experiment_id
+        if getattr(args, "preflight_report", None):
+            payload["preflight_report"] = args.preflight_report
         save_json(manifest_path, payload)
         if args.write_id:
             args.write_id.parent.mkdir(parents=True, exist_ok=True)
@@ -1278,6 +1382,8 @@ def main() -> None:
     args.models = ",".join(manifest["models"])
     args.datasets = ",".join(manifest["datasets"])
     args.teacher_model = manifest["teacher_model"]
+    args.teacher_role = manifest.get("teacher_role", "reference")
+    args.preset = manifest.get("experiment_preset")
     expected = manifest_payload(args)
     for name in ("generation_policy", "training_answer_max_tokens", "training_answer_retry_max_tokens",
                  "validation_answer_max_tokens", "judge_max_tokens", "judge_retry_max_tokens",
@@ -1288,16 +1394,27 @@ def main() -> None:
     for model, spec in manifest["model_specs"].items():
         if model not in MODELS or spec != {"repo_id": MODELS[model].repo_id, "extra_kwargs": MODELS[model].extra_kwargs}:
             raise RuntimeError(f"Model configuration changed since prepare: {model}")
-    relevant_limits = ["max_model_len", "generation_seed", "dtype", "vllm_deterministic", "vllm_max_num_seqs"] if args.stage == "finish" else [
+    relevant_limits = ["max_model_len", "generation_seed", "dtype", "vllm_deterministic", "vllm_max_num_seqs"] if args.stage in ("finish", "self-eval") else [
         "azure_max_tokens", "azure_reasoning_min_tokens", "azure_reasoning_effort"]
     for name in relevant_limits:
         if payload["runtime_limits"][name] != manifest["runtime_limits"][name]:
             raise RuntimeError(f"Runtime setting {name} differs from frozen manifest; align the server configuration.")
-    if args.stage == "teacher":
+    if args.stage in ("finish", "self-eval") and manifest.get("runtime_versions"):
+        import importlib.metadata
+        for package, version in manifest["runtime_versions"].items():
+            if importlib.metadata.version(package) != version:
+                raise RuntimeError(f"GPU package {package} differs from prepare ({version}); use the same environment")
+    prepare_receipt = exchange / "prepare_receipt.json"
+    if not prepare_receipt.exists() or not json.loads(prepare_receipt.read_text(encoding="utf-8")).get("complete"):
+        raise RuntimeError("prepare is not complete; resume it before evaluating or teaching")
+    if args.stage == "self-eval":
+        stage_finish(exchange, results, args, manifest)
+    elif args.stage == "teacher":
         stage_teacher(exchange, results, args, manifest)
         print(f"commit and push: {display_path(exchange / 'teacher', root)}")
     elif args.stage == "finish":
-        if not (exchange / "teacher_receipt.json").exists():
+        teacher_receipt = exchange / "teacher_receipt.json"
+        if not teacher_receipt.exists() or not json.loads(teacher_receipt.read_text(encoding="utf-8")).get("complete"):
             raise FileNotFoundError("teacher stage is not complete; pull its artifacts first")
         stage_finish(exchange, results, args, manifest)
     else:

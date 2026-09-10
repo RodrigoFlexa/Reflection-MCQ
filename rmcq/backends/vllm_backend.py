@@ -95,6 +95,8 @@ class VLLMBackend(Backend):
             seed=SEED,
             download_dir=str(HF_HOME),
         )
+        model_kwargs = self.spec.extra_kwargs.get("vllm_kwargs", {})
+        kwargs.update(model_kwargs)
         self.deterministic = deterministic
         if deterministic:
             # Ver o comentário de VLLM_DETERMINISTIC em rmcq/config.py. Estas
@@ -112,6 +114,8 @@ class VLLMBackend(Backend):
         # um run de horas por um kwarg que aquela versão não conhece -- e avisa qual
         # caiu, para não haver silêncio sobre determinismo que não está valendo.
         kwargs = self._supported_kwargs(LLM, kwargs)
+        if set(model_kwargs) - set(kwargs):
+            raise RuntimeError(f"vLLM does not support required model options: {set(model_kwargs) - set(kwargs)}")
         try:
             self.llm = LLM(**kwargs)
         finally:
@@ -150,7 +154,7 @@ class VLLMBackend(Backend):
         return {k: v for k, v in kwargs.items() if k in known}
 
     def count_tokens(self, text: str) -> int:
-        return len(self.tokenizer(text, add_special_tokens=False)["input_ids"])
+        return len(self.tokenizer.encode(text, add_special_tokens=False))
 
     def _sampling(self, params: GenParams) -> Any:
         from vllm import SamplingParams

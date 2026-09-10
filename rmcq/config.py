@@ -101,6 +101,41 @@ class ModelSpec:
 # Alguns modelos de exemplo, prontos para rodar via vLLM ou transformers
 # (provider="hf" == pesos locais). Apague os que não usar, adicione os seus.
 MODELS: dict[str, ModelSpec] = {
+    "deepseek-r1-0528-qwen3-8b": ModelSpec(
+        key="deepseek-r1-0528-qwen3-8b", repo_id="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
+        extra_kwargs={"max_model_len": 8192},
+        notes="Current Ollama deepseek-r1:8b family; reasoning is stripped, not assumed disabled.",
+    ),
+    "deepseek-r1-distill-qwen-1.5b": ModelSpec(
+        key="deepseek-r1-distill-qwen-1.5b", repo_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "llama3.2-3b": ModelSpec(
+        key="llama3.2-3b", repo_id="meta-llama/Llama-3.2-3B-Instruct",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "qwen2.5-3b": ModelSpec(
+        key="qwen2.5-3b", repo_id="Qwen/Qwen2.5-3B-Instruct",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "qwen2.5-7b": ModelSpec(
+        key="qwen2.5-7b", repo_id="Qwen/Qwen2.5-7B-Instruct",
+        extra_kwargs={"max_model_len": 8192},
+    ),
+    "ministral-3-3b": ModelSpec(
+        key="ministral-3-3b", repo_id="mistralai/Ministral-3-3B-Instruct-2512-BF16",
+        extra_kwargs={"max_model_len": 8192, "vllm_kwargs": {
+            "tokenizer_mode": "mistral", "config_format": "mistral", "load_format": "mistral",
+            "limit_mm_per_prompt": {"image": 0}}},
+        notes="BF16 official instruct weights; text-only MCQ; vLLM >= 0.12.0.",
+    ),
+    "ministral-3-8b": ModelSpec(
+        key="ministral-3-8b", repo_id="mistralai/Ministral-3-8B-Instruct-2512-BF16",
+        extra_kwargs={"max_model_len": 8192, "vllm_kwargs": {
+            "tokenizer_mode": "mistral", "config_format": "mistral", "load_format": "mistral",
+            "limit_mm_per_prompt": {"image": 0}}},
+        notes="BF16 official instruct weights; text-only MCQ; vLLM >= 0.12.0.",
+    ),
     "phi4-mini": ModelSpec(
         key="phi4-mini", repo_id="microsoft/Phi-4-mini-instruct",
         extra_kwargs={"max_model_len": 8192},

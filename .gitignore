@@ -12,6 +12,7 @@ __pycache__/
 *.pyd
 .Python
 .venv/
+.venv-validation/
 venv/
 env/
 
