@@ -65,9 +65,9 @@ def export_study(views, directory: Path):
             table.to_csv(directory / f"{view}_{name}.csv", index=False)
 
 
-def plot_study(views, directory: Path, *, auto_ylim=True, show=True):
+def plot_study(views, directory: Path, *, auto_ylim=True, show=True, models_per_row=2, datasets_per_row=None):
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import PercentFormatter, FuncFormatter
+    from matplotlib.ticker import PercentFormatter
     from rmcq.plotting import accuracy_ylim
     from rmcq.test_analysis import CONDITIONS
     colors = dict(zip(CONDITIONS, ["#222222", "#1f77b4", "#17becf", "#d62728", "#ff7f0e"]))
@@ -75,42 +75,49 @@ def plot_study(views, directory: Path, *, auto_ylim=True, show=True):
     plt.style.use("seaborn-v0_8-whitegrid")
     pool = pd.concat([v["thresholds"] for v in views.values()])
     for view, tables in views.items():
-        for model, group in tables["thresholds"].groupby("model"):
+        grouped = list(tables["thresholds"].groupby("model"))
+        if not grouped:
+            continue
+        n_cols = max(1, int(datasets_per_row if datasets_per_row is not None else models_per_row))
+        for model, group in grouped:
             datasets = sorted(group.dataset.unique())
-            fig, axes = plt.subplots(len(datasets), 3, figsize=(16, 3.2 * len(datasets)), squeeze=False)
-            for i, dataset in enumerate(datasets):
+            n_rows = (len(datasets) + n_cols - 1) // n_cols
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.6 * n_cols, 3.6 * n_rows), squeeze=False)
+            handles, legend_labels = [], []
+            for index, dataset in enumerate(datasets):
+                row = index // n_cols
+                col = index % n_cols
+                ax = axes[row, col]
                 part = group.loc[group.dataset.eq(dataset) & group.threshold.ge(0)]
                 shared = pool.loc[pool.model.eq(model) & pool.dataset.eq(dataset) & pool.threshold.ge(0)]
-                for j, metric in enumerate(["accuracy", "delta_vs_baseline", "coverage"]):
-                    ax = axes[i, j]
-                    for condition in CONDITIONS:
-                        if metric == "delta_vs_baseline" and condition == "baseline":
-                            continue
-                        curve = part.loc[part.condition.eq(condition)]
-                        if curve.empty:
-                            continue
-                        ax.plot(curve.threshold, curve[metric], label=labels[condition], color=colors[condition], marker=".")
-                    if metric == "delta_vs_baseline":
-                        ax.axhline(0, color="black", lw=1)
-                        maximum = shared[metric].abs().max()
-                        maximum = max(.04, float(maximum) + .02) if pd.notna(maximum) else .04
-                        ax.set_ylim(-maximum, maximum)
-                    elif metric == "coverage":
-                        ax.set_ylim(0, 1.02)
-                    else:
-                        ax.set_ylim(*(accuracy_ylim(shared[metric]) if auto_ylim else (0, 1)))
-                    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{100 * value:.1f}")
-                                                if metric == "delta_vs_baseline" else PercentFormatter(1))
-                    if metric == "delta_vs_baseline":
-                        ax.set_ylabel("Diferença (p.p.)")
-                    ax.set_title(f"{dataset} | " + {"accuracy": "Acurácia", "delta_vs_baseline": "Ganho vs. baseline nas mesmas questões", "coverage": "Cobertura"}[metric], fontsize=10)
-                    ax.set_xlabel("Threshold mínimo")
-                    if i == 0 and j == 0:
-                        ax.legend(fontsize=8)
-            fig.suptitle(f"Validação | {model} | {view}")
+                for condition in CONDITIONS:
+                    curve = part.loc[part.condition.eq(condition)]
+                    if curve.empty:
+                        continue
+                    ax.plot(
+                        curve.threshold,
+                        curve["accuracy"],
+                        label=labels[condition],
+                        color=colors[condition],
+                        marker=".",
+                    )
+                if not shared.empty:
+                    ax.set_ylim(*(accuracy_ylim(shared["accuracy"]) if auto_ylim else (0, 1)))
+                ax.yaxis.set_major_formatter(PercentFormatter(1))
+                ax.set_title(f"{dataset} | Acurácia", fontsize=10)
+                ax.set_xlabel("Threshold mínimo")
+                if index == 0:
+                    handles, legend_labels = ax.get_legend_handles_labels()
+            for index in range(len(datasets), n_rows * n_cols):
+                row = index // n_cols
+                col = index % n_cols
+                axes[row, col].axis("off")
+            fig.suptitle(f"Validação | {view} | {model}")
+            if handles:
+                fig.legend(handles, legend_labels, loc="upper center", bbox_to_anchor=(0.5, 1.01), ncol=5, fontsize=7)
             fig.tight_layout(rect=(0, 0, 1, .98))
-            fig.savefig(directory / f"{view}_{model}.png", dpi=130, bbox_inches="tight")
-            fig.savefig(directory / f"{view}_{model}.pdf", bbox_inches="tight")
+            fig.savefig(directory / f"{view}_{model}_grid_accuracy.png", dpi=130, bbox_inches="tight")
+            fig.savefig(directory / f"{view}_{model}_grid_accuracy.pdf", bbox_inches="tight")
             if show:
                 plt.show()
             plt.close(fig)
