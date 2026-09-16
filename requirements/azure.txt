@@ -3,7 +3,7 @@
 # só até base + config + store, e nenhum deles toca em torch.
 #
 #   python -m venv venv && source venv/bin/activate
-#   pip install -r requirements-azure.txt
+#   pip install -r requirements/azure.txt
 
 openai>=1.40          # cliente AzureOpenAI
 tqdm>=4.66.0           # barra de progresso (rmcq.store.progress)

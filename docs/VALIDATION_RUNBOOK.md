@@ -15,8 +15,8 @@ mesma run, com o mesmo ID e os mesmos resultados.
 | Nome pedido | Chave nos resultados | Checkpoint HF usado pelo vLLM |
 |---|---|---|
 | phi2 | phi2 | microsoft/phi-2 |
-| deepseek-r1:8b atual | deepseek-r1-0528-qwen3-8b | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B |
-| deepseek-r1:1.5b | deepseek-r1-distill-qwen-1.5b | deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B |
+| deepseek-r1:8b | deepseek-r1-8b | deepseek-ai/DeepSeek-R1-Distill-Llama-8B |
+| deepseek-r1:1.5b | deepseek-r1-1.5b | deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B |
 | llama3.1:8b | llama3.1-8b | meta-llama/Llama-3.1-8B-Instruct |
 | llama3.2:3b | llama3.2-3b | meta-llama/Llama-3.2-3B-Instruct |
 | qwen2.5:3b | qwen2.5-3b | Qwen/Qwen2.5-3B-Instruct |
@@ -25,7 +25,24 @@ mesma run, com o mesmo ID e os mesmos resultados.
 | ministral-3:8b | ministral-3-8b | mistralai/Ministral-3-8B-Instruct-2512-BF16 |
 
 Os nomes Ollama identificam a família solicitada; não usamos o servidor Ollama
-nem seus arquivos GGUF. Pesos HF ausentes no cache são baixados no primeiro uso.
+nem seus arquivos GGUF.
+
+**O DeepSeek-R1 é padronizado na destilação sobre Llama.** Onde há escolha, é
+essa a base, e os nomes canônicos (`deepseek-r1-8b`) escondem a destilação
+porque ela é constante.
+
+Duas consequências que valem estar escritas:
+
+- **O 1.5B é exceção forçada.** A família Distill-Llama oficial tem 8B e 70B, e
+  nada entre os dois: `DeepSeek-R1-Distill-Llama-1.5B` **não existe**. As
+  destilações são Qwen 1.5B/7B/14B/32B e Llama 8B/70B (índice do Hugging Face,
+  13/09/2026). Então `deepseek-r1-1.5b` fica sobre Qwen por falta de
+  alternativa, não por escolha.
+- **`DeepSeek-R1-0528-Qwen3-8B` saiu da grade.** É outra base. O run de
+  validação v5 rodou esse checkpoint no lugar do DeepSeek de 8B, então essas
+  22.461 linhas **não contam** e o modelo precisa ser gerado do zero. A chave
+  continua registrada em `rmcq.config.MODELS` só para que aquele run continue
+  legível — é dele que saem os outros oito alunos. Pesos HF ausentes no cache são baixados no primeiro uso.
 Os Ministral usam os checkpoints oficiais BF16 para seguir a precisão dos demais
 estudantes, com tokenizer/config/load no formato Mistral e entradas somente textuais.
 Isso exige vLLM >= 0.12.0 e mistral-common >= 1.8.6.
@@ -34,6 +51,28 @@ Fontes: [DeepSeek atual](https://ollama.com/library/deepseek-r1:8b),
 [Ministral 3B BF16](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-BF16),
 [Ministral 8B BF16](https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-BF16),
 [instruções vLLM da Mistral](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512).
+
+### Professores
+
+| Professor | Ensina | Backend |
+|---|---|---|
+| gpt-5-4-petrobras | os 9 alunos | Azure, servidor Petrobras |
+| deepseek-r1-8b | os 5 de até 3B | vLLM, GPU local |
+| llama3.1-8b | os 5 de até 3B | vLLM, GPU local |
+| qwen2.5-7b | os 5 de até 3B | vLLM, GPU local |
+| ministral-3-8b | os 5 de até 3B | vLLM, GPU local |
+
+Alunos de até 3B: phi2, deepseek-r1-1.5b, llama3.2-3b, qwen2.5-3b,
+ministral-3-3b. Os professores abertos não ensinam modelos do próprio porte —
+um 8B instruindo outro 8B mede transferência entre pares, que é outra pergunta.
+
+São 29 pares professor-aluno. A lista canônica está em
+[`rmcq/grid.py`](../rmcq/grid.py); mudar a grade é mudar esse arquivo, e o
+pipeline, a auditoria e os notebooks acompanham sozinhos.
+
+Diferente do desenho anterior, **quatro dos cinco professores rodam na GPU
+local**, junto dos alunos. Só o GPT-5.4 depende do servidor Petrobras, e a
+etapa 3 continua sendo o caminho dele.
 
 Datasets: **aqua, arc, logiqa2, openbookqa, race**, sempre treino → validação.
 Recuperação top-1 por similaridade, permitindo repetir uma fonte de treino entre
@@ -47,6 +86,18 @@ transferência nem retry para esconder falhas. O orçamento da reflexão do Phi-
 pode ser reduzido ao espaço restante, com marcação. Thinking é retirado da saída
 utilizável, preservando texto bruto e auditoria; os R1 não têm um desligamento
 de reasoning garantido. O avaliador auxiliar continua Llama-3.1-8B via vLLM.
+
+## 0. O caminho curto: um comando por split
+
+```bash
+python run_local.py --split validation --gpu 0
+python run_local.py --split test       --gpu 1
+```
+
+Percorre prepare → self-eval → teacher (os quatro abertos) → finish →
+consolidação, pulando o que já existe. O GPT-5.4 fica de fora por padrão e
+entra depois com `--with-external-teacher`, ou pela etapa 3b. As seções abaixo
+descrevem os mesmos estágios um a um, para quando for preciso intervir no meio.
 
 ## 1. GPU: instalar o ambiente e iniciar tudo localmente
 
@@ -62,8 +113,8 @@ git pull --ff-only origin lean-backends
 python3 -m venv .venv-validation
 source .venv-validation/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements-validation.txt
-python prepare_datasets.py --datasets race
+python -m pip install -r requirements/validation.txt
+python tools/prepare_datasets.py --datasets race
 python validation_ops.py start local --gpu 3
 ```
 
@@ -97,8 +148,8 @@ A grade congelada continua sendo a mesma nove; só o trabalho é dividido.
 
 | Partição | Estudantes | Peso |
 |---|---|---|
-| `p1` | deepseek-r1-0528-qwen3-8b, phi2, llama3.2-3b, qwen2.5-3b, ministral-3-3b | 1 modelo 8B com thinking + 4 pequenos |
-| `p2` | deepseek-r1-distill-qwen-1.5b, llama3.1-8b, qwen2.5-7b, ministral-3-8b | 3 modelos 8B + 1 pequeno com thinking |
+| `p1` | deepseek-r1-8b, phi2, llama3.2-3b, qwen2.5-3b, ministral-3-3b | 1 modelo 8B com thinking + 4 pequenos |
+| `p2` | deepseek-r1-1.5b, llama3.1-8b, qwen2.5-7b, ministral-3-8b | 3 modelos 8B + 1 pequeno com thinking |
 
 Para mudar quem fica em cada lado, edite `VALIDATION_PARTITIONS` em
 `run_experiment.py`; um teste falha se a divisão deixar de cobrir a grade
@@ -138,7 +189,8 @@ python validation_ops.py merge
 
 `merge` não gera nada: confere que os nove modelos estão presentes, concatena
 `models/<modelo>/validation.jsonl` em `all_outcomes.jsonl`, recalcula
-`accuracy.csv`, escreve os recibos da run inteira e roda a análise. Se faltar
+`accuracy.csv`, escreve os recibos da run inteira, **promove o resultado para
+`results_definitivos/validation/`** e roda a análise. Se faltar
 alguma partição, ele diz quais modelos está esperando e não escreve recibo. O
 restante do roteiro (seções 2 a 4) não muda; `share`, `teacher` e `finish`
 continuam agindo sobre a run inteira e não aceitam `--part`.
@@ -149,14 +201,26 @@ afetada.
 
 ## 2. Analisar e compartilhar a etapa parcial
 
-Os resultados imutáveis desta etapa ficam em
+Os resultados brutos desta etapa ficam em
 `data/results/reflection_top1/<id>/self_eval/`. O recibo é `self_eval_receipt.json`;
 isso **não** é um experimento com professor concluído.
 
-Abra `validation_accuracy_by_similarity.ipynb`: `EXPERIMENT_ID=None` seleciona
-a validação ativa; `PHASE="auto"` usa o resultado final, se disponível, ou o parcial.
-`PHASE="self"` sempre abre o parcial preservado. O booleano de fallback, os
-filtros, a grade, o mínimo de amostras e a cobertura ficam no início.
+O número que vale não sai daí, e sim do arquivo canônico:
+
+```bash
+python consolidate_results.py build --split validation
+python consolidate_results.py status
+```
+
+Isso escreve `results_definitivos/validation/` com o `all_outcomes.jsonl`
+fundido, a proveniência de cada linha em `manifest.json`, a cobertura por
+aluno × condição × professor × dataset em `coverage.csv` e, em `gaps.json`, o
+que a grade ainda pede. **`gaps.json` é a resposta para "o que falta rodar?"**,
+separando célula vazia (trabalho inteiro) de célula parcial (retomada).
+
+Abra `notebooks/validation_accuracy_by_similarity.ipynb`: ele lê o arquivo
+canônico direto, sem id de run. O booleano de fallback, os filtros, a grade de
+thresholds, o mínimo de amostras e a cobertura ficam na primeira célula.
 
 Para repetir os plots sem abrir o notebook:
 
@@ -182,31 +246,49 @@ Em outra máquina, para abrir apenas a análise parcial:
 ```bash
 git pull --ff-only origin lean-backends
 python validation_ops.py restore self-eval
-python -m pip install -r requirements-analysis.txt
+python -m pip install -r requirements/analysis.txt
 python validation_ops.py analyze
 ```
 
 Para exportar com fallback True, usando o ID exibido por `status`:
 
 ```bash
-python analyze_validation.py --experiment-id <ID> --fallback
+python analyze_validation.py --fallback
 ```
 
-## 3. Opcional: Petrobras gera somente reflexões externas
+## 3. Professores
 
-Só faça esta etapa quando decidir acrescentar o professor. No ambiente Python
-do Petrobras, com as credenciais Azure já configuradas:
+São cinco, e eles não rodam no mesmo lugar: o GPT-5.4 precisa da credencial
+Azure, os quatro abertos precisam de GPU. `--only-teachers` diz quais gerar
+nesta máquina; o recibo só fica completo quando todos tiverem passado, e cada
+lado soma ao que o outro já deixou no disco.
+
+### 3a. GPU: os quatro professores abertos
+
+```bash
+python validation_ops.py start teacher --gpu 3 \
+  --only-teachers deepseek-r1-8b,llama3.1-8b,qwen2.5-7b,ministral-3-8b
+python validation_ops.py status
+```
+
+Cada professor aberto reflete sobre os cinco alunos de até 3B. Um professor cujas
+reflexões já estão completas no disco não carrega engine nenhum, então repetir o
+comando depois de uma interrupção retoma por par professor-aluno.
+
+### 3b. Petrobras: o GPT-5.4
+
+No ambiente Python do Petrobras, com as credenciais Azure já configuradas:
 
 ```bash
 git fetch origin
 git switch lean-backends
 git pull --ff-only origin lean-backends
 python validation_ops.py restore prepare
-python -m pip install -r requirements-azure.txt
-python validation_ops.py start teacher
+python -m pip install -r requirements/azure.txt
+python validation_ops.py start teacher --only-teachers gpt-5-4-petrobras
 ```
 
-GPT-5.4 recebe somente questões/tentativas de **treino** dos estudantes e o
+GPT-5.4 ensina os nove alunos. Recebe somente questões/tentativas de **treino** dos estudantes e o
 feedback já calculado. Ele gera reflexões simples e complexas. Não responde
 treino por conta própria, não faz autorreflexão própria, não avalia estudantes
 como juiz e **não responde nenhuma questão de validação**.
@@ -233,9 +315,12 @@ source .venv-validation/bin/activate
 python validation_ops.py start finish --gpu 3
 ```
 
-O comando importa o professor, gera somente teacher_simple e teacher_complex
-e reaproveita exatamente as linhas de baseline/self já finalizadas. Ao terminar,
-recria a análise com as cinco condições. O snapshot `self_eval/` é preservado.
+O comando importa os professores, gera somente teacher_simple e teacher_complex
+— uma vez por professor de cada aluno — e reaproveita exatamente as linhas de
+baseline/self já finalizadas. Exige o recibo de professor completo: sem todas as
+reflexões, uma célula viraria linha `not_generated`, que depois se confunde com
+falha real. Ao terminar, promove o resultado para `results_definitivos/` e
+recria a análise. O snapshot `self_eval/` é preservado.
 Se estiver em outro checkout, a sequência antes de `start finish` é:
 
 ```bash
@@ -331,8 +416,8 @@ Execute no mesmo ambiente virtual GPU (neste exemplo, `venv`, GPU 7):
 ```bash
 git pull --ff-only origin lean-backends
 source venv/bin/activate
-python repair_flashinfer_annotations.py
-python repair_flashinfer_annotations.py --check
+python tools/repair_flashinfer_annotations.py
+python tools/repair_flashinfer_annotations.py --check
 python validation_ops.py start local --gpu 7
 python validation_ops.py status
 tail -n 80 .run_state/validation-local.log

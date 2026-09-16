@@ -159,12 +159,28 @@ def frozen_environment(manifest):
     return environment
 
 
-def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False):
+def consolidate_and_analyze(check=True):
+    """Promove a run para results_definitivos e refaz as figuras.
+
+    Os dois passos andam juntos: analisar sem consolidar leria um arquivo que
+    não é o definitivo, e consolidar sem analisar deixaria as figuras velhas ao
+    lado de números novos.
+    """
+    for command in ([sys.executable, "consolidate_results.py", "build", "--split", "validation"],
+                    [sys.executable, "analyze_validation.py"]):
+        result = subprocess.run(command, cwd=ROOT, check=check)
+        if result.returncode:
+            return result.returncode
+    return 0
+
+
+def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False, only_teachers=None):
     job = job_path(part)
     state = read(job)
     state.update(pid=os.getpid(), status="running", started_at=time.time())
     write(job, state)
-    partition = (["--part", part] if part else []) + (["--skip-gated"] if skip_gated else [])
+    partition = ((["--part", part] if part else []) + (["--skip-gated"] if skip_gated else [])
+                 + (["--only-teachers", only_teachers] if only_teachers and stage == "teacher" else []))
     try:
         if stage == "validation-local":
             # Separate processes release every CUDA engine between phases.
@@ -182,8 +198,7 @@ def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False):
             # A partition holds only half the models, so plotting it alone would
             # show half a run. `merge` runs the analysis once both are in.
             if part is None:
-                subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
-                               cwd=ROOT, check=True)
+                consolidate_and_analyze()
             state.update(status="complete", experiment_id=experiment_id, exit_code=0, ended_at=time.time())
             write(job, state)
             if part is not None:
@@ -202,8 +217,7 @@ def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False):
         exit_code = subprocess.run(command, cwd=ROOT, env=environment).returncode
         if (exit_code == 0 and part is None and stage in ("finish", "self-eval")
                 and manifest.get("experiment_preset") == "validation-threshold"):
-            exit_code = subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
-                                       cwd=ROOT).returncode
+            exit_code = consolidate_and_analyze(check=False)
         state.update(status="complete" if exit_code == 0 else "failed", exit_code=exit_code, ended_at=time.time())
         try:
             state["experiment_id"] = active_id(experiment_id)
@@ -228,7 +242,8 @@ def sibling_running(part):
     return False
 
 
-def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=False):
+def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=False,
+          only_teachers=None):
     if os.name != "posix":
         raise RuntimeError("Start runs on the Linux GPU/Petrobras server, in its activated Python environment.")
     import fcntl
@@ -265,6 +280,8 @@ def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=Fa
         command += ["--part", part]
     if skip_gated:
         command += ["--skip-gated"]
+    if only_teachers:
+        command += ["--only-teachers", only_teachers]
     # Inherit the OS lock. It is released even if the worker crashes; no PID race.
     write(job_path(part), {"stage": stage, "part": part, "gpu": gpu, "status": "starting",
                            "skip_gated": skip_gated, "pid": os.getpid(), "log": str(log)})
@@ -293,6 +310,8 @@ def main():
                             help=f"Shorthand for --part {name}")
     parser.add_argument("--skip-gated", action="store_true",
                         help="Leave out checkpoints this token cannot read; fill them in on a later run.")
+    parser.add_argument("--only-teachers",
+                        help="Na etapa teacher, gerar só estes professores nesta máquina.")
     parser.add_argument("--lock-fd", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.action == "status":
@@ -317,10 +336,11 @@ def main():
     if args.part and args.stage in ("teacher", "merge"):
         parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
     if args.action == "start":
-        start(args.stage, args.experiment_id, args.gpu, part=args.part, skip_gated=args.skip_gated)
+        start(args.stage, args.experiment_id, args.gpu, part=args.part, skip_gated=args.skip_gated,
+              only_teachers=args.only_teachers)
     elif args.action == "work":
         sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd, part=args.part,
-                      skip_gated=args.skip_gated))
+                      skip_gated=args.skip_gated, only_teachers=args.only_teachers))
     else:
         experiment_id = active_id(args.experiment_id, shared_first=args.action == "restore")
         if args.action == "restore":

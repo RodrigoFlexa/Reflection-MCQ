@@ -1,0 +1,218 @@
+{
+  "pipeline_version": "top1-two-server-v5",
+  "models": [
+    "phi2",
+    "deepseek-r1-distill-llama-8b",
+    "llama3.1-8b",
+    "phi4-mini",
+    "mistral-7b-instruct",
+    "qwen3-8b"
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa",
+    "race"
+  ],
+  "teacher_model": "gpt-5-4-petrobras",
+  "judge_model": "llama3.1-8b",
+  "eval_split": "test",
+  "generation_profile": "final",
+  "generation_policy": {
+    "length_retries": 0,
+    "keep_incomplete_as_memory": false,
+    "clip_transfer_memory": false,
+    "preserve_raw_text": true
+  },
+  "model_specs": {
+    "deepseek-r1-distill-llama-8b": {
+      "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+      "extra_kwargs": {
+        "max_model_len": 8192
+      }
+    },
+    "gpt-5-4-petrobras": {
+      "repo_id": "azure://gpt-5-4-petrobras",
+      "extra_kwargs": {
+        "deployment": "gpt-5-4-petrobras"
+      }
+    },
+    "llama3.1-8b": {
+      "repo_id": "meta-llama/Llama-3.1-8B-Instruct",
+      "extra_kwargs": {
+        "max_model_len": 8192
+      }
+    },
+    "mistral-7b-instruct": {
+      "repo_id": "mistralai/Mistral-7B-Instruct-v0.3",
+      "extra_kwargs": {
+        "max_model_len": 8192
+      }
+    },
+    "phi2": {
+      "repo_id": "microsoft/phi-2",
+      "extra_kwargs": {
+        "prompt_wrapper": "Instruct: {prompt}\nOutput:",
+        "max_model_len": 2048
+      }
+    },
+    "phi4-mini": {
+      "repo_id": "microsoft/Phi-4-mini-instruct",
+      "extra_kwargs": {
+        "max_model_len": 8192
+      }
+    },
+    "qwen3-8b": {
+      "repo_id": "Qwen/Qwen3-8B",
+      "extra_kwargs": {
+        "max_model_len": 8192,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
+    }
+  },
+  "runtime_limits": {
+    "max_model_len": 8192,
+    "generation_seed": 42,
+    "dtype": "bfloat16",
+    "vllm_deterministic": true,
+    "vllm_max_num_seqs": 32,
+    "azure_max_tokens": 1024,
+    "azure_reasoning_min_tokens": 4000,
+    "azure_reasoning_effort": "low"
+  },
+  "validation_cap": null,
+  "train_cap": null,
+  "student_backend": "vllm",
+  "generation_temperatures": {
+    "student_answer": 0.0,
+    "student_judge": 0.0,
+    "student_reflection": 0.7,
+    "gpt_5_4_petrobras": "provider_default; temperature omitted"
+  },
+  "training_answer_max_tokens": {
+    "phi2": 512,
+    "deepseek-r1-distill-llama-8b": 4096,
+    "llama3.1-8b": 1024,
+    "phi4-mini": 1024,
+    "mistral-7b-instruct": 1024,
+    "qwen3-8b": 1024
+  },
+  "training_answer_retry_max_tokens": {
+    "phi2": null,
+    "deepseek-r1-distill-llama-8b": null,
+    "llama3.1-8b": null,
+    "phi4-mini": null,
+    "mistral-7b-instruct": null,
+    "qwen3-8b": null
+  },
+  "validation_answer_max_tokens": {
+    "phi2": 512,
+    "deepseek-r1-distill-llama-8b": 4096,
+    "llama3.1-8b": 1024,
+    "phi4-mini": 1024,
+    "mistral-7b-instruct": 1024,
+    "qwen3-8b": 1024
+  },
+  "judge_max_tokens": {
+    "phi2": 128,
+    "deepseek-r1-distill-llama-8b": 512,
+    "llama3.1-8b": 512,
+    "phi4-mini": 512,
+    "mistral-7b-instruct": 512,
+    "qwen3-8b": 512
+  },
+  "judge_retry_max_tokens": {
+    "phi2": null,
+    "deepseek-r1-distill-llama-8b": null,
+    "llama3.1-8b": null,
+    "phi4-mini": null,
+    "mistral-7b-instruct": null,
+    "qwen3-8b": null
+  },
+  "phi2_stop_sequences": [
+    "\nInstruct:",
+    "\nExercise",
+    "\nQuestion:"
+  ],
+  "reflection_max_tokens": {
+    "phi2": {
+      "simple": 768,
+      "complex": 768
+    },
+    "deepseek-r1-distill-llama-8b": {
+      "simple": 4096,
+      "complex": 4096
+    },
+    "llama3.1-8b": {
+      "simple": 1024,
+      "complex": 1024
+    },
+    "phi4-mini": {
+      "simple": 1024,
+      "complex": 1024
+    },
+    "mistral-7b-instruct": {
+      "simple": 1024,
+      "complex": 1024
+    },
+    "qwen3-8b": {
+      "simple": 1024,
+      "complex": 1024
+    }
+  },
+  "reflection_retry_max_tokens": {
+    "phi2": {
+      "simple": null,
+      "complex": null
+    },
+    "deepseek-r1-distill-llama-8b": {
+      "simple": null,
+      "complex": null
+    },
+    "llama3.1-8b": {
+      "simple": null,
+      "complex": null
+    },
+    "phi4-mini": {
+      "simple": null,
+      "complex": null
+    },
+    "mistral-7b-instruct": {
+      "simple": null,
+      "complex": null
+    },
+    "qwen3-8b": {
+      "simple": null,
+      "complex": null
+    }
+  },
+  "embedding_model": "BAAI/bge-large-en-v1.5",
+  "answer_prompt": "You are answering a multiple-choice question.\n\nQuestion: {question}\n\nOptions:\n{options}\n\nRespond in exactly two parts. Keep the reasoning to at most 60 words.\nReasoning: <brief reasoning>\nFINAL ANSWER: <letter>",
+  "student_reflection_prompts": {
+    "simple": "You are given:\n\n1. The question and answer choices.\n2. Your previous answer.\n3. Whether your answer was correct or incorrect.\n4. The correct answer.\n\nReflect on your reasoning in 3–5 sentences (about 60–100 words).\n\nAnalyze:\n\n- Approach: What reasoning approach did you use?\n- Key factor: What fact, relationship, constraint, or clue affected your decision?\n- Error/Success: If incorrect, what specific reasoning mistake caused the error? If correct, what reasoning step helped?\n- Lesson: What one general reasoning rule should you use for similar problems?\n\nThe lesson must describe what to do differently, not just “be careful” or “think harder.”\n\nFocus on reasoning, not the answer.\n\nDo not solve the question again or state the correct answer.",
+    "complex": "You are given:\n\n1. The question and answer choices.\n2. Your previous answer.\n3. Whether your answer was correct or incorrect.\n4. The correct answer.\n\nAnalyze your reasoning in detail.\n\nReflect on your reasoning in 8–12 sentences (about 160–240 words).\n\nConsider:\n\n- Interpretation: What was the question asking? Did you interpret it correctly?\n- Strategy: What reasoning strategy did you use? Was it appropriate?\n- Evidence: Which facts, relationships, or constraints did you use or miss?\n- Assumptions: What assumptions or shortcuts affected your reasoning?\n- Alternatives: Which other possibilities should you have considered?\n- Diagnosis: What specifically caused the error, or what made the reasoning successful?\n- Improvement: What should you change when solving similar problems?\n- Lesson: State a precise, general reasoning rule that can transfer to other problems.\n\nDo not give vague advice such as “be more careful.” Focus on how to reason, not on the specific answer.\n\nDo not solve the question again or state the correct answer."
+  },
+  "teacher_reflection_prompts": {
+    "simple": "You are given:\n1. The original multiple-choice question.\n2. The student's previous answer.\n3. Feedback indicating whether the student's answer was correct or incorrect.\n\nWrite a brief reflection (3–6 sentences, about 60–120 words) on the student's previous response.\n\nDiscuss:\n\n- The main factors that influenced their answer.\n- Any assumptions or uncertainties they had.\n- How the feedback supports or challenges their approach.\n- One concrete, general reasoning action they would apply when answering similar questions in the future.\n\nBase your diagnosis on the student's written response. If it does not reveal their reasoning, acknowledge that limitation rather than inventing steps or intentions.\n\nIf the answer was correct, identify which written reasoning steps were sound and any remaining gaps. Correct-answer feedback alone does not establish that the reasoning was valid.\n\nIf the answer was incorrect, identify the most likely source of the error without simply restating that the answer was wrong.\n\nStay within the requested length; avoid repeating the question or the same lesson.\n\n**Do not answer the question again or identify which option is correct.**",
+    "complex": "You are given:\n1. The original multiple-choice question.\n2. The student's previous answer.\n3. Feedback indicating whether the student's answer was correct or incorrect.\n\nWrite a detailed reflection (8–12 sentences, about 160–240 words) on the student's previous response.\n\nAnalyze:\n\n- The reasoning strategy they used to reach their answer.\n- The evidence or cues from the question that influenced their decision.\n- Any assumptions, heuristics, or uncertainties that affected their judgment.\n- How the feedback confirms or contradicts their reasoning.\n- Whether their conclusion depended on missing knowledge, incorrect interpretation, overconfidence, or insufficient evaluation of alternatives.\n- How they would improve their reasoning process for similar problems in the future, ending with one precise, general reasoning rule.\n\nBase your diagnosis on the student's written response. If it does not reveal their reasoning, acknowledge that limitation rather than inventing steps or intentions.\n\nIf the answer was correct, identify which written reasoning steps were reliable, any remaining gaps, and whether their confidence was appropriately calibrated. Correct-answer feedback alone does not establish that the reasoning was valid.\n\nIf the answer was incorrect, explain what aspect of their reasoning should change rather than merely noting the correct outcome.\n\nStay within the requested length; avoid repeating the question or the same lesson.\n\n**Do not answer the question again, identify the correct option, or speculate about what the correct answer is.**"
+  },
+  "transfer_prompt": "You are answering a new multiple-choice question.\n\nFirst, review one related training case. It is context for how to reason, not a demonstration whose conclusion should be copied. Its answer labels belong only to that earlier case.\n\n<training_case>\nQuestion:\n{source_question}\n\nCorrect answer:\n{source_correct_answer}\n\nAgent's previous response:\n{source_response}\n\nOutcome:\n{source_outcome}\n\nReflection:\n{reflection}\n</training_case>\n\nNow answer the new question independently.\n\nQuestion: {question}\n\nOptions:\n{options}\n\nRespond in exactly two parts. Keep the reasoning to at most 60 words.\nReasoning: <brief reasoning>\nFINAL ANSWER: <letter>",
+  "thinking_policy": "request disabled when supported; strip embedded <think> blocks",
+  "seed": 42,
+  "data_fingerprints": {
+    "aqua/train": "1633eac9c213546f4e4f8b95a75071174ffd8e426e8335eb1bd4e11d0492d7c6",
+    "aqua/test": "155c4059a78ebda900e9ff076eaefa3c7561b7c152bb12e5c3896cfda35d168e",
+    "arc/train": "932857255f1908ad54042e1c07938f3e8a4781a795db509aba9efe629b17585c",
+    "arc/test": "e11e114d0e1883098a687d34ba17c5b52caf1d774fc2166875c87705041b90ad",
+    "logiqa2/train": "67a3bf85f1ef2d93af85a9c5d0c026fcab0c6f5846eedf247ecdfa0368c1aa91",
+    "logiqa2/test": "480f214f758407d26edfb581905be9772739f8b493ae93d03ea8911da16ad745",
+    "openbookqa/train": "faf353c315bd71f3b350be79b42cf6460eb0bc23a8a3bd51c45e4594a12c39ee",
+    "openbookqa/test": "b8edf8080130bb268b3dfc6e7618d99e49d3ad585396cc7bffc9524088254fb1",
+    "race/train": "6a51ad5adb9c82972e3935c8ae935fc2c861f6c3756e07e3cf83584b97eb8365",
+    "race/test": "27a4ffaaddec77fb165914b98c23af251292a2643e36a8ea6d4db694a67ec13f"
+  },
+  "experiment_id": "f8009a56a83b"
+}

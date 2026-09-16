@@ -24,21 +24,25 @@ import shutil
 from pathlib import Path
 from typing import Any, Iterable
 
+from rmcq import grid
 
+
+# Grade do protocolo de teste. O run de teste que já existe em disco
+# (f8009a56a83b) rodou o DeepSeek sob o nome antigo e sobre a destilação Llama;
+# ao consolidar, ele é contado como `deepseek-r1-8b` como qualquer outro. Uma
+# rodada nova a partir daqui usa o checkpoint que `deepseek-r1-8b` aponta hoje.
 DEFAULT_MODELS = (
     "phi2",
-    "deepseek-r1-distill-llama-8b",
+    "deepseek-r1-8b",
     "llama3.1-8b",
     "phi4-mini",
     "mistral-7b-instruct",
     "qwen3-8b",
 )
 DEFAULT_DATASETS = ("aqua", "arc", "logiqa2", "openbookqa", "race")
-VALIDATION_MODELS = (
-    "phi2", "deepseek-r1-0528-qwen3-8b", "deepseek-r1-distill-qwen-1.5b",
-    "llama3.1-8b", "llama3.2-3b", "qwen2.5-3b", "qwen2.5-7b",
-    "ministral-3-3b", "ministral-3-8b",
-)
+# A grade mora em rmcq/grid.py. Aqui só o apelido, para que uma mudança de
+# protocolo não precise ser lembrada em dois lugares.
+VALIDATION_MODELS = grid.STUDENTS
 # Two GPUs, one process each, no shared engine. The split is by model because a
 # vLLM engine is loaded per model anyway: nothing gets loaded that was not
 # already loaded once per model, and every generation artifact is already stored
@@ -47,13 +51,14 @@ VALIDATION_MODELS = (
 # divided. Balance: p1 carries the heavy 8B reasoning student plus the four
 # small ones, p2 carries three 8B instruct students plus the 1.5B reasoning one.
 VALIDATION_PARTITIONS: dict[str, tuple[str, ...]] = {
-    "p1": ("deepseek-r1-0528-qwen3-8b", "phi2", "llama3.2-3b", "qwen2.5-3b", "ministral-3-3b"),
-    "p2": ("deepseek-r1-distill-qwen-1.5b", "llama3.1-8b", "qwen2.5-7b", "ministral-3-8b"),
+    "p1": ("deepseek-r1-8b", "phi2", "llama3.2-3b", "qwen2.5-3b", "ministral-3-3b"),
+    "p2": ("deepseek-r1-1.5b", "llama3.1-8b", "qwen2.5-7b", "ministral-3-8b"),
 }
 PARTITION_NAMES = tuple(VALIDATION_PARTITIONS)
-SELF_CONDITIONS = ("baseline", "self_simple", "self_complex")
-EXTERNAL_CONDITIONS = ("teacher_simple", "teacher_complex")
-DEFAULT_TEACHER = "gpt-5-4-petrobras"
+SELF_CONDITIONS = grid.SELF_CONDITIONS
+EXTERNAL_CONDITIONS = grid.TEACHER_CONDITIONS
+DEFAULT_TEACHERS = grid.TEACHERS
+DEFAULT_TEACHER = grid.EXTERNAL_TEACHER
 DEFAULT_JUDGE = "llama3.1-8b"
 PIPELINE_VERSION = "top1-two-server-v5"
 ANSWER_TEMPERATURE = 0.0
@@ -123,7 +128,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--experiment-id", help="Required after prepare; printed by that stage.")
     parser.add_argument("--models")
     parser.add_argument("--datasets", default=",".join(DEFAULT_DATASETS))
-    parser.add_argument("--teacher-model", default=DEFAULT_TEACHER)
+    parser.add_argument("--teacher-model", default=DEFAULT_TEACHER,
+                        help="Professor de referência, o que também responde a avaliação.")
+    parser.add_argument("--teachers",
+                        help="Professores da grade, em CSV. Quem cada um ensina está em rmcq/grid.py. "
+                             "Padrão: a grade completa na validação, só o de referência fora dela.")
+    parser.add_argument("--only-teachers",
+                        help="Nesta passada, gerar apenas estes professores da grade. O professor "
+                             "externo fala por API e roda onde há credencial; os abertos carregam "
+                             "pesos e rodam onde há GPU. A grade continua sendo a do manifest: "
+                             "o recibo só fica completo quando todos tiverem sido gerados.")
     parser.add_argument("--teacher-role", choices=("reference", "teacher-only"))
     parser.add_argument(
         "--judge-model", default=DEFAULT_JUDGE,
@@ -135,7 +149,8 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--backend", choices=("vllm", "hf", "stub"), default=None)
-    parser.add_argument("--teacher-backend", choices=("azure", "stub"), default="azure")
+    parser.add_argument("--teacher-backend", choices=("azure", "stub"), default="azure",
+                        help="Backend do professor externo. Os professores abertos usam --backend.")
     parser.add_argument("--gpu", default=os.environ.get("RMCQ_NOTEBOOK_GPU", "0"))
     parser.add_argument("--eval-split", choices=("validation", "test"))
     parser.add_argument("--generation-profile", choices=("legacy", "final"), default="final")
@@ -161,6 +176,11 @@ def parse_args() -> argparse.Namespace:
     args.models = args.models or ",".join(VALIDATION_MODELS if validation_preset else DEFAULT_MODELS)
     args.eval_split = args.eval_split or ("validation" if validation_preset else "test")
     args.teacher_role = args.teacher_role or ("teacher-only" if validation_preset else "reference")
+    # A grade de cinco professores é da etapa final de validação. No protocolo de
+    # referência o professor também responde a avaliação, e só há um: herdar a
+    # grade ali criaria braços de professores que nunca rodaram naquele run.
+    args.teachers = args.teachers or (",".join(DEFAULT_TEACHERS)
+                                      if args.teacher_role == "teacher-only" else args.teacher_model)
     if validation_preset:
         if args.eval_split != "validation" or args.teacher_role != "teacher-only" or args.generation_profile != "final":
             parser.error("validation-threshold requires validation, teacher-only and final generation")
@@ -279,7 +299,7 @@ def load_splits(root: Path, datasets: list[str], cap: int | None,
         train = load_jsonl(folder / "train.jsonl")
         validation_path = folder / f"{eval_split}.jsonl"
         if not validation_path.exists():
-            raise FileNotFoundError(f"Missing {validation_path}; for RACE run python prepare_datasets.py")
+            raise FileNotFoundError(f"Missing {validation_path}; for RACE run python tools/prepare_datasets.py")
         validation = load_jsonl(validation_path)
         for expected_split, items in (("train", train), (eval_split, validation)):
             if any(item["split"] != expected_split for item in items):
@@ -740,6 +760,12 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         "pipeline_version": PIPELINE_VERSION,
         "models": split_csv(args.models), "datasets": split_csv(args.datasets),
         "teacher_model": args.teacher_model, "judge_model": args.judge_model,
+        "teachers": split_csv(getattr(args, "teachers", "") or args.teacher_model),
+        "teacher_assignments": {
+            teacher: list(grid.students_for(teacher))
+            for teacher in split_csv(getattr(args, "teachers", "") or args.teacher_model)
+            if teacher in grid.TEACHERS
+        },
         "teacher_role": getattr(args, "teacher_role", "reference"),
         "experiment_preset": getattr(args, "preset", None),
         "eval_split": args.eval_split, "generation_profile": args.generation_profile,
@@ -750,7 +776,8 @@ def manifest_payload(args: argparse.Namespace) -> dict[str, Any]:
         },
         "model_specs": {
             model: {"repo_id": MODELS[model].repo_id, "extra_kwargs": MODELS[model].extra_kwargs}
-            for model in sorted(set(split_csv(args.models) + [args.teacher_model, args.judge_model]))
+            for model in sorted(set(split_csv(args.models) + split_csv(getattr(args, "teachers", "") or "")
+                                    + [args.teacher_model, args.judge_model]))
         },
         "runtime_limits": {"max_model_len": MAX_MODEL_LEN,
                            "generation_seed": SEED, "dtype": TORCH_DTYPE,
@@ -830,6 +857,16 @@ def find_compatible_pair_exchange(
     exchange: Path, datasets: list[str], args: argparse.Namespace
 ) -> Path | None:
     """Find an older run whose retrieval inputs are exactly compatible."""
+    candidates = compatible_pair_exchanges(exchange, datasets, args)
+    return candidates[0] if candidates else None
+
+
+def compatible_pair_exchanges(
+    exchange: Path, datasets: list[str], args: argparse.Namespace
+) -> list[Path]:
+    """Todos os runs anteriores cuja recuperação é exatamente compatível, do mais
+    recente para o mais antigo. Mesmos pares significa mesmas questões e mesmas
+    fontes: é a precondição para aproveitar qualquer coisa gerada lá."""
     expected = {
         "datasets": datasets,
         "validation_cap": args.validation_cap,
@@ -842,12 +879,13 @@ def find_compatible_pair_exchange(
     if hasattr(args, "data_fingerprints"):
         expected["data_fingerprints"] = args.data_fingerprints
     if not exchange.parent.exists():
-        return None
+        return []
     manifests = sorted(
         exchange.parent.glob("*/manifest.json"),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
+    found = []
     for manifest_path in manifests:
         candidate = manifest_path.parent.resolve()
         if candidate == exchange.resolve():
@@ -859,8 +897,154 @@ def find_compatible_pair_exchange(
         if any(manifest.get(key) != value for key, value in expected.items()):
             continue
         if all((candidate / "pairs" / f"{dataset}.jsonl").exists() for dataset in datasets):
-            return candidate
-    return None
+            found.append(candidate)
+    return found
+
+
+# Chaves do manifest que decidem o que uma geração de aluno significa. Se todas
+# baterem, uma resposta de treino gerada por outro run é literalmente a mesma
+# chamada com o mesmo prompt e o mesmo orçamento: reaproveitá-la não é atalho,
+# é não pagar duas vezes pela mesma coisa.
+GENERATION_IDENTITY_KEYS = (
+    "pipeline_version", "answer_prompt", "student_reflection_prompts", "transfer_prompt",
+    "teacher_reflection_prompts",
+    "generation_policy", "generation_profile", "phi2_stop_sequences", "judge_model",
+    "embedding_model", "datasets", "eval_split", "validation_cap", "train_cap", "seed",
+)
+# Chaves cujo valor é por modelo: comparadas só para o modelo em questão.
+PER_MODEL_IDENTITY_KEYS = (
+    "training_answer_max_tokens", "training_answer_retry_max_tokens",
+    "validation_answer_max_tokens", "judge_max_tokens", "judge_retry_max_tokens",
+    "reflection_max_tokens", "reflection_retry_max_tokens",
+)
+
+
+def adoptable_students(previous: dict[str, Any], current: dict[str, Any],
+                       models: list[str]) -> list[str]:
+    """Modelos cujos artefatos de um run anterior valem para este run.
+
+    A grade final trocou um aluno e, como o id do run é o hash da configuração,
+    isso deu um id novo a uma corrida que, para os outros oito alunos, é idêntica
+    à anterior. Sem esta comparação o pipeline regeraria os oito do zero — dias
+    de GPU para reproduzir arquivos que já estão no disco, byte a byte iguais.
+
+    A comparação é conservadora: qualquer divergência no que define a geração
+    daquele modelo tira o modelo da lista, e ele é gerado normalmente.
+    """
+    if any(previous.get(key) != current.get(key) for key in GENERATION_IDENTITY_KEYS):
+        return []
+    adoptable = []
+    for model in models:
+        # O run anterior pode ter chamado este mesmo modelo por um nome antigo.
+        # Sem procurar pelos dois, a renomeação da grade custaria uma
+        # regeneração inteira só porque a chave do dicionário mudou.
+        anterior = next((nome for nome in grid.historical_names(model)
+                         if nome in previous.get("model_specs", {})), None)
+        if anterior is None:
+            continue
+        if previous["model_specs"][anterior] != current.get("model_specs", {}).get(model):
+            continue
+        if any(previous.get(key, {}).get(anterior) != current.get(key, {}).get(model)
+               for key in PER_MODEL_IDENTITY_KEYS):
+            continue
+        adoptable.append(model)
+    return adoptable
+
+
+def adopt_student_artifacts(previous_exchange: Path, exchange: Path, previous_results: Path,
+                            results: Path, model: str, sources: set[str]) -> bool:
+    """Traz para este run o treino e os caches de um modelo, se estiverem completos.
+
+    Copia, não move nem aponta: o run anterior continua íntegro e auditável, e
+    este fica autocontido. Um train.jsonl que não cobre todas as fontes não é
+    adotado — meia adoção esconderia uma lacuna.
+
+    Os arquivos do run anterior podem estar sob um nome antigo do mesmo modelo.
+    Só chegam aqui os modelos cujo checkpoint bate exatamente (a conferência é
+    de `adoptable_students`), então adotar o arquivo do nome antigo é adotar a
+    mesma geração, não a de um modelo parecido.
+    """
+    previous_name = next((nome for nome in grid.historical_names(model)
+                          if (previous_exchange / "students" / nome / "train.jsonl").exists()), None)
+    if previous_name is None:
+        return False
+    previous_train = previous_exchange / "students" / previous_name / "train.jsonl"
+    try:
+        covered = {row["source_uid"] for row in load_jsonl(previous_train)}
+    except (OSError, json.JSONDecodeError, KeyError):
+        return False
+    if not covered >= sources:
+        return False
+    destination = exchange / "students" / model / "train.jsonl"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(previous_train, destination)
+    previous_cache = previous_results / "work" / "prepare" / previous_name
+    cache = results / "work" / "prepare" / model
+    for filename in ("train_answers.jsonl", "judge_train.jsonl",
+                     "self_simple.jsonl", "self_complex.jsonl"):
+        source = previous_cache / filename
+        if source.exists() and not (cache / filename).exists():
+            cache.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, cache / filename)
+    # As reflexões que professores já escreveram sobre ESTA tentativa de treino
+    # também valem: o prompt do professor faz parte da identidade conferida
+    # acima, e a tentativa adotada é a mesma, byte a byte. Sem isto, trocar a
+    # grade obrigaria a repetir chamadas de professor já pagas — inclusive as
+    # do professor externo, que nem sempre está disponível para refazer.
+    for teacher in grid.TEACHERS:
+        rows = load_teacher_reflections(previous_exchange, teacher, previous_name)
+        if rows and not load_teacher_reflections(exchange, teacher, model):
+            save_jsonl(teacher_reflection_path(exchange, teacher, model),
+                       [{**row, "student_model": model} for row in rows])
+    adopt_evaluation_artifacts(previous_results, results, model, previous_name)
+    return True
+
+
+def adopt_evaluation_artifacts(previous_results: Path, results: Path,
+                               model: str, previous_name: str) -> None:
+    """Traz as avaliações que este modelo já respondeu, não só o treino dele.
+
+    Adotar só o treino resolveria a parte barata e deixaria a cara de fora: as
+    respostas de avaliação são uma geração por questão por condição, que é onde
+    o tempo de GPU realmente vai. Como a tentativa de treino adotada é a mesma e
+    os prompts foram conferidos, as respostas que saíram dela continuam válidas.
+
+    O campo `model` é reescrito para o nome atual, e o nome de origem fica em
+    `model_checkpoint`: a linha passa a se chamar como a grade a chama, sem
+    perder de onde veio.
+    """
+    for split_name in ("validation", "test"):
+        destino = results / "self_eval" / "models" / model / f"{split_name}.jsonl"
+        if destino.exists():
+            continue
+        # Um run que parou no self-eval guarda as respostas em `self_eval/`; um
+        # que chegou ao fim, em `models/`. Os dois servem, e o segundo é o caso
+        # do run de teste já concluído.
+        origem = next((caminho for caminho in (
+            previous_results / "self_eval" / "models" / previous_name / f"{split_name}.jsonl",
+            previous_results / "models" / previous_name / f"{split_name}.jsonl",
+        ) if caminho.exists()), None)
+        if origem is None:
+            continue
+        # Só as condições sem professor. As de professor do run antigo vieram de
+        # quando havia um professor só, sem `teacher_model` na linha; adotá-las
+        # as faria colidir com as que este run vai gerar, agora identificadas
+        # por professor. As reflexões, que são a parte cara, já foram adotadas.
+        preservadas = [
+            {**row, "model": model,
+             "model_checkpoint": row.get("model_checkpoint") or row.get("model")}
+            for row in load_jsonl(origem) if row.get("condition") in SELF_CONDITIONS]
+        if preservadas:
+            save_jsonl(destino, preservadas)
+    # Caches de geração da etapa de avaliação: o que já foi chamado não é
+    # chamado de novo nem quando a condição precisa ser refeita.
+    origem_cache = previous_results / "work" / "finish" / previous_name
+    destino_cache = results / "work" / "finish" / model
+    if origem_cache.is_dir():
+        destino_cache.mkdir(parents=True, exist_ok=True)
+        for arquivo in origem_cache.glob("*.jsonl"):
+            if not (destino_cache / arquivo.name).exists():
+                shutil.copy2(arquivo, destino_cache / arquivo.name)
 
 
 def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Namespace) -> None:
@@ -918,6 +1102,26 @@ def stage_prepare(root: Path, exchange: Path, results: Path, args: argparse.Name
             done.append(key)
         else:
             models.append(key)
+    # Antes de carregar engine nenhum: o que um run compatível já gerou para
+    # estes mesmos alunos é adotado aqui, e eles passam direto para `done`.
+    if models and not args.fresh:
+        current_manifest = json.loads((exchange / "manifest.json").read_text(encoding="utf-8"))
+        for previous in compatible_pair_exchanges(exchange, datasets, args):
+            if not models:
+                break
+            try:
+                previous_manifest = json.loads((previous / "manifest.json").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            adopted = []
+            for key in adoptable_students(previous_manifest, current_manifest, models):
+                if adopt_student_artifacts(previous, exchange, results.parent / previous.name,
+                                           results, key, set(sources)):
+                    adopted.append(key)
+            if adopted:
+                models = [k for k in models if k not in adopted]
+                done.extend(adopted)
+                print(f"adotados de {previous.name}, sem gerar de novo: {', '.join(adopted)}", flush=True)
     announce_plan(part, args.gpu, models, done, skipped)
     for key in done:
         rows = load_jsonl(exchange / "students" / key / "train.jsonl")
@@ -1032,50 +1236,138 @@ def load_pairs(exchange: Path, datasets: list[str]) -> list[dict[str, Any]]:
     return [row for dataset in datasets for row in load_jsonl(exchange / "pairs" / f"{dataset}.jsonl")]
 
 
-def stage_teacher_only(exchange: Path, results: Path, args: argparse.Namespace, manifest: dict[str, Any]) -> None:
-    """GPT only reflects on students' training attempts; no GPT answers or judge calls."""
-    from rmcq.backends import get_backend
+def teacher_reflection_path(exchange: Path, teacher: str, student: str) -> Path:
+    """Onde ficam as reflexões de um professor sobre um aluno.
+
+    O nome do professor está no caminho porque agora são cinco. O layout antigo,
+    com um diretório só, era ambíguo assim que existisse o segundo — e continua
+    sendo lido como o do professor externo, que era o único que existia.
+    """
+    return exchange / "teacher" / teacher / "student_reflections" / f"{student}.jsonl"
+
+
+def legacy_teacher_reflection_path(exchange: Path, student: str) -> Path:
+    return exchange / "teacher" / "student_reflections" / f"{student}.jsonl"
+
+
+def has_teacher_reflections(exchange: Path, teacher: str, student: str) -> bool:
+    """Se este professor já refletiu sobre este aluno, sem ler o arquivo.
+
+    A pergunta é feita uma vez por par de avaliação — dezenas de milhares de
+    vezes. Carregar o arquivo inteiro para depois descartá-lo custa horas de CPU
+    sem gerar nada; o que importa aqui é existir e não estar vazio.
+    """
+    path = teacher_reflection_path(exchange, teacher, student)
+    if not path.exists() and teacher == grid.LEGACY_TEACHER:
+        path = legacy_teacher_reflection_path(exchange, student)
+    return path.exists() and path.stat().st_size > 0
+
+
+def load_teacher_reflections(exchange: Path, teacher: str, student: str) -> list[dict[str, Any]]:
+    path = teacher_reflection_path(exchange, teacher, student)
+    if not path.exists() and teacher == grid.LEGACY_TEACHER:
+        path = legacy_teacher_reflection_path(exchange, student)
+    return load_jsonl(path) if path.exists() else []
+
+
+def teach_students(backend: Any, exchange: Path, cache_root: Path, teacher: str,
+                   students: list[str], sources: dict[str, dict[str, Any]],
+                   args: argparse.Namespace) -> dict[str, list[dict[str, Any]]]:
+    """Um professor reflete sobre as tentativas de treino dos seus alunos."""
     from rmcq.prompts import REFLECTION_DEPTHS, build_reflection_prompt
 
-    models, teacher_model = manifest["models"], manifest["teacher_model"]
-    sources = unique_sources(load_pairs(exchange, manifest["datasets"]))
-    cache_dir = results / "work" / "teacher"
-    with get_backend(teacher_model, kind=args.teacher_backend) as backend:
-        teacher_rows_by_model: dict[str, list[dict[str, Any]]] = {}
-        for student_model in models:
-            student_rows = load_jsonl(exchange / "students" / student_model / "train.jsonl")
-            student_by_uid = {row["source_uid"]: row for row in student_rows}
-            outputs: dict[str, dict[str, dict[str, Any]]] = {}
-            for depth in REFLECTION_DEPTHS:
-                teacher_prompts = {
-                    uid: build_reflection_prompt(sources[uid], row["response"], row["correct"], depth, "teacher")
-                    for uid, row in student_by_uid.items() if row["correct"] is not None
-                }
-                outputs[depth] = cached_generate(
-                    backend, cache_dir / student_model / f"teacher_{depth}.jsonl", teacher_prompts,
-                    reflection_budget(teacher_model, depth, "final") if args.generation_profile == "final" else (1024 if depth == "simple" else 2048), args.batch_size, args.fresh,
-                    f"teacher reflection for {student_model} {depth}",
-                    temperature=args.reflection_temperature,
-                    profile=args.generation_profile,
-                )
-            teacher_rows_by_model[student_model] = [{
-                "dataset": sources[uid]["dataset"], "source_uid": uid,
-                "student_model": student_model,
-                "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
-                "reflection_status": reflection_status(outputs, uid),
-                "reflection_generations": {depth: outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
-            } for uid in student_by_uid]
+    rows_by_student: dict[str, list[dict[str, Any]]] = {}
+    for student_model in students:
+        train_path = exchange / "students" / student_model / "train.jsonl"
+        if not train_path.exists():
+            print(f"{teacher}: {student_model} ainda não tem tentativas de treino; pulando", flush=True)
+            continue
+        student_by_uid = {row["source_uid"]: row for row in load_jsonl(train_path)}
+        outputs: dict[str, dict[str, dict[str, Any]]] = {}
+        for depth in REFLECTION_DEPTHS:
+            teacher_prompts = {
+                uid: build_reflection_prompt(sources[uid], row["response"], row["correct"], depth, "teacher")
+                for uid, row in student_by_uid.items() if row["correct"] is not None
+            }
+            outputs[depth] = cached_generate(
+                backend, cache_root / student_model / f"teacher_{depth}.jsonl", teacher_prompts,
+                reflection_budget(teacher, depth, "final") if args.generation_profile == "final"
+                else (1024 if depth == "simple" else 2048), args.batch_size, args.fresh,
+                f"{teacher} reflecting on {student_model} {depth}",
+                temperature=args.reflection_temperature,
+                profile=args.generation_profile,
+            )
+        rows_by_student[student_model] = [{
+            "dataset": sources[uid]["dataset"], "source_uid": uid,
+            "student_model": student_model, "teacher_model": teacher,
+            "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
+            "reflection_status": reflection_status(outputs, uid),
+            "reflection_generations": {depth: outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
+        } for uid in student_by_uid]
+    return rows_by_student
 
-    for model, rows in teacher_rows_by_model.items():
-        save_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl", rows)
-    save_json(exchange / "teacher_receipt.json", {
-        "teacher_model": teacher_model, "teacher_role": "teacher-only",
+
+def stage_teacher_only(exchange: Path, results: Path, args: argparse.Namespace, manifest: dict[str, Any]) -> None:
+    """Os professores só refletem sobre o treino dos alunos: não respondem nem julgam.
+
+    São cinco professores e cada um tem a sua lista de alunos. Um professor cujas
+    reflexões já estão completas no disco não carrega engine nenhum: a retomada é
+    por par professor-aluno, que é a unidade de trabalho que pode faltar.
+    """
+    from rmcq.backends import get_backend
+
+    models = manifest["models"]
+    # A grade é a do manifest, congelada no prepare. `--only-teachers` recorta
+    # apenas ESTA passada: o que ela não gerar continua pendente no recibo.
+    grade = [t for t in manifest.get("teachers") or [manifest["teacher_model"]] if t in grid.TEACHERS]
+    requested = split_csv(getattr(args, "only_teachers", "") or "") or grade
+    fora = [t for t in requested if t not in grade]
+    if fora:
+        raise ValueError(f"--only-teachers pede professores fora da grade desta run: {', '.join(fora)}")
+    teachers = [t for t in grade if t in requested]
+    sources = unique_sources(load_pairs(exchange, manifest["datasets"]))
+    receipt: dict[str, Any] = {
+        "teacher_role": "teacher-only", "teachers": grade, "generated_this_pass": teachers,
         "training_sources": len(sources), "validation_generations": 0,
-        "training_answer_generations": 0, "student_models_taught": models,
-        "content_filter_events": sum(status == "content_filter" for rows in teacher_rows_by_model.values()
-            for row in rows for status in row["reflection_status"].values()),
-        "complete": True,
-    })
+        "training_answer_generations": 0, "content_filter_events_this_pass": 0,
+    }
+    for teacher in teachers:
+        assigned = [m for m in grid.students_for(teacher) if m in models]
+        pending = [m for m in assigned
+                   if args.fresh or {row["source_uid"] for row in load_teacher_reflections(exchange, teacher, m)} < set(sources)]
+        done = [m for m in assigned if m not in pending]
+        print(f"professor {teacher}: {len(pending)} aluno(s) a gerar"
+              f"{', ' + str(len(done)) + ' completo(s)' if done else ''}", flush=True)
+        if not pending:
+            continue
+        # O professor externo fala por API e respeita --teacher-backend (que os
+        # testes apontam para o stub); os abertos carregam pesos como os alunos.
+        kind = args.teacher_backend if teacher == grid.EXTERNAL_TEACHER else args.backend
+        cache_root = results / "work" / "teacher" / teacher
+        with get_backend(teacher, kind=kind) as backend:
+            rows_by_student = teach_students(backend, exchange, cache_root, teacher,
+                                             pending, sources, args)
+        for student_model, rows in rows_by_student.items():
+            save_jsonl(teacher_reflection_path(exchange, teacher, student_model), rows)
+            receipt["content_filter_events_this_pass"] += sum(
+                status == "content_filter" for row in rows
+                for status in row["reflection_status"].values())
+    # O recibo descreve a run, não a passada: `taught` e `missing_pairs` saem do
+    # disco, então uma passada na GPU e outra no Petrobras somam em vez de se
+    # sobrescreverem.
+    receipt["taught"] = {
+        teacher: sorted(student for student in grid.students_for(teacher)
+                        if student in models and load_teacher_reflections(exchange, teacher, student))
+        for teacher in grade}
+    missing = [f"{teacher}/{student}" for teacher in grade
+               for student in grid.students_for(teacher) if student in models
+               and not load_teacher_reflections(exchange, teacher, student)]
+    receipt["missing_pairs"] = missing
+    receipt["complete"] = not missing
+    save_json(exchange / "teacher_receipt.json", receipt)
+    if missing:
+        print(f"Faltam {len(missing)} par(es) professor-aluno: {', '.join(missing[:6])}"
+              f"{' ...' if len(missing) > 6 else ''}. Rode o mesmo comando de novo.", flush=True)
 
 
 def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manifest: dict[str, Any]) -> None:
@@ -1133,7 +1425,7 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
                 )
             teacher_rows_by_model[student_model] = [{
                 "dataset": sources[uid]["dataset"], "source_uid": uid,
-                "student_model": student_model,
+                "student_model": student_model, "teacher_model": teacher_model,
                 "reflections": {depth: outputs[depth].get(uid, {}).get("text") for depth in REFLECTION_DEPTHS},
                 "reflection_status": reflection_status(outputs, uid),
                 "reflection_generations": {depth: outputs[depth].get(uid, {}) for depth in REFLECTION_DEPTHS},
@@ -1198,14 +1490,15 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
     } for uid, item in sources.items()]
     save_jsonl(exchange / "teacher" / "train.jsonl", teacher_train)
     for model, rows in teacher_rows_by_model.items():
-        save_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl", rows)
+        save_jsonl(teacher_reflection_path(exchange, teacher_model, model), rows)
     validation_rows = list(unavailable_validation_rows)
     for key, meta in condition_meta.items():
         pair = meta["pair"]
         validation_rows.append({
             "model": teacher_model, "dataset": pair["dataset"], "val_uid": pair["val_uid"],
             "source_uid": pair["source_uid"], "similarity": pair["similarity"],
-            "condition": meta["condition"], "response": condition_generated[key]["text"],
+            "condition": meta["condition"], "teacher_model": None,
+            "response": condition_generated[key]["text"],
             "finish_reason": condition_generated[key]["finish_reason"],
             "evaluation_generation": condition_generated[key],
             **condition_verdicts[key],
@@ -1236,15 +1529,20 @@ def stage_teacher(exchange: Path, results: Path, args: argparse.Namespace, manif
 
 
 def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    """Acurácia por aluno, dataset e braço. O professor faz parte do braço: sem
+    ele, as cinco reflexões de professor sobre a mesma questão viram uma média
+    de coisas diferentes."""
+    groups: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for row in rows:
-        groups.setdefault((row["model"], row["dataset"], row["condition"]), []).append(row)
-        groups.setdefault((row["model"], "ALL", row["condition"]), []).append(row)
+        teacher = row.get("teacher_model") or ""
+        groups.setdefault((row["model"], row["dataset"], row["condition"], teacher), []).append(row)
+        groups.setdefault((row["model"], "ALL", row["condition"], teacher), []).append(row)
     summary = []
-    for (model, dataset, condition), group in sorted(groups.items()):
+    for (model, dataset, condition, teacher), group in sorted(groups.items()):
         resolved = [row for row in group if row.get("correct") is not None]
         summary.append({
             "model": model, "dataset": dataset, "condition": condition,
+            "teacher_model": teacher,
             "n": len(group), "resolved": len(resolved),
             "coverage": len(resolved) / len(group),
             "accuracy": (sum(bool(row["correct"]) for row in resolved) / len(resolved)) if resolved else None,
@@ -1278,19 +1576,64 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                   and json.loads(self_receipt.read_text(encoding="utf-8")).get("complete") is True)
     pairs = load_pairs(exchange, manifest["datasets"])
     assigned = partition_models(part, manifest["models"])
-    conditions = SELF_CONDITIONS if self_only else (EXTERNAL_CONDITIONS if reuse_self else SELF_CONDITIONS + EXTERNAL_CONDITIONS)
-    expected_rows = {(p["val_uid"], c) for p in pairs
-                     for c in (SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS)}
+    teachers = [t for t in (manifest.get("teachers") or [manifest["teacher_model"]]) if t in grid.TEACHERS]
+
+    def teachers_of(model: str) -> list[str]:
+        """Professores deste aluno, segundo a grade final.
+
+        Um aluno que não está na grade é de um run anterior, de quando havia um
+        professor só. Reproduzi-lo continua funcionando: ele recebe o professor
+        de referência do manifest, que é exatamente o que tinha antes.
+        """
+        if model in grid.STUDENTS:
+            return [t for t in grid.teachers_for(model) if t in teachers]
+        return [t for t in teachers if t == manifest["teacher_model"]]
+
+    _taught_cache: dict[str, list[str]] = {}
+
+    def taught_by(model: str) -> list[str]:
+        """Professores deste aluno que já têm reflexões em disco.
+
+        Um professor que ainda não rodou é ausência de trabalho, não resultado
+        ruim. Se ele entrasse aqui, cada questão viraria uma linha
+        `not_generated` — e o arquivo passaria a afirmar que a condição foi
+        tentada e falhou, quando ninguém a tentou. Ficando de fora, a célula
+        continua aparecendo como lacuna em gaps.json e é gerada quando o
+        professor rodar.
+        """
+        if model not in _taught_cache:
+            _taught_cache[model] = [t for t in teachers_of(model)
+                                    if has_teacher_reflections(exchange, t, model)]
+        return _taught_cache[model]
+
+    def external_cells(model: str) -> list[tuple[str, str | None]]:
+        return [(c, t) for t in taught_by(model) for c in EXTERNAL_CONDITIONS]
+
+    def cells_for(model: str) -> list[tuple[str, str | None]]:
+        """Células (condição, professor) que este aluno deve gerar neste estágio."""
+        if self_only:
+            return [(c, None) for c in SELF_CONDITIONS]
+        if reuse_self:
+            return external_cells(model)
+        return [(c, None) for c in SELF_CONDITIONS] + external_cells(model)
+
+    def target_cells(model: str) -> list[tuple[str, str | None]]:
+        """Tudo que o arquivo final deste aluno precisa conter, inclusive o já feito."""
+        if self_only:
+            return [(c, None) for c in SELF_CONDITIONS]
+        return [(c, None) for c in SELF_CONDITIONS] + external_cells(model)
+
     # A model with no training attempts on disk was skipped in prepare and has
     # nothing to evaluate; one whose outcome file already covers every condition
     # is finished. Neither needs its engine loaded again.
     skipped, done, models = [], [], []
     for key in assigned:
         outcome = destination / "models" / key / f"{args.eval_split}.jsonl"
+        expected_rows = {(p["val_uid"], c, t) for p in pairs for c, t in target_cells(key)}
         if not (exchange / "students" / key / "train.jsonl").exists():
             skipped.append(key)
         elif not args.fresh and outcome.exists() and {
-                (r["val_uid"], r["condition"]) for r in load_jsonl(outcome)} >= expected_rows:
+                (r["val_uid"], r["condition"], r.get("teacher_model")) for r in load_jsonl(outcome)} >= expected_rows:
             done.append(key)
         else:
             models.append(key)
@@ -1299,10 +1642,16 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         model: {row["source_uid"]: row for row in load_jsonl(exchange / "students" / model / "train.jsonl")}
         for model in models
     }
-    teacher_rows_by_model = {} if self_only else {
-        model: {row["source_uid"]: row for row in load_jsonl(exchange / "teacher" / "student_reflections" / f"{model}.jsonl")}
-        for model in models
-    }
+    # Reflexões indexadas por (aluno, professor): com cinco professores, "a
+    # reflexão do professor sobre este aluno" deixou de ser uma coisa só.
+    teacher_rows_by_pair: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
+    if not self_only:
+        for model in models:
+            for teacher in {t for c, t in cells_for(model) if t}:
+                teacher_rows_by_pair[(model, teacher)] = {
+                    row["source_uid"]: row
+                    for row in load_teacher_reflections(exchange, teacher, model)
+                }
     # The GPT reference rows belong to the run, not to a partition: with
     # partitions they are attached once, by merge.
     all_rows = (load_jsonl(exchange / "teacher" / f"{args.eval_split}.jsonl")
@@ -1321,25 +1670,33 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                                  if reuse_self else [])
         if reuse_self:
             expected_keys = {(p["val_uid"], c) for p in pairs for c in SELF_CONDITIONS}
-            actual_keys = [(r["val_uid"], r["condition"]) for r in preserved_rows[model]]
+            actual_keys = [(r["val_uid"], r["condition"]) for r in preserved_rows[model]
+                           if r["condition"] in SELF_CONDITIONS]
             if len(actual_keys) != len(expected_keys) or set(actual_keys) != expected_keys:
                 raise RuntimeError(f"Incomplete self-eval snapshot for {model}; cannot complete this run")
         prompts: dict[str, str] = {}
         items: dict[str, dict[str, Any]] = {}
         metadata: dict[str, dict[str, Any]] = {}
         unavailable_rows: list[dict[str, Any]] = []
+        # Fora do laço: as células dependem do aluno, não do par. Recalculá-las
+        # a cada um dos milhares de pares foi o que travou este estágio uma vez.
+        celulas = cells_for(model)
         for pair in pairs:
             val_item, source_item = pair["validation_item"], pair["source_item"]
             source_uid = pair["source_uid"]
-            for condition in conditions:
-                key = cache_key(pair["dataset"], pair["val_uid"], condition)
+            for condition, teacher in celulas:
+                # O professor entra na chave de cache: sem isso, as reflexões de
+                # cinco professores sobre a mesma questão se sobrescreveriam e só
+                # a última sobreviveria, com o nome de todas.
+                key = cache_key(pair["dataset"], pair["val_uid"], condition, teacher or "")
                 reflection = None
                 if condition == "baseline":
                     prompt = build_answer_prompt(val_item)
                 else:
                     author, depth = condition.split("_", 1)
                     attempt_row = student_rows_by_model[model].get(source_uid)
-                    reflection_row = attempt_row if author == "self" else teacher_rows_by_model[model].get(source_uid)
+                    reflection_row = (attempt_row if author == "self"
+                                      else teacher_rows_by_pair.get((model, teacher), {}).get(source_uid))
                     reflection = (reflection_row or {}).get("reflections", {}).get(depth)
                     if not reflection:
                         method = (
@@ -1350,6 +1707,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                             "model": model, "dataset": pair["dataset"],
                             "val_uid": pair["val_uid"], "source_uid": source_uid,
                             "similarity": pair["similarity"], "condition": condition,
+                            "teacher_model": teacher,
                             "response": "", "finish_reason": "not_generated",
                             "selected_answer": None, "correct": None,
                             "eval_method": method,
@@ -1361,7 +1719,8 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                     )
                 prompts[key], items[key] = prompt, val_item
                 metadata[key] = {
-                    "condition": condition, "pair": pair, "reflection": reflection,
+                    "condition": condition, "teacher": teacher, "pair": pair,
+                    "reflection": reflection,
                 }
         cache_dir = results / "work" / "finish" / model
         cache_dirs[model] = cache_dir
@@ -1387,6 +1746,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
                     "model": model, "dataset": pair["dataset"],
                     "val_uid": pair["val_uid"], "source_uid": pair["source_uid"],
                     "similarity": pair["similarity"], "condition": meta["condition"],
+                    "teacher_model": meta["teacher"],
                     "response": "", "finish_reason": "not_generated",
                     "selected_answer": None, "correct": None, **issue,
                 })
@@ -1423,13 +1783,14 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
             model_rows.append({
                 "model": model, "dataset": pair["dataset"], "val_uid": pair["val_uid"],
                 "source_uid": pair["source_uid"], "similarity": pair["similarity"],
-                "condition": meta["condition"], "response": generated[key]["text"],
+                "condition": meta["condition"], "teacher_model": meta["teacher"],
+                "response": generated[key]["text"],
                 "finish_reason": generated[key]["finish_reason"],
                 "evaluation_generation": generated[key],
                 **verdicts[key],
             })
         from rmcq.analysis import annotate_outcomes
-        model_rows = annotate_outcomes(model_rows, pairs, student_rows_by_model, teacher_rows_by_model)
+        model_rows = annotate_outcomes(model_rows, pairs, student_rows_by_model, teacher_rows_by_pair)
         model_rows = preserved_rows[model] + model_rows
         save_jsonl(destination / "models" / model / f"{args.eval_split}.jsonl", model_rows)
         all_rows.extend(model_rows)
@@ -1450,6 +1811,15 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     save_json(destination / f"{name}{suffix}.json", {
         "experiment_id": manifest.get("experiment_id"), "eval_split": args.eval_split,
         "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
+        "teachers": [] if self_only else teachers,
+        "arms": sorted({f"{c}@{t}" if t else c
+                        for model in sorted(models + done) for c, t in target_cells(model)}),
+        # Pares que a grade pede e que este finish não pôde gerar por falta de
+        # reflexão do professor. `complete` acima diz que a passada terminou,
+        # não que a grade fechou; é esta lista que diz o que falta.
+        "teacher_arms_pending": [] if self_only else sorted(
+            f"{t}/{model}" for model in sorted(models + done)
+            for t in teachers_of(model) if t not in taught_by(model)),
         "self_snapshot_reused": bool(reuse_self), "part": part,
         "models": sorted(models + done), "skipped_models": skipped,
         "rows": len(all_rows), "content_filter_affected_conditions": len(filter_audit),
@@ -1579,7 +1949,7 @@ def main() -> None:
             for split in ("train", args.eval_split):
                 path = root / "data" / "processed" / dataset / f"{split}.jsonl"
                 if not path.exists():
-                    raise FileNotFoundError(f"Missing {path}. Prepare RACE with python prepare_datasets.py.")
+                    raise FileNotFoundError(f"Missing {path}. Prepare RACE with python tools/prepare_datasets.py.")
                 args.data_fingerprints[f"{dataset}/{split}"] = hashlib.sha256(path.read_bytes()).hexdigest()
         payload["data_fingerprints"] = args.data_fingerprints
         preflight = root / f".run_state/validation_preflight{part_suffix(args.part)}.json"
@@ -1649,6 +2019,7 @@ def main() -> None:
     args.models = ",".join(manifest["models"])
     args.datasets = ",".join(manifest["datasets"])
     args.teacher_model = manifest["teacher_model"]
+    args.teachers = ",".join(manifest.get("teachers") or [manifest["teacher_model"]])
     args.teacher_role = manifest.get("teacher_role", "reference")
     args.preset = manifest.get("experiment_preset")
     expected = manifest_payload(args)
@@ -1684,8 +2055,19 @@ def main() -> None:
         print(f"commit and push: {display_path(exchange / 'teacher', root)}")
     elif args.stage == "finish":
         teacher_receipt = exchange / "teacher_receipt.json"
-        if not teacher_receipt.exists() or not json.loads(teacher_receipt.read_text(encoding="utf-8")).get("complete"):
-            raise FileNotFoundError("teacher stage is not complete; pull its artifacts first")
+        if not teacher_receipt.exists():
+            raise FileNotFoundError("teacher stage has not run; generate or restore its artifacts first")
+        receipt = json.loads(teacher_receipt.read_text(encoding="utf-8"))
+        pending = receipt.get("missing_pairs") or []
+        # Professor incompleto não impede avaliar o que já tem professor. O que
+        # falta continua faltando: `finish` só gera os braços cujas reflexões
+        # estão em disco, e gaps.json continua cobrando o resto. Bloquear aqui
+        # obrigaria a esperar o professor externo para medir os quatro locais.
+        if pending:
+            print(f"AVISO: {len(pending)} par(es) professor-aluno ainda sem reflexão. "
+                  f"Estes braços NÃO serão gerados agora: {', '.join(sorted(set(pending))[:6])}"
+                  f"{' ...' if len(pending) > 6 else ''}", flush=True)
+            print("Rode o mesmo comando depois que o professor que falta tiver rodado.", flush=True)
         stage_finish(exchange, results, args, manifest)
     else:
         stage_status(exchange, results, manifest)

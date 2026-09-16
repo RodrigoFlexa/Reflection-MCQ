@@ -11,6 +11,48 @@ Estudantes: baseline, self_simple, self_complex, teacher_simple,
 teacher_complex. GPT-5.4: baseline, self_simple, self_complex.
 Nenhuma condição adicional foi introduzida.
 
+## Grade de professores (etapa final, 12/09/2026)
+
+A lista canônica está em [`rmcq/grid.py`](../rmcq/grid.py); este documento
+explica a decisão, não a repete.
+
+Nove alunos: phi2, deepseek-r1-8b, deepseek-r1-1.5b,
+llama3.1-8b, llama3.2-3b, qwen2.5-3b, qwen2.5-7b, ministral-3-3b, ministral-3-8b.
+
+Cinco professores, com alcances diferentes:
+
+- **gpt-5-4-petrobras** ensina os nove. É externo à faixa de tamanho dos alunos,
+  então serve de referência contra a qual os demais são lidos.
+- **deepseek-r1-8b, llama3.1-8b, qwen2.5-7b e ministral-3-8b**
+  ensinam apenas os cinco alunos de até 3B (phi2,
+  deepseek-r1-1.5b, llama3.2-3b, qwen2.5-3b, ministral-3-3b).
+
+Um professor do mesmo porte do aluno não é professor, é par: um llama3.1-8b
+instruindo um deepseek-r1-8b mede transferência entre iguais, que é outra
+pergunta. Por isso os quatro professores abertos ficam restritos aos alunos
+menores, e os quatro modelos da faixa 7B-8B aparecem como alunos apenas nas
+condições sem professor e na do professor externo.
+
+São 29 pares professor-aluno e 85 células (aluno, condição, professor) por item
+de avaliação.
+
+O DeepSeek-R1 é padronizado na destilação sobre Llama: `deepseek-r1-8b` é
+`DeepSeek-R1-Distill-Llama-8B`. Manter a base constante evita atribuir a um
+"DeepSeek de 8B" um comportamento que vem da base de destilação e não do
+modelo. `deepseek-r1-1.5b` é a exceção forçada — `Distill-Llama-1.5B` não
+existe; a família Llama tem 8B e 70B —, e por isso fica sobre Qwen.
+
+`DeepSeek-R1-0528-Qwen3-8B` está fora da grade por ser outra base. O mapa de
+nomes está em `rmcq.grid.MODEL_ALIASES` e vale para rótulo; para carregar
+pesos, cada chave histórica continua apontando para o seu checkpoint, e a linha
+consolidada guarda o dela em `model_checkpoint`.
+
+Uma linha de resultado passa a ser identificada por
+`(model, dataset, val_uid, condition, teacher_model)`. Sem `teacher_model` na
+chave, as cinco reflexões de professor sobre a mesma questão colidiriam sob o
+nome `teacher_simple`. Nas análises o eixo correspondente é o **braço**:
+`teacher_simple@llama3.1-8b`, e `baseline`/`self_*` sem sufixo.
+
 ## Recuperação
 
 Um top-1 por questão no treino completo do mesmo dataset. Fontes repetidas são
@@ -105,4 +147,4 @@ geração, como o notebook high_budget. Ele continua separado do protocolo final
 A mudança de prompts e política é versionada como v5. Gerações de uma run v4
 não são retomadas com o código novo; status e análise continuam disponíveis.
 `--generation-profile legacy` conserva os tetos/repetições antigos em uma nova
-run. O protocolo v4 original está arquivado em `experiment_protocol_v4.md`.
+run. O protocolo v4 original está em `_archive/docs/experiment_protocol_v4.md`.

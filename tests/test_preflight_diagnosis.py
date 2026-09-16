@@ -45,7 +45,7 @@ def test_flashinfer_failure_is_named_with_its_fix():
 def test_the_guard_message_is_diagnosed_too():
     """The preflight guard stops it earlier than vLLM does; both must be named."""
     guarded = ("RuntimeError: FlashInfer fd_exchange annotations are incompatible with this "
-               "Python. Run: python repair_flashinfer_annotations.py")
+               "Python. Run: python tools/repair_flashinfer_annotations.py")
     advice = preflight.diagnose(guarded)
     assert len(advice) == 1 and "repair_flashinfer_annotations.py" in advice[0]
 

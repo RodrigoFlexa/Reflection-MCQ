@@ -1,7 +1,14 @@
 #!/usr/bin/env python
 """Export filtered outcomes and coverage without altering the experiment."""
 import argparse
+
+import sys
 from pathlib import Path
+
+# A raiz do repositório, não a de tools/, é onde moram rmcq e run_experiment.
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from rmcq.analysis import filter_outcomes
 from run_experiment import load_jsonl, save_jsonl, save_json, save_csv, split_csv, json_hash

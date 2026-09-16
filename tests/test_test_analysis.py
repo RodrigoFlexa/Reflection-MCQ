@@ -20,14 +20,14 @@ def test_fallback_uses_same_question_and_retains_unanswered_baseline():
     reflection = scored.loc[scored.condition.eq("self_simple")].set_index("val_uid")
     assert reflection.score.to_dict() == {"a": 1, "b": 0, "c": 0}
     assert reflection.fallback_used.sum() == 2
-    summary = summarize_policy(scored).set_index("condition")
+    summary = summarize_policy(scored).set_index("arm")
     assert summary.loc["self_simple", "n"] == 3
     assert summary.loc["baseline", "n_unanswered"] == 1
 
 
 def test_no_fallback_keeps_independent_samples_and_wrong_answers():
     scored = apply_policy(panel(), .5, False)
-    summary = summarize_policy(scored).set_index("condition")
+    summary = summarize_policy(scored).set_index("arm")
     assert summary.loc["baseline", "n"] == 2
     assert summary.loc["self_simple", "n"] == 1
     assert summary.loc["self_simple", "accuracy"] == 0  # wrong is answered, never a fallback trigger
@@ -51,7 +51,7 @@ def test_validation_selection_ties_and_missing_configurations():
     selected = select_validation_thresholds(sweep, min_n=1)
     assert selected.iloc[0].threshold == 0
     assert select_validation_thresholds(sweep, min_n=99).empty
-    selected.loc[:, "condition"] = "teacher_simple"
+    selected.loc[:, "arm"] = "teacher_simple@gpt-5-4-petrobras"
     assert transfer_thresholds(panel(), selected).empty
 
 
@@ -64,16 +64,16 @@ def test_transfer_matched_baseline_without_fallback():
 
 def test_zero_coverage_is_nan_and_not_dropped_from_macro():
     summary = summarize_policy(apply_policy(panel(), 1, False))
-    assert pd.isna(summary.set_index("condition").loc["self_simple", "accuracy"])
+    assert pd.isna(summary.set_index("arm").loc["self_simple", "accuracy"])
     copy = summary.copy()
     copy["dataset"] = "second"
-    copy.loc[copy.condition.eq("self_simple"), ["accuracy", "n", "correct"]] = [1, 2, 2]
-    averaged = average_datasets(pd.concat([summary, copy])).set_index("condition")
+    copy.loc[copy.arm.eq("self_simple"), ["accuracy", "n", "correct"]] = [1, 2, 2]
+    averaged = average_datasets(pd.concat([summary, copy])).set_index("arm")
     assert pd.isna(averaged.loc["self_simple", "macro_accuracy"])
 
 
 def test_exact_threshold_is_accepted_and_baseline_not_gated():
-    summary = summarize_policy(apply_policy(panel(), .4, False)).set_index("condition")
+    summary = summarize_policy(apply_policy(panel(), .4, False)).set_index("arm")
     assert summary.loc["self_simple", "n"] == 2
     assert summary.loc["baseline", "n"] == 2
 

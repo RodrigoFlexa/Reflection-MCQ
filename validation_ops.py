@@ -37,6 +37,17 @@ def validation_id(explicit=None, incoming=False):
     raise ValidationNotReady("No validation run selected; start local, pull its handoff, or pass --experiment-id")
 
 
+def consolidate():
+    """Promove o run para results_definitivos e reescreve cobertura e lacunas.
+
+    Fica aqui, e não no fim de cada estágio, porque só faz sentido depois da
+    fusão das partições: antes disso o run está metade num disco e metade no
+    outro, e um arquivo definitivo montado pela metade é pior que nenhum.
+    """
+    subprocess.run([sys.executable, "consolidate_results.py", "build", "--split", "validation"],
+                   cwd=ops.ROOT, check=True)
+
+
 def part_receipt(experiment_id, stage, part):
     path = ops.receipt(experiment_id, stage)
     return path.with_name(path.name.replace(".json", f".{part}.json"))
@@ -101,6 +112,10 @@ def main():
                         help="Run only this partition's models on --gpu, so two GPUs share one run.")
     parser.add_argument("--skip-gated", action="store_true",
                         help="Leave out checkpoints this token cannot read yet; the same command fills them in later.")
+    parser.add_argument("--only-teachers",
+                        help="Na etapa teacher, gerar só estes professores aqui. O GPT-5.4 roda onde "
+                             "há credencial Azure; os quatro professores abertos, onde há GPU. "
+                             "O recibo só fica completo quando todos tiverem sido gerados.")
     for name in ops.PARTS:
         parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
                             help=f"Shorthand for --part {name}")
@@ -119,8 +134,8 @@ def main():
         experiment_id = validation_id(args.experiment_id)
         subprocess.run([sys.executable, "-u", "run_experiment.py", "merge",
                         "--experiment-id", experiment_id], cwd=ops.ROOT, check=True)
-        subprocess.run([sys.executable, "analyze_validation.py", "--experiment-id", experiment_id],
-                       cwd=ops.ROOT, check=True)
+        consolidate()
+        subprocess.run([sys.executable, "analyze_validation.py"], cwd=ops.ROOT, check=True)
         return
     if args.action == "start" and args.stage == "prepare":
         parser.error("Use start local to prepare the validation preset and evaluate self-reflection")
@@ -141,8 +156,8 @@ def main():
         if manifest.get("teacher_role") != "teacher-only" or manifest.get("experiment_preset") != "validation-threshold":
             raise ValueError("Use the validation-threshold preset: this command never starts GPT reference evaluations")
     if args.action == "analyze":
-        command = [sys.executable, "analyze_validation.py", "--experiment-id", experiment_id]
-        subprocess.run(command, cwd=ops.ROOT, check=True)
+        consolidate()
+        subprocess.run([sys.executable, "analyze_validation.py"], cwd=ops.ROOT, check=True)
     elif args.action == "restore":
         ops.restore(experiment_id, args.stage)
     elif args.action == "share":
@@ -150,7 +165,7 @@ def main():
     elif args.action == "start":
         ops.start(args.stage, experiment_id, args.gpu,
                   restore_artifacts=args.stage not in ("teacher", "finish"), part=args.part,
-                  skip_gated=args.skip_gated)
+                  skip_gated=args.skip_gated, only_teachers=args.only_teachers)
 
 
 if __name__ == "__main__":

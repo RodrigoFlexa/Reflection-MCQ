@@ -1,0 +1,283 @@
+{
+  "grid": {
+    "students": [
+      "phi2",
+      "deepseek-r1-8b",
+      "deepseek-r1-1.5b",
+      "llama3.1-8b",
+      "llama3.2-3b",
+      "qwen2.5-3b",
+      "qwen2.5-7b",
+      "ministral-3-3b",
+      "ministral-3-8b"
+    ],
+    "small_students": [
+      "phi2",
+      "deepseek-r1-1.5b",
+      "llama3.2-3b",
+      "qwen2.5-3b",
+      "ministral-3-3b"
+    ],
+    "external_teacher": "gpt-5-4-petrobras",
+    "open_teachers": [
+      "deepseek-r1-8b",
+      "llama3.1-8b",
+      "qwen2.5-7b",
+      "ministral-3-8b"
+    ],
+    "expected_cells": 85
+  },
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa",
+    "race"
+  ],
+  "universe_per_dataset": {
+    "aqua": 252,
+    "arc": 298,
+    "logiqa2": 1551,
+    "openbookqa": 499,
+    "race": 4887
+  },
+  "cells_missing": [
+    {
+      "model": "deepseek-r1-1.5b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "deepseek-r1-1.5b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "deepseek-r1-8b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "deepseek-r1-8b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "llama3.1-8b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "llama3.1-8b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "llama3.2-3b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "llama3.2-3b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "ministral-3-3b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "ministral-3-3b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "ministral-3-8b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "ministral-3-8b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "phi2",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "phi2",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "qwen2.5-3b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "qwen2.5-3b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "qwen2.5-7b",
+      "condition": "teacher_complex",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    },
+    {
+      "model": "qwen2.5-7b",
+      "condition": "teacher_simple",
+      "teacher_model": "gpt-5-4-petrobras",
+      "datasets": {
+        "aqua": 252,
+        "arc": 298,
+        "logiqa2": 1551,
+        "openbookqa": 499,
+        "race": 4887
+      },
+      "rows_missing": 7487
+    }
+  ],
+  "cells_partial": [],
+  "cells_outside_grid": [],
+  "rows_missing_total": 134766
+}

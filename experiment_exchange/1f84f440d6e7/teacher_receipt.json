@@ -1,0 +1,63 @@
+{
+  "teacher_role": "teacher-only",
+  "teachers": [
+    "gpt-5-4-petrobras",
+    "deepseek-r1-8b",
+    "llama3.1-8b",
+    "qwen2.5-7b",
+    "ministral-3-8b"
+  ],
+  "generated_this_pass": [
+    "deepseek-r1-8b",
+    "llama3.1-8b",
+    "qwen2.5-7b",
+    "ministral-3-8b"
+  ],
+  "training_sources": 4739,
+  "validation_generations": 0,
+  "training_answer_generations": 0,
+  "content_filter_events_this_pass": 0,
+  "taught": {
+    "gpt-5-4-petrobras": [],
+    "deepseek-r1-8b": [
+      "deepseek-r1-1.5b",
+      "llama3.2-3b",
+      "ministral-3-3b",
+      "phi2",
+      "qwen2.5-3b"
+    ],
+    "llama3.1-8b": [
+      "deepseek-r1-1.5b",
+      "llama3.2-3b",
+      "ministral-3-3b",
+      "phi2",
+      "qwen2.5-3b"
+    ],
+    "qwen2.5-7b": [
+      "deepseek-r1-1.5b",
+      "llama3.2-3b",
+      "ministral-3-3b",
+      "phi2",
+      "qwen2.5-3b"
+    ],
+    "ministral-3-8b": [
+      "deepseek-r1-1.5b",
+      "llama3.2-3b",
+      "ministral-3-3b",
+      "phi2",
+      "qwen2.5-3b"
+    ]
+  },
+  "missing_pairs": [
+    "gpt-5-4-petrobras/phi2",
+    "gpt-5-4-petrobras/deepseek-r1-8b",
+    "gpt-5-4-petrobras/deepseek-r1-1.5b",
+    "gpt-5-4-petrobras/llama3.1-8b",
+    "gpt-5-4-petrobras/llama3.2-3b",
+    "gpt-5-4-petrobras/qwen2.5-3b",
+    "gpt-5-4-petrobras/qwen2.5-7b",
+    "gpt-5-4-petrobras/ministral-3-3b",
+    "gpt-5-4-petrobras/ministral-3-8b"
+  ],
+  "complete": false
+}

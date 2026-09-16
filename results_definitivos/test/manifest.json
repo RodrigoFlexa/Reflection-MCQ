@@ -1,0 +1,162 @@
+{
+  "split": "test",
+  "built_at_utc": "2026-09-15T13:38:11Z",
+  "rows": 764127,
+  "sources": [
+    {
+      "path": "data/results/reflection_top1/21186c44cfbb/analysis/all_outcomes.jsonl",
+      "note": "Run 21186c44cfbb (completo), pipeline top1-two-server-v5.",
+      "stamp": {
+        "source_run": "21186c44cfbb",
+        "pipeline_version": "top1-two-server-v5"
+      },
+      "dropped_models": [
+        "deepseek-r1-0528-qwen3-8b"
+      ],
+      "rows_kept": 612981,
+      "rows_duplicate": 0,
+      "rows_filtered_out": 0
+    },
+    {
+      "path": "data/results/reflection_top1/f8009a56a83b/analysis/all_outcomes.jsonl",
+      "note": "Run f8009a56a83b (completo), pipeline top1-two-server-v5.",
+      "stamp": {
+        "source_run": "f8009a56a83b",
+        "pipeline_version": "top1-two-server-v5"
+      },
+      "dropped_models": [
+        "deepseek-r1-0528-qwen3-8b"
+      ],
+      "rows_kept": 151146,
+      "rows_duplicate": 125955,
+      "rows_filtered_out": 0
+    }
+  ],
+  "excluded_on_purpose": [],
+  "normalizations": {
+    "eval_split_filled_from_file": 0,
+    "teacher_model_filled_with_legacy_default": 100764
+  },
+  "row_key": [
+    "model",
+    "dataset",
+    "val_uid",
+    "condition",
+    "teacher_model"
+  ],
+  "duplicates_skipped": 125955,
+  "provenance": [
+    {
+      "model": "deepseek-r1-1.5b",
+      "checkpoint": "deepseek-r1-1.5b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 92367
+    },
+    {
+      "model": "deepseek-r1-8b",
+      "checkpoint": "deepseek-r1-8b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 16794
+    },
+    {
+      "model": "deepseek-r1-8b",
+      "checkpoint": "deepseek-r1-distill-llama-8b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 25191
+    },
+    {
+      "model": "gpt-5-4-petrobras",
+      "checkpoint": "gpt-5-4-petrobras",
+      "source_run": "f8009a56a83b",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 25191
+    },
+    {
+      "model": "llama3.1-8b",
+      "checkpoint": "llama3.1-8b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 41985
+    },
+    {
+      "model": "llama3.2-3b",
+      "checkpoint": "llama3.2-3b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 92367
+    },
+    {
+      "model": "ministral-3-3b",
+      "checkpoint": "ministral-3-3b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 92367
+    },
+    {
+      "model": "ministral-3-8b",
+      "checkpoint": "ministral-3-8b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 25191
+    },
+    {
+      "model": "mistral-7b-instruct",
+      "checkpoint": "mistral-7b-instruct",
+      "source_run": "f8009a56a83b",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 41985
+    },
+    {
+      "model": "phi2",
+      "checkpoint": "phi2",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 109161
+    },
+    {
+      "model": "phi4-mini",
+      "checkpoint": "phi4-mini",
+      "source_run": "f8009a56a83b",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 41985
+    },
+    {
+      "model": "qwen2.5-3b",
+      "checkpoint": "qwen2.5-3b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 92367
+    },
+    {
+      "model": "qwen2.5-7b",
+      "checkpoint": "qwen2.5-7b",
+      "source_run": "21186c44cfbb",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 25191
+    },
+    {
+      "model": "qwen3-8b",
+      "checkpoint": "qwen3-8b",
+      "source_run": "f8009a56a83b",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 41985
+    }
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa",
+    "race"
+  ],
+  "universe_per_dataset": {
+    "aqua": 246,
+    "arc": 1169,
+    "logiqa2": 1550,
+    "openbookqa": 498,
+    "race": 4934
+  }
+}

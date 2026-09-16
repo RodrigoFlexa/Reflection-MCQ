@@ -1,0 +1,52 @@
+[
+  {
+    "dataset": "aqua",
+    "train": 79040,
+    "validation": 246,
+    "train_duplicates_removed": 15888,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 11,
+    "article_overlap_removed": 0,
+    "eval_split": "test"
+  },
+  {
+    "dataset": "arc",
+    "train": 1110,
+    "validation": 1169,
+    "train_duplicates_removed": 1,
+    "validation_duplicates_removed": 2,
+    "cross_split_removed": 6,
+    "article_overlap_removed": 0,
+    "eval_split": "test"
+  },
+  {
+    "dataset": "logiqa2",
+    "train": 11395,
+    "validation": 1550,
+    "train_duplicates_removed": 926,
+    "validation_duplicates_removed": 15,
+    "cross_split_removed": 216,
+    "article_overlap_removed": 0,
+    "eval_split": "test"
+  },
+  {
+    "dataset": "openbookqa",
+    "train": 4805,
+    "validation": 498,
+    "train_duplicates_removed": 126,
+    "validation_duplicates_removed": 2,
+    "cross_split_removed": 23,
+    "article_overlap_removed": 0,
+    "eval_split": "test"
+  },
+  {
+    "dataset": "race",
+    "train": 87864,
+    "validation": 4934,
+    "train_duplicates_removed": 2,
+    "validation_duplicates_removed": 0,
+    "cross_split_removed": 0,
+    "article_overlap_removed": 0,
+    "eval_split": "test"
+  }
+]

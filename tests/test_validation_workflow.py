@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import run_experiment as run
+from rmcq import grid
 import experiment_ops as ops
 from rmcq.config import MODELS
 from rmcq.test_analysis import load_run
@@ -64,15 +65,22 @@ def test_nine_model_local_then_teacher_completion_preserves_self(tmp_path, monke
         return original_generate(*args, **kwargs)
     monkeypatch.setattr(run, "cached_generate", record)
     stage("teacher")
-    assert len(calls) == 9 * 2
+    # Uma chamada por (professor, aluno, profundidade): o externo ensina os nove,
+    # cada professor aberto ensina os cinco de até 3B.
+    assert len(calls) == len(grid.teacher_pairs()) * 2 == 58
     assert all("teacher_" in p.name for p, _ in calls)
+    taught = json.loads((path.parent / "teacher_receipt.json").read_text())["taught"]
+    assert {t: sorted(grid.students_for(t)) for t in grid.TEACHERS} == taught
     assert not (path.parent / "teacher/validation.jsonl").exists()
     assert not (path.parent / "teacher/train.jsonl").exists()
     assert json.loads((path.parent / "teacher_receipt.json").read_text())["validation_generations"] == 0
     calls.clear()
     stage("finish")
     final = run.load_jsonl(result / "analysis/all_outcomes.jsonl")
-    assert len(final) == 9 * 5 * 2 * 5
+    # 9 alunos x 5 datasets x 2 itens, cada um nas células que a grade lhe atribui.
+    assert len(final) == sum(len(grid.conditions_for(m)) for m in grid.STUDENTS) * 5 * 2
+    assert {(r["condition"], r.get("teacher_model")) for r in final} == {
+        cell for m in grid.STUDENTS for cell in grid.conditions_for(m)}
     assert all(r["model"] != run.DEFAULT_TEACHER for r in final)
     assert [r for r in final if r["condition"] in run.SELF_CONDITIONS] == partial
     assert all("baseline" not in key and "self_" not in key for _, keys in calls for key in keys)
@@ -81,8 +89,8 @@ def test_nine_model_local_then_teacher_completion_preserves_self(tmp_path, monke
     assert len(load_run(tmp_path, rid, "validation", phase="self")[0]) == len(partial)
     views = study(frame, thresholds=[0, .9, 1], min_n=1, min_coverage=0)
     assert set(views) == {"completo", "filtrado"}
-    assert not views["completo"]["selected"].condition.str.startswith("teacher").any()
-    assert views["completo"]["thresholds"].query("threshold == 1 and condition != 'baseline'").n.eq(0).all()
+    assert not views["completo"]["selected"].arm.str.startswith("teacher").any()
+    assert views["completo"]["thresholds"].query("threshold == 1 and arm != 'baseline'").n.eq(0).all()
 
 
 def test_preset_rejects_hf_and_test(monkeypatch):

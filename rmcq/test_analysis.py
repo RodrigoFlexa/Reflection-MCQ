@@ -8,11 +8,39 @@ import numpy as np
 import pandas as pd
 
 from rmcq.analysis import outcome_flags
+from rmcq.grid import LEGACY_TEACHER, canonical
 
 KEY = ["model", "dataset", "val_uid"]
-GROUP = ["model", "dataset", "condition"]
+# O eixo da análise é o braço, não a condição. Com um professor só os dois
+# coincidiam; com cinco, "teacher_simple" deixaria de identificar uma medida —
+# cinco linhas diferentes disputariam o mesmo nome na mesma questão.
+GROUP = ["model", "dataset", "arm"]
 CONDITIONS = ["baseline", "self_simple", "self_complex", "teacher_simple", "teacher_complex"]
 FAILURE_WORDS = ("exceeded", "exhausted", "content_filter", "unavailable", "not_generated", "unresolved", "error")
+
+CONDITION_LABELS = {"baseline": "Baseline", "self_simple": "Self simples",
+                    "self_complex": "Self complexa", "teacher_simple": "Teacher simples",
+                    "teacher_complex": "Teacher complexa"}
+CONDITION_COLORS = {"baseline": "#222222", "self_simple": "#1f77b4", "self_complex": "#17becf",
+                    "teacher_simple": "#d62728", "teacher_complex": "#ff7f0e"}
+
+
+def arm_of(condition: str, teacher_model=None) -> str:
+    """Nome único de um braço experimental: a condição e, se houver, o professor."""
+    if condition in ("teacher_simple", "teacher_complex") and teacher_model:
+        return f"{condition}@{teacher_model}"
+    return condition
+
+
+def split_arm(arm: str) -> tuple[str, str | None]:
+    condition, _, teacher = str(arm).partition("@")
+    return condition, teacher or None
+
+
+def arm_label(arm: str) -> str:
+    condition, teacher = split_arm(arm)
+    base = CONDITION_LABELS.get(condition, condition)
+    return f"{base} ({teacher})" if teacher else base
 
 
 def read_outcomes(path: Path, split: str) -> pd.DataFrame:
@@ -28,6 +56,16 @@ def read_outcomes(path: Path, split: str) -> pd.DataFrame:
                 raise ValueError(f"Unexpected split {actual!r} in {path}; expected {split}")
             row = {k: raw.get(k) for k in [*KEY, "condition", "similarity", "correct", "source_uid", "race_subset"]}
             row["eval_split"] = actual
+            # A família é a unidade de comparação; o checkpoint fica ao lado.
+            row["model_checkpoint"] = raw.get("model_checkpoint") or raw.get("model")
+            row["model"] = canonical(row["model"])
+            teacher = canonical(raw.get("teacher_model"))
+            if row["condition"] in ("teacher_simple", "teacher_complex") and not teacher:
+                teacher = LEGACY_TEACHER
+            row["teacher_model"] = teacher if row["condition"] in ("teacher_simple", "teacher_complex") else None
+            row["arm"] = arm_of(row["condition"], row["teacher_model"])
+            row["source_run"] = raw.get("source_run")
+            row["pipeline_version"] = raw.get("pipeline_version")
             row["audit_flags"] = outcome_flags(raw)
             statuses = [str(raw.get(k) or "") for k in ("eval_method", "finish_reason", "reflection_finish_reason", "source_answer_finish_reason")]
             row["failure"] = any(word in status for word in FAILURE_WORDS for status in statuses)
@@ -37,9 +75,9 @@ def read_outcomes(path: Path, split: str) -> pd.DataFrame:
     frame = pd.DataFrame(rows)
     if frame.empty:
         return frame
-    if frame[[*KEY, "condition"]].isna().any().any():
+    if frame[[*KEY, "condition", "arm"]].isna().any().any():
         raise ValueError(f"Missing identifiers in {path}")
-    if frame.duplicated([*KEY, "condition"]).any():
+    if frame.duplicated([*KEY, "arm"]).any():
         raise ValueError(f"Duplicate outcomes in {path}")
     frame["correct"] = pd.to_numeric(frame["correct"], errors="raise")
     if not frame["correct"].dropna().isin([0, 1]).all():
@@ -75,27 +113,39 @@ def load_run(root: Path, run_id: str, split: str, restore: bool = False, phase: 
     if not paths:
         return pd.DataFrame(), []
     frame = pd.concat([read_outcomes(p, split) for p in paths], ignore_index=True)
-    if frame.duplicated([*KEY, "condition"]).any():
+    if frame.duplicated([*KEY, "arm"]).any():
         raise ValueError(f"Overlapping outcome files in run {run_id}")
     frame["run_id"] = run_id
     return frame, [str(p.relative_to(root)) for p in paths]
 
 
+def ensure_arm(frame: pd.DataFrame) -> pd.DataFrame:
+    """Garante a coluna do braço para quadros montados fora de `read_outcomes`."""
+    if "arm" in frame:
+        return frame
+    frame = frame.copy()
+    teacher = frame["teacher_model"] if "teacher_model" in frame else pd.Series(None, index=frame.index, dtype=object)
+    frame["teacher_model"] = teacher
+    frame["arm"] = [arm_of(c, t) for c, t in zip(frame.condition, teacher)]
+    return frame
+
+
 def build_panel(frame: pd.DataFrame, exclude_flags=()) -> pd.DataFrame:
     """Baseline defines the question universe; restore missing condition rows explicitly."""
-    baseline = frame.loc[frame.condition.eq("baseline")].copy()
+    frame = ensure_arm(frame)
+    baseline = frame.loc[frame.arm.eq("baseline")].copy()
     if baseline.empty:
         raise ValueError("No baseline available")
     if frame.merge(baseline[KEY], on=KEY, how="left", indicator=True)["_merge"].eq("left_only").any():
         raise ValueError("An experimental question has no baseline row")
     if frame.groupby(KEY).similarity.nunique().gt(1).any():
         raise ValueError("Similarity differs across conditions for the same question")
-    available = frame[["model", "dataset", "condition"]].drop_duplicates()
+    available = frame[["model", "dataset", "condition", "teacher_model", "arm"]].drop_duplicates()
     grid = baseline[KEY + ["similarity", "race_subset", "correct", "failure"]].rename(
         columns={"correct": "baseline_correct", "failure": "baseline_failure"})
     grid = grid.merge(available, on=["model", "dataset"], how="inner")
-    original = frame[[*KEY, "condition", "correct", "failure", "audit_flags", "audit_detail_available"]]
-    panel = grid.merge(original, on=[*KEY, "condition"], how="left", validate="one_to_one", indicator=True)
+    original = frame[[*KEY, "arm", "correct", "failure", "audit_flags", "audit_detail_available"]]
+    panel = grid.merge(original, on=[*KEY, "arm"], how="left", validate="one_to_one", indicator=True)
     panel["missing_row"] = panel.pop("_merge").eq("left_only")
     panel["flagged"] = panel.audit_flags.map(lambda v: bool(set(v if isinstance(v, list) else []).intersection(exclude_flags)))
     panel["usable"] = panel.correct.notna() & panel.failure.eq(False) & ~panel.flagged & ~panel.missing_row
@@ -111,7 +161,7 @@ def apply_policy(panel: pd.DataFrame, threshold=None, fallback: bool = True) -> 
     Thresholds never gate baseline. Equality is accepted (similarity >= threshold).
     """
     out = panel.copy()
-    base = out.condition.eq("baseline")
+    base = out.arm.eq("baseline")
     above = pd.Series(True, index=out.index) if threshold is None else out.similarity.ge(threshold)
     out["below_threshold"] = ~base & ~above
     use = out.usable & (base | above)
@@ -151,7 +201,7 @@ def threshold_sweep(panel, thresholds, fallback=True):
 
 def average_datasets(summary: pd.DataFrame) -> pd.DataFrame:
     """Macro treats datasets equally; micro treats selected questions equally."""
-    keys = [k for k in ["view", "model", "condition", "threshold"] if k in summary]
+    keys = [k for k in ["view", "model", "arm", "threshold"] if k in summary]
     result = summary.groupby(keys, dropna=False).agg(
         macro_accuracy=("accuracy", "mean"), correct=("correct", "sum"), n=("n", "sum"),
         n_total=("n_total", "sum"), n_datasets=("dataset", "nunique"),
@@ -165,7 +215,7 @@ def average_datasets(summary: pd.DataFrame) -> pd.DataFrame:
 
 
 def select_validation_thresholds(sweep, min_n=30, min_coverage=0.0):
-    eligible = sweep.loc[~sweep.condition.eq("baseline") & sweep.n.ge(min_n)
+    eligible = sweep.loc[~sweep.arm.eq("baseline") & sweep.n.ge(min_n)
                          & sweep.coverage.ge(min_coverage) & sweep.accuracy.notna()].copy()
     # Deterministic tie break: lower threshold, preserving wider applicability.
     return eligible.sort_values([*GROUP, "accuracy", "threshold"],
@@ -177,14 +227,14 @@ def transfer_thresholds(test_panel, selected, fallback=True):
     records = []
     for choice in selected.to_dict("records"):
         match = test_panel.model.eq(choice["model"]) & test_panel.dataset.eq(choice["dataset"])
-        sub = test_panel.loc[match & test_panel.condition.isin(["baseline", choice["condition"]])]
-        if sub.empty or not sub.condition.eq(choice["condition"]).any():
+        sub = test_panel.loc[match & test_panel.arm.isin(["baseline", choice["arm"]])]
+        if sub.empty or not sub.arm.eq(choice["arm"]).any():
             continue
         scored = apply_policy(sub, choice["threshold"], fallback)
-        experiment = scored.loc[scored.condition.eq(choice["condition"])]
+        experiment = scored.loc[scored.arm.eq(choice["arm"])]
         metric = summarize_policy(experiment).iloc[0].to_dict()
         # Matched baseline on the exact selected test questions, even without fallback.
-        baseline = scored.loc[scored.condition.eq("baseline")].set_index(KEY)
+        baseline = scored.loc[scored.arm.eq("baseline")].set_index(KEY)
         chosen_keys = pd.MultiIndex.from_frame(experiment.loc[experiment.included, KEY])
         matched = baseline.reindex(chosen_keys).baseline_score.fillna(0)
         metric.update(threshold=choice["threshold"], validation_accuracy=choice["accuracy"],

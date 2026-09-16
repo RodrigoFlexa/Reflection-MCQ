@@ -18,13 +18,13 @@ ROOT = Path(__file__).resolve().parent
 KNOWN_FAILURES = (
     (("not subscriptable", "flashinfer"),
      ("FlashInfer annotates array.array[int], which only Python 3.12+ can subscript. "
-      "Run python repair_flashinfer_annotations.py in this same venv, then start again.")),
+      "Run python tools/repair_flashinfer_annotations.py in this same venv, then start again.")),
     (("CUDA out of memory",),
      ("The GPU had no room for this engine. Use a free GPU, or lower "
       "RMCQ_VLLM_MAX_NUM_SEQS or the model's max_model_len before starting again.")),
     (("fd_exchange annotations are incompatible",),
      ("The preflight guard caught the FlashInfer annotation defect before loading weights. "
-      "Run python repair_flashinfer_annotations.py in this same venv, then start again.")),
+      "Run python tools/repair_flashinfer_annotations.py in this same venv, then start again.")),
     (("gated repo",),
      ("The checkpoint needs accepted terms and a valid HF_TOKEN on this server. "
       "Access is per repository: a grant on one Llama repo does not cover another.")),
@@ -148,6 +148,7 @@ def write_skips(part: str | None, skipped: list[str], access: dict) -> None:
 
 def run(args) -> None:
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
     from repair_flashinfer_annotations import check_compatibility
     flashinfer_report = check_compatibility()
     import rmcq  # loads .env before CUDA
@@ -157,7 +158,7 @@ def run(args) -> None:
     versions = {p: importlib.metadata.version(p) for p in ("vllm", "mistral-common", "torch", "transformers")}
     for package, minimum in (("vllm", "0.12.0"), ("mistral-common", "1.8.6")):
         if Version(versions[package]) < Version(minimum):
-            raise RuntimeError(f"Need {package}>={minimum}; install requirements-validation.txt in the GPU environment")
+            raise RuntimeError(f"Need {package}>={minimum}; install requirements/validation.txt in the GPU environment")
     if args.model:
         if args.model not in VALIDATION_MODELS:
             raise ValueError("Not a validation model")

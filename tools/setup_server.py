@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def pip_install(requirements, preserve_gpu=False):
@@ -39,9 +39,9 @@ def main():
     args = parser.parse_args()
     if args.server == "gpu":
         if args.install_gpu_stack:
-            pip_install("requirements.txt")
+            pip_install("requirements/base.txt")
         else:
-            pip_install("requirements-data.txt", preserve_gpu=True)
+            pip_install("requirements/data.txt", preserve_gpu=True)
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
         import rmcq  # load .env before importing any CUDA libraries
         import torch
@@ -53,14 +53,14 @@ def main():
         if not torch.cuda.is_available():
             raise RuntimeError(f"CUDA unavailable on selected GPU {args.gpu}; no experiment was started")
         print(f"GPU {args.gpu}: {torch.cuda.get_device_name(0)}; vLLM {vllm.__version__}; Transformers {transformers.__version__}", flush=True)
-        subprocess.run([sys.executable, "prepare_datasets.py", "--datasets", "race"], cwd=ROOT, check=True)
+        subprocess.run([sys.executable, "tools/prepare_datasets.py", "--datasets", "race"], cwd=ROOT, check=True)
     else:
         # All RACE splits arrive byte-for-byte from the GPU; no Hub/CUDA dependency.
         command = [sys.executable, "experiment_ops.py", "restore", "prepare"]
         if args.experiment_id:
             command += ["--experiment-id", args.experiment_id]
         subprocess.run(command, cwd=ROOT, check=True)
-        pip_install("requirements-azure.txt")
+        pip_install("requirements/azure.txt")
         import rmcq
         from rmcq.config import AZURE_API_KEY_VAR, AZURE_BASE_URL_VAR, AZURE_ENDPOINT_VAR
         if not os.environ.get(AZURE_API_KEY_VAR) or not (os.environ.get(AZURE_BASE_URL_VAR) or os.environ.get(AZURE_ENDPOINT_VAR)):

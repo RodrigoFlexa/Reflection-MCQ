@@ -15,7 +15,7 @@ Não execute duas cópias da mesma etapa em checkouts diferentes na mesma GPU.
 git fetch origin
 git switch lean-backends
 git pull --ff-only origin lean-backends
-python setup_server.py gpu --gpu 3 && python experiment_ops.py start prepare --gpu 3
+python tools/setup_server.py gpu --gpu 3 && python experiment_ops.py start prepare --gpu 3
 ```
 
 O instalador adiciona as dependências de dados preservando as versões já
@@ -23,7 +23,7 @@ instaladas de torch, vLLM, Transformers, tokenizers, Hub, NumPy e safetensors.
 Verifica CUDA e as versões mínimas necessárias para os novos modelos.
 Não recria o ambiente, não altera `.env` e não reinstala toda a pilha GPU.
 Se for um ambiente **novo**, instale a pilha com
-`python setup_server.py gpu --gpu 3 --install-gpu-stack` antes de iniciar.
+`python tools/setup_server.py gpu --gpu 3 --install-gpu-stack` antes de iniciar.
 
 O RACE usa `ehovy/race`, configuração `all`, com os três splits oficiais.
 Uma instalação local íntegra é reutilizada, sem baixar novamente.
@@ -74,13 +74,13 @@ Não use force push. Um erro de rede no push não exige regenerar o experimento.
 git fetch origin
 git switch lean-backends
 git pull --ff-only origin lean-backends
-python setup_server.py petrobras && python experiment_ops.py start teacher
+python tools/setup_server.py petrobras && python experiment_ops.py start teacher
 ```
 
 O instalador restaura e verifica todos os arquivos recebidos da GPU, inclusive
 `data/processed/race/{train,validation,test}.jsonl`. Não precisa acessar o
 Hugging Face, nem instalar torch, CUDA, vLLM ou datasets nesse servidor.
-Instala somente `requirements-azure.txt` e verifica a presença das credenciais
+Instala somente `requirements/azure.txt` e verifica a presença das credenciais
 Azure locais. Mantenha endpoint, chave e CA corporativa no `.env` já utilizado.
 
 O teacher lê os itens completos dos pares recebidos. Ele:

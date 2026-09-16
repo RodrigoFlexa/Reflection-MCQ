@@ -41,7 +41,7 @@ def available_backends() -> dict[str, str]:
             else f"ok (openai {openai.__version__})"
         )
     except ImportError:
-        status["azure"] = "indisponível: pip install -r requirements-azure.txt"
+        status["azure"] = "indisponível: pip install -r requirements/azure.txt"
 
     try:
         import requests

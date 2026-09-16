@@ -1,0 +1,22 @@
+{
+  "pairs": 7487,
+  "unique_training_sources": 4739,
+  "student_models": [
+    "phi2",
+    "deepseek-r1-0528-qwen3-8b",
+    "deepseek-r1-distill-qwen-1.5b",
+    "llama3.1-8b",
+    "llama3.2-3b",
+    "qwen2.5-3b",
+    "qwen2.5-7b",
+    "ministral-3-3b",
+    "ministral-3-8b"
+  ],
+  "judge_model": "llama3.1-8b",
+  "content_filter_events": 0,
+  "merged_from": [
+    "p1",
+    "p2"
+  ],
+  "complete": true
+}

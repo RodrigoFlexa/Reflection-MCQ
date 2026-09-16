@@ -69,11 +69,27 @@ def plot_study(views, directory: Path, *, auto_ylim=True, show=True, models_per_
     import matplotlib.pyplot as plt
     from matplotlib.ticker import PercentFormatter
     from rmcq.plotting import accuracy_ylim
-    from rmcq.test_analysis import CONDITIONS
-    colors = dict(zip(CONDITIONS, ["#222222", "#1f77b4", "#17becf", "#d62728", "#ff7f0e"]))
-    labels = dict(zip(CONDITIONS, ["Baseline", "Self simples", "Self complexa", "Teacher simples", "Teacher complexa"]))
+    from rmcq.test_analysis import CONDITION_COLORS, arm_label, split_arm
+    # Cada professor ganha o tom da sua condição com uma variação de brilho, para
+    # que as curvas de professor continuem legíveis como um grupo mesmo quando
+    # forem cinco em vez de uma.
+    def arm_color(arm, teachers):
+        condition, teacher = split_arm(arm)
+        base = CONDITION_COLORS.get(condition, "#777777")
+        if not teacher or len(teachers) < 2:
+            return base
+        rgb = [int(base[i:i + 2], 16) for i in (1, 3, 5)]
+        fade = 0.45 * teachers.index(teacher) / max(1, len(teachers) - 1)
+        return "#" + "".join(f"{int(c + (255 - c) * fade):02x}" for c in rgb)
     plt.style.use("seaborn-v0_8-whitegrid")
     pool = pd.concat([v["thresholds"] for v in views.values()])
+    # Ordem estável das curvas: a das condições, e dentro de cada uma a dos
+    # professores, para que a legenda não dance entre uma figura e outra.
+    order = list(CONDITION_COLORS)
+    arms = sorted(pool.arm.dropna().unique(),
+                  key=lambda a: (order.index(split_arm(a)[0]) if split_arm(a)[0] in order else len(order),
+                                 split_arm(a)[1] or ""))
+    teachers = sorted({t for t in (split_arm(a)[1] for a in arms) if t})
     for view, tables in views.items():
         grouped = list(tables["thresholds"].groupby("model"))
         if not grouped:
@@ -90,15 +106,15 @@ def plot_study(views, directory: Path, *, auto_ylim=True, show=True, models_per_
                 ax = axes[row, col]
                 part = group.loc[group.dataset.eq(dataset) & group.threshold.ge(0)]
                 shared = pool.loc[pool.model.eq(model) & pool.dataset.eq(dataset) & pool.threshold.ge(0)]
-                for condition in CONDITIONS:
-                    curve = part.loc[part.condition.eq(condition)]
+                for arm in arms:
+                    curve = part.loc[part.arm.eq(arm)]
                     if curve.empty:
                         continue
                     ax.plot(
                         curve.threshold,
                         curve["accuracy"],
-                        label=labels[condition],
-                        color=colors[condition],
+                        label=arm_label(arm),
+                        color=arm_color(arm, teachers),
                         marker=".",
                     )
                 if not shared.empty:
@@ -114,7 +130,7 @@ def plot_study(views, directory: Path, *, auto_ylim=True, show=True, models_per_
                 axes[row, col].axis("off")
             fig.suptitle(f"Validação | {view} | {model}")
             if handles:
-                fig.legend(handles, legend_labels, loc="upper center", bbox_to_anchor=(0.5, 1.01), ncol=5, fontsize=7)
+                fig.legend(handles, legend_labels, loc="upper center", bbox_to_anchor=(0.5, 1.01), ncol=min(5, max(1, len(arms))), fontsize=7)
             fig.tight_layout(rect=(0, 0, 1, .98))
             fig.savefig(directory / f"{view}_{model}_grid_accuracy.png", dpi=130, bbox_inches="tight")
             fig.savefig(directory / f"{view}_{model}_grid_accuracy.pdf", bbox_inches="tight")

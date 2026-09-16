@@ -57,7 +57,7 @@ def check_compatibility() -> dict:
     except TypeError:
         if patched_source(source) != source:
             raise RuntimeError("FlashInfer fd_exchange annotations are incompatible with this Python. "
-                               "Run: python repair_flashinfer_annotations.py") from None
+                               "Run: python tools/repair_flashinfer_annotations.py") from None
     return report
 
 
@@ -89,7 +89,7 @@ def main():
             print(json.dumps({"status": "ok", **check_compatibility()}, indent=2))
         except RuntimeError as exc:
             print(json.dumps({"status": "needs_repair", "reason": str(exc),
-                              "fix": "python repair_flashinfer_annotations.py"}, indent=2))
+                              "fix": "python tools/repair_flashinfer_annotations.py"}, indent=2))
             raise SystemExit(1) from None
         return
     installed = installed_target()

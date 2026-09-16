@@ -1,0 +1,147 @@
+{
+  "split": "validation",
+  "built_at_utc": "2026-09-15T00:07:52Z",
+  "rows": 501629,
+  "sources": [
+    {
+      "path": "data/results/reflection_top1/1f84f440d6e7/analysis/all_outcomes.jsonl",
+      "note": "Run 1f84f440d6e7 (completo), pipeline top1-two-server-v5.",
+      "stamp": {
+        "source_run": "1f84f440d6e7",
+        "pipeline_version": "top1-two-server-v5"
+      },
+      "dropped_models": [
+        "deepseek-r1-0528-qwen3-8b"
+      ],
+      "rows_kept": 501629,
+      "rows_duplicate": 0,
+      "rows_filtered_out": 0
+    },
+    {
+      "path": "data/results/reflection_top1/bf7731c4ac1f/self_eval/analysis/all_outcomes.jsonl",
+      "note": "Run bf7731c4ac1f (só autorreflexão), pipeline top1-two-server-v5.",
+      "stamp": {
+        "source_run": "bf7731c4ac1f",
+        "pipeline_version": "top1-two-server-v5"
+      },
+      "dropped_models": [
+        "deepseek-r1-0528-qwen3-8b"
+      ],
+      "rows_kept": 0,
+      "rows_duplicate": 179688,
+      "rows_filtered_out": 22461
+    }
+  ],
+  "excluded_on_purpose": [
+    {
+      "path": "data/results/reflection_top1/*/self_eval/analysis/all_outcomes.jsonl",
+      "what": "todas as linhas de deepseek-r1-0528-qwen3-8b",
+      "why": "o DeepSeek da grade é a destilação sobre Llama, por padronização; o 0528 é sobre Qwen3, outra base. Não é o mesmo modelo, então as linhas dele não contam como deepseek-r1-8b nem entram como um décimo aluno",
+      "rows": 22461
+    },
+    {
+      "path": "data/results/reflection_top1/91ccab5e5028/analysis/all_outcomes.jsonl",
+      "what": "o run v4 inteiro (phi2, deepseek-r1-distill-llama-8b, llama3.1-8b)",
+      "why": "gerado com transfer_prompt e teacher_reflection_prompts do pipeline v4, substituídos no v5. É a única destilação-Llama de 8B que existe em disco hoje, mas cobre quatro datasets (sem race) e sob prompts antigos: entraria como revisão misturada, não como dado faltante. O modelo precisa ser gerado sob o v5",
+      "rows": 39000
+    }
+  ],
+  "normalizations": {
+    "eval_split_filled_from_file": 0,
+    "teacher_model_filled_with_legacy_default": 0
+  },
+  "row_key": [
+    "model",
+    "dataset",
+    "val_uid",
+    "condition",
+    "teacher_model"
+  ],
+  "duplicates_skipped": 179688,
+  "provenance": [
+    {
+      "model": "deepseek-r1-1.5b",
+      "checkpoint": "deepseek-r1-1.5b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 59896
+    },
+    {
+      "model": "deepseek-r1-1.5b",
+      "checkpoint": "deepseek-r1-distill-qwen-1.5b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 22461
+    },
+    {
+      "model": "deepseek-r1-8b",
+      "checkpoint": "deepseek-r1-8b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 22461
+    },
+    {
+      "model": "llama3.1-8b",
+      "checkpoint": "llama3.1-8b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 22461
+    },
+    {
+      "model": "llama3.2-3b",
+      "checkpoint": "llama3.2-3b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 82357
+    },
+    {
+      "model": "ministral-3-3b",
+      "checkpoint": "ministral-3-3b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 82357
+    },
+    {
+      "model": "ministral-3-8b",
+      "checkpoint": "ministral-3-8b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 22461
+    },
+    {
+      "model": "phi2",
+      "checkpoint": "phi2",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 82357
+    },
+    {
+      "model": "qwen2.5-3b",
+      "checkpoint": "qwen2.5-3b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 82357
+    },
+    {
+      "model": "qwen2.5-7b",
+      "checkpoint": "qwen2.5-7b",
+      "source_run": "1f84f440d6e7",
+      "pipeline_version": "top1-two-server-v5",
+      "rows": 22461
+    }
+  ],
+  "datasets": [
+    "aqua",
+    "arc",
+    "logiqa2",
+    "openbookqa",
+    "race"
+  ],
+  "universe_per_dataset": {
+    "aqua": 252,
+    "arc": 298,
+    "logiqa2": 1551,
+    "openbookqa": 499,
+    "race": 4887
+  }
+}

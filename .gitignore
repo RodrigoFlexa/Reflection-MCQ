@@ -40,3 +40,26 @@ logs/
 .tmp_test_exchange/
 .tmp_test_results/
 .run_state/
+
+# Arquivo morto: o que saiu de circulação continua no disco, fora do Git.
+_archive/
+
+# results_definitivos: o README, o manifest, a cobertura e as lacunas são
+# versionados — são eles que tornam o resultado auditável e cabem num diff.
+# O all_outcomes.jsonl tem centenas de MB e é reconstruível por
+# `python consolidate_results.py build`, então fica de fora.
+results_definitivos/*/all_outcomes.jsonl
+results_definitivos/*/all_outcomes.jsonl.tmp
+results_definitivos/*/analysis/
+
+# Pacotes de resultados gerados para compartilhar.
+*.zip
+
+# Artefatos de geração dos runs: pares, tentativas de treino e reflexões somam
+# gigabytes e são reproduzíveis. O que fica versionado de cada run é o metadado
+# que explica o que ele foi — manifest, recibos e auditoria da recuperação —,
+# porque é isso que a consolidação lê e o que torna um número rastreável.
+# A troca entre servidores usa os pacotes de experiment_handoff/, não estes.
+experiment_exchange/*/students/
+experiment_exchange/*/pairs/
+experiment_exchange/*/teacher/

@@ -39,6 +39,8 @@ def compact_audit(gen: dict) -> dict:
 
 
 def annotate_outcomes(rows: list[dict], pairs: list[dict], students: dict, teachers: dict) -> list[dict]:
+    """`teachers` é indexado por (aluno, professor); o formato antigo, só por
+    aluno, continua aceito e é lido como sendo do professor externo."""
     by_uid = {p["val_uid"]: p for p in pairs}
     annotated = []
     for original in rows:
@@ -52,7 +54,14 @@ def annotate_outcomes(rows: list[dict], pairs: list[dict], students: dict, teach
         if row["condition"] != "baseline":
             author, depth = row["condition"].split("_", 1)
             attempt = students.get(row["model"], {}).get(row["source_uid"], {})
-            reflection = attempt if author == "self" else teachers.get(row["model"], {}).get(row["source_uid"], {})
+            if author == "self":
+                reflection = attempt
+            else:
+                teacher = row.get("teacher_model")
+                by_pair = teachers.get((row["model"], teacher))
+                if by_pair is None:
+                    by_pair = teachers.get(row["model"], {})
+                reflection = by_pair.get(row["source_uid"], {})
             row["source_answer_audit"] = compact_audit(attempt.get("answer_generation", {}))
             row["source_answer_finish_reason"] = attempt.get("answer_finish_reason")
             row["reflection_audit"] = compact_audit(reflection.get("reflection_generations", {}).get(depth, {}))

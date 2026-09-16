@@ -1,6 +1,6 @@
 """Recorte leve de all_outcomes.jsonl, lido direto do pacote de handoff `finish`.
 
-Uso: python slim_outcomes.py [experiment_id]
+Uso: python tools/slim_outcomes.py [experiment_id]
 
 Escreve data/results/reflection_top1/<id>/analysis/outcomes_slim.jsonl com os campos
 usados pela analise (incluindo audit_flags ja consolidado por rmcq.analysis.outcome_flags),
@@ -9,7 +9,7 @@ completo; `python experiment_ops.py restore finish` continua sendo a restauracao
 """
 import json, gzip, tarfile, io, time, sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from rmcq.analysis import outcome_flags
 EXP = sys.argv[1] if len(sys.argv) > 1 else "f8009a56a83b"

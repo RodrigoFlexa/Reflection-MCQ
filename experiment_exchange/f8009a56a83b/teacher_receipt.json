@@ -1,0 +1,16 @@
+{
+  "teacher_model": "gpt-5-4-petrobras",
+  "training_sources": 5106,
+  "validation_generations": 25191,
+  "student_models_taught": [
+    "phi2",
+    "deepseek-r1-distill-llama-8b",
+    "llama3.1-8b",
+    "phi4-mini",
+    "mistral-7b-instruct",
+    "qwen3-8b"
+  ],
+  "content_filter_events": 110,
+  "unavailable_validation_conditions": 180,
+  "complete": true
+}

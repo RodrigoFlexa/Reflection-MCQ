@@ -209,7 +209,7 @@ class AzureBackend(Backend):
         except ImportError as exc:  # noqa: TRY003
             raise ImportError(
                 "o SDK da OpenAI não está instalado. "
-                "Rode: pip install -r requirements-azure.txt"
+                "Rode: pip install -r requirements/azure.txt"
             ) from exc
 
         api_key = os.environ.get(AZURE_API_KEY_VAR, "").strip()

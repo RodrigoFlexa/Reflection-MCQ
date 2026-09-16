@@ -101,14 +101,36 @@ class ModelSpec:
 # Alguns modelos de exemplo, prontos para rodar via vLLM ou transformers
 # (provider="hf" == pesos locais). Apague os que não usar, adicione os seus.
 MODELS: dict[str, ModelSpec] = {
+    # O DeepSeek do protocolo é destilação sobre Llama, por padronização: é a
+    # base que o experimento usa nos dois pontos em que pode escolher.
+    "deepseek-r1-8b": ModelSpec(
+        key="deepseek-r1-8b", repo_id="deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        extra_kwargs={"max_model_len": 8192},
+        notes="deepseek-r1:8b, destilação sobre Llama. Reasoning is stripped, not assumed disabled.",
+    ),
+    # 1.5B fica sobre Qwen porque não há alternativa: a família Distill-Llama
+    # oficial tem 8B e 70B, e mais nada. Não existe DeepSeek-R1-Distill-Llama-1.5B.
+    # Conferido no índice do Hugging Face em 13/09/2026: as destilações são
+    # Qwen 1.5B/7B/14B/32B e Llama 8B/70B.
+    "deepseek-r1-1.5b": ModelSpec(
+        key="deepseek-r1-1.5b", repo_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        extra_kwargs={"max_model_len": 8192},
+        notes="deepseek-r1:1.5b. Sobre Qwen por falta de uma destilação Llama deste tamanho.",
+    ),
+    # Fora da grade, e mantido registrado só para leitura. O run de validação
+    # bf7731c4ac1f afirma no manifest ter rodado ESTE checkpoint, e é dele que
+    # saem os outros oito alunos: apagar a chave tornaria aquele run impossível
+    # de reabrir, de conferir e de fundir.
     "deepseek-r1-0528-qwen3-8b": ModelSpec(
         key="deepseek-r1-0528-qwen3-8b", repo_id="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
         extra_kwargs={"max_model_len": 8192},
-        notes="Current Ollama deepseek-r1:8b family; reasoning is stripped, not assumed disabled.",
+        notes="FORA da grade: o deepseek-r1-8b do protocolo é a destilação sobre Llama. "
+              "Registrado apenas para que runs antigos continuem legíveis.",
     ),
     "deepseek-r1-distill-qwen-1.5b": ModelSpec(
         key="deepseek-r1-distill-qwen-1.5b", repo_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
         extra_kwargs={"max_model_len": 8192},
+        notes="Histórico: hoje é deepseek-r1-1.5b.",
     ),
     "llama3.2-3b": ModelSpec(
         key="llama3.2-3b", repo_id="meta-llama/Llama-3.2-3B-Instruct",
@@ -183,6 +205,7 @@ MODELS: dict[str, ModelSpec] = {
         repo_id="deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
         extra_kwargs={"max_model_len": 8192},
         notes=(
+            "Histórico: hoje é deepseek-r1-8b. "
             "Moved from Ollama to vLLM for throughput (continuous batching vs. "
             "one HTTP call per item). This does not change the <think> behavior: "
             "the distillation bakes reasoning in unconditionally, with no toggle "

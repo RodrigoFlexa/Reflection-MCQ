@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import sys
 from pathlib import Path
+
+# A raiz do repositório, não a de tools/, é onde moram rmcq e run_experiment.
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from run_experiment import find_root, save_json, save_jsonl
 
