@@ -116,6 +116,14 @@ def main():
                         help="Na etapa teacher, gerar só estes professores aqui. O GPT-5.4 roda onde "
                              "há credencial Azure; os quatro professores abertos, onde há GPU. "
                              "O recibo só fica completo quando todos tiverem sido gerados.")
+    parser.add_argument("--only-students",
+                        help="Na etapa teacher, gerar só estes alunos nesta passada. O que ficar "
+                             "de fora continua pendente no recibo e em gaps.json.")
+    parser.add_argument("--only-datasets",
+                        help="Restringe teacher e finish a estes datasets; os demais ficam como "
+                             "lacuna declarada, e não como linha não gerada.")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="Compartilha um estágio com pares pendentes de propósito.")
     for name in ops.PARTS:
         parser.add_argument(f"--{name}", dest="part", action="store_const", const=name,
                             help=f"Shorthand for --part {name}")
@@ -161,11 +169,14 @@ def main():
     elif args.action == "restore":
         ops.restore(experiment_id, args.stage)
     elif args.action == "share":
-        ops.share(experiment_id, args.stage, publish=not args.pack_only)
+        ops.share(experiment_id, args.stage, publish=not args.pack_only,
+                  allow_incomplete=args.allow_incomplete)
     elif args.action == "start":
         ops.start(args.stage, experiment_id, args.gpu,
                   restore_artifacts=args.stage not in ("teacher", "finish"), part=args.part,
-                  skip_gated=args.skip_gated, only_teachers=args.only_teachers)
+                  skip_gated=args.skip_gated, only_teachers=args.only_teachers,
+                  only_students=args.only_students, only_datasets=args.only_datasets,
+                  allow_incomplete=args.allow_incomplete)
 
 
 if __name__ == "__main__":

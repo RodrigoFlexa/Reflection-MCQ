@@ -91,13 +91,23 @@ def restore(experiment_id, stage):
     print(f"Restored {stage}: {experiment_id}, {len(result['files'])} verified files", flush=True)
 
 
-def share(experiment_id, stage, publish=True):
+def share(experiment_id, stage, publish=True, allow_incomplete=False):
     from rmcq.handoff import pack
     for part, latest in job_states():
         if latest.get("stage") in (stage, "validation-local") and latest.get("status") != "complete":
             label = "The latest local job" if part is None else f"Partition {part}"
             raise RuntimeError(f"{label} for this stage has not completed; inspect its log before sharing.")
-    require_complete(experiment_id, stage)
+    if allow_incomplete:
+        # Um pacote de professor fechado por decisao (alunos ou datasets fora
+        # desta rodada) nunca teria `complete`. Compartilhar assim e explicito:
+        # o recibo viaja junto e diz exatamente o que ficou de fora.
+        path = receipt(experiment_id, stage)
+        if not path.exists():
+            raise RuntimeError(f"{stage} has no receipt for {experiment_id}; nothing to share.")
+        pending = read(path).get("missing_pairs") or read(path).get("teacher_arms_pending") or []
+        print(f"AVISO: compartilhando {stage} incompleto, {len(pending)} par(es) pendente(s).", flush=True)
+    else:
+        require_complete(experiment_id, stage)
     exchange, results = paths(experiment_id)
     if stage == "prepare":
         files = [p for p in exchange.rglob("*") if p.is_file() and "teacher" not in p.relative_to(exchange).parts
@@ -174,13 +184,16 @@ def consolidate_and_analyze(check=True):
     return 0
 
 
-def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False, only_teachers=None):
+def work(stage, experiment_id, gpu, lock_fd=None, part=None, skip_gated=False, only_teachers=None,
+         only_students=None, only_datasets=None):
     job = job_path(part)
     state = read(job)
     state.update(pid=os.getpid(), status="running", started_at=time.time())
     write(job, state)
     partition = ((["--part", part] if part else []) + (["--skip-gated"] if skip_gated else [])
-                 + (["--only-teachers", only_teachers] if only_teachers and stage == "teacher" else []))
+                 + (["--only-teachers", only_teachers] if only_teachers and stage == "teacher" else [])
+                 + (["--only-students", only_students] if only_students and stage == "teacher" else [])
+                 + (["--only-datasets", only_datasets] if only_datasets and stage in ("teacher", "finish") else []))
     try:
         if stage == "validation-local":
             # Separate processes release every CUDA engine between phases.
@@ -243,7 +256,7 @@ def sibling_running(part):
 
 
 def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=False,
-          only_teachers=None):
+          only_teachers=None, only_students=None, only_datasets=None, allow_incomplete=False):
     if os.name != "posix":
         raise RuntimeError("Start runs on the Linux GPU/Petrobras server, in its activated Python environment.")
     import fcntl
@@ -268,7 +281,18 @@ def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=Fa
         # so neither GPU waits at the prepare boundary. The teacher stage is
         # never partitioned, so `finish` still requires the whole teacher.
         if part is None or previous_stage != "prepare":
-            require_complete(experiment_id, previous_stage)
+            if allow_incomplete and previous_stage == "teacher":
+                # O `finish` já gera só os braços cujas reflexões estão em disco e
+                # avisa o que ficou de fora. Exigir o recibo fechado aqui seria
+                # esperar por pares que uma decisão, e não uma falha, deixou fora.
+                path = receipt(experiment_id, previous_stage)
+                if not path.exists():
+                    raise RuntimeError(f"{previous_stage} has no receipt for {experiment_id}.")
+                pending = read(path).get("missing_pairs") or []
+                print(f"AVISO: seguindo com {len(pending)} par(es) professor-aluno pendente(s).",
+                      flush=True)
+            else:
+                require_complete(experiment_id, previous_stage)
     log = STATE / f"{stage}{suffix(part)}.log"
     # Clearing the pointer would erase the id the sibling partition just wrote.
     if stage in ("prepare", "validation-local") and not sibling_running(part):
@@ -282,6 +306,10 @@ def start(stage, explicit, gpu, restore_artifacts=True, part=None, skip_gated=Fa
         command += ["--skip-gated"]
     if only_teachers:
         command += ["--only-teachers", only_teachers]
+    if only_students:
+        command += ["--only-students", only_students]
+    if only_datasets:
+        command += ["--only-datasets", only_datasets]
     # Inherit the OS lock. It is released even if the worker crashes; no PID race.
     write(job_path(part), {"stage": stage, "part": part, "gpu": gpu, "status": "starting",
                            "skip_gated": skip_gated, "pid": os.getpid(), "log": str(log)})
@@ -312,6 +340,12 @@ def main():
                         help="Leave out checkpoints this token cannot read; fill them in on a later run.")
     parser.add_argument("--only-teachers",
                         help="Na etapa teacher, gerar só estes professores nesta máquina.")
+    parser.add_argument("--only-students",
+                        help="Na etapa teacher, gerar só estes alunos nesta passada.")
+    parser.add_argument("--only-datasets",
+                        help="Restringe teacher e finish a estes datasets; o resto fica como lacuna.")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="Compartilha um estágio cujo recibo tem pares pendentes de propósito.")
     parser.add_argument("--lock-fd", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.action == "status":
@@ -337,16 +371,19 @@ def main():
         parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
     if args.action == "start":
         start(args.stage, args.experiment_id, args.gpu, part=args.part, skip_gated=args.skip_gated,
-              only_teachers=args.only_teachers)
+              only_teachers=args.only_teachers, only_students=args.only_students,
+              only_datasets=args.only_datasets, allow_incomplete=args.allow_incomplete)
     elif args.action == "work":
         sys.exit(work(args.stage, args.experiment_id, args.gpu, args.lock_fd, part=args.part,
-                      skip_gated=args.skip_gated, only_teachers=args.only_teachers))
+                      skip_gated=args.skip_gated, only_teachers=args.only_teachers,
+                      only_students=args.only_students, only_datasets=args.only_datasets))
     else:
         experiment_id = active_id(args.experiment_id, shared_first=args.action == "restore")
         if args.action == "restore":
             restore(experiment_id, args.stage)
         else:
-            share(experiment_id, args.stage, publish=not args.pack_only)
+            share(experiment_id, args.stage, publish=not args.pack_only,
+                  allow_incomplete=args.allow_incomplete)
 
 
 if __name__ == "__main__":

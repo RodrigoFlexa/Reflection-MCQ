@@ -138,6 +138,14 @@ def parse_args() -> argparse.Namespace:
                              "externo fala por API e roda onde há credencial; os abertos carregam "
                              "pesos e rodam onde há GPU. A grade continua sendo a do manifest: "
                              "o recibo só fica completo quando todos tiverem sido gerados.")
+    parser.add_argument("--only-students",
+                        help="Na etapa teacher, gerar apenas estes alunos nesta passada. A grade "
+                             "continua sendo a do manifest: quem ficar de fora segue pendente no "
+                             "recibo e em gaps.json, em vez de virar linha nao gerada.")
+    parser.add_argument("--only-datasets",
+                        help="Restringe esta passada a estes datasets, nas etapas teacher e finish. "
+                             "Um dataset fora dela nao recebe reflexao de professor nem linha de "
+                             "transferencia: fica como lacuna declarada, nao como falha.")
     parser.add_argument("--teacher-role", choices=("reference", "teacher-only"))
     parser.add_argument(
         "--judge-model", default=DEFAULT_JUDGE,
@@ -191,6 +199,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--reflection-temperature must be between 0.0 and 2.0")
     if args.batch_size <= 0 or any(v is not None and v <= 0 for v in (args.validation_cap, args.train_cap)):
         parser.error("Batch size and optional data caps must be positive")
+    if args.only_students and args.stage != "teacher":
+        parser.error("--only-students aplica-se apenas a etapa teacher")
+    if args.only_datasets and args.stage not in ("teacher", "finish"):
+        parser.error("--only-datasets aplica-se as etapas teacher e finish")
     if args.part is not None:
         if args.stage in ("teacher", "merge", "status"):
             parser.error(f"--part does not apply to {args.stage}; it splits GPU generation only")
@@ -1270,6 +1282,23 @@ def load_teacher_reflections(exchange: Path, teacher: str, student: str) -> list
     return load_jsonl(path) if path.exists() else []
 
 
+def pass_datasets(args: argparse.Namespace, manifest: dict[str, Any]) -> list[str]:
+    """Datasets desta passada: os do manifest, menos os que `--only-datasets` deixa de fora.
+
+    O manifest continua sendo a verdade sobre o que a run preparou. O recorte
+    vale para ESTA passada, e o que ele deixa de fora continua faltando: uma
+    lacuna declarada em gaps.json diz "ninguem tentou", que e o que aconteceu.
+    """
+    todos = list(manifest["datasets"])
+    pedido = split_csv(getattr(args, "only_datasets", "") or "")
+    if not pedido:
+        return todos
+    fora = [d for d in pedido if d not in todos]
+    if fora:
+        raise ValueError(f"--only-datasets pede datasets fora desta run: {', '.join(fora)}")
+    return [d for d in todos if d in pedido]
+
+
 def teach_students(backend: Any, exchange: Path, cache_root: Path, teacher: str,
                    students: list[str], sources: dict[str, dict[str, Any]],
                    args: argparse.Namespace) -> dict[str, list[dict[str, Any]]]:
@@ -1282,7 +1311,11 @@ def teach_students(backend: Any, exchange: Path, cache_root: Path, teacher: str,
         if not train_path.exists():
             print(f"{teacher}: {student_model} ainda não tem tentativas de treino; pulando", flush=True)
             continue
-        student_by_uid = {row["source_uid"]: row for row in load_jsonl(train_path)}
+        # Só as fontes desta passada: com `--only-datasets`, o treino do aluno
+        # cobre datasets que ficaram de fora, e refletir sobre eles seria
+        # exatamente o trabalho que o recorte existe para não fazer.
+        student_by_uid = {row["source_uid"]: row for row in load_jsonl(train_path)
+                          if row["source_uid"] in sources}
         outputs: dict[str, dict[str, dict[str, Any]]] = {}
         for depth in REFLECTION_DEPTHS:
             teacher_prompts = {
@@ -1325,14 +1358,24 @@ def stage_teacher_only(exchange: Path, results: Path, args: argparse.Namespace, 
     if fora:
         raise ValueError(f"--only-teachers pede professores fora da grade desta run: {', '.join(fora)}")
     teachers = [t for t in grade if t in requested]
-    sources = unique_sources(load_pairs(exchange, manifest["datasets"]))
+    # `--only-students` e `--only-datasets` recortam a passada, nao a grade: o
+    # recibo continua conferindo os pares contra `grid.students_for`, entao o que
+    # nao rodar aqui continua aparecendo como pendente em vez de sumir.
+    datasets = pass_datasets(args, manifest)
+    only_students = split_csv(getattr(args, "only_students", "") or "")
+    estranhos = [m for m in only_students if m not in models]
+    if estranhos:
+        raise ValueError(f"--only-students pede alunos fora desta run: {', '.join(estranhos)}")
+    sources = unique_sources(load_pairs(exchange, datasets))
     receipt: dict[str, Any] = {
         "teacher_role": "teacher-only", "teachers": grade, "generated_this_pass": teachers,
+        "datasets_this_pass": datasets, "students_this_pass": only_students or list(models),
         "training_sources": len(sources), "validation_generations": 0,
         "training_answer_generations": 0, "content_filter_events_this_pass": 0,
     }
     for teacher in teachers:
-        assigned = [m for m in grid.students_for(teacher) if m in models]
+        assigned = [m for m in grid.students_for(teacher) if m in models
+                    and (not only_students or m in only_students)]
         pending = [m for m in assigned
                    if args.fresh or {row["source_uid"] for row in load_teacher_reflections(exchange, teacher, m)} < set(sources)]
         done = [m for m in assigned if m not in pending]
@@ -1577,6 +1620,30 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     pairs = load_pairs(exchange, manifest["datasets"])
     assigned = partition_models(part, manifest["models"])
     teachers = [t for t in (manifest.get("teachers") or [manifest["teacher_model"]]) if t in grid.TEACHERS]
+    # Datasets que recebem braço de professor nesta passada. Um dataset fora
+    # dela não vira linha `not_generated`: essa linha afirmaria que a condição
+    # foi tentada e falhou, quando ninguém a tentou. Fica como lacuna.
+    ensinados = set(pass_datasets(args, manifest))
+    _refletidos: dict[tuple[str, str], set[str]] = {}
+
+    def reflected_sources(model: str, teacher: str) -> set[str]:
+        chave = (model, teacher)
+        if chave not in _refletidos:
+            _refletidos[chave] = {row["source_uid"]
+                                  for row in load_teacher_reflections(exchange, teacher, model)}
+        return _refletidos[chave]
+
+    def com_professor(model: str, teacher: str, pair: dict[str, Any]) -> bool:
+        """Este par recebe o braço deste professor nesta passada?
+
+        Recortar a passada é deixar de fazer trabalho, nunca apagar trabalho
+        feito: um dataset fora dela não gera linha nova, mas o que já tem
+        reflexão em disco continua sendo avaliado, senão o arquivo do aluno
+        perderia braços que existiam antes desta passada.
+        """
+        if pair["dataset"] in ensinados:
+            return True
+        return pair["source_uid"] in reflected_sources(model, teacher)
 
     def teachers_of(model: str) -> list[str]:
         """Professores deste aluno, segundo a grade final.
@@ -1629,7 +1696,8 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
     skipped, done, models = [], [], []
     for key in assigned:
         outcome = destination / "models" / key / f"{args.eval_split}.jsonl"
-        expected_rows = {(p["val_uid"], c, t) for p in pairs for c, t in target_cells(key)}
+        expected_rows = {(p["val_uid"], c, t) for p in pairs for c, t in target_cells(key)
+                         if t is None or com_professor(key, t, p)}
         if not (exchange / "students" / key / "train.jsonl").exists():
             skipped.append(key)
         elif not args.fresh and outcome.exists() and {
@@ -1685,6 +1753,8 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
             val_item, source_item = pair["validation_item"], pair["source_item"]
             source_uid = pair["source_uid"]
             for condition, teacher in celulas:
+                if teacher is not None and not com_professor(model, teacher, pair):
+                    continue
                 # O professor entra na chave de cache: sem isso, as reflexões de
                 # cinco professores sobre a mesma questão se sobrescreveriam e só
                 # a última sobreviveria, com o nome de todas.
@@ -1812,6 +1882,7 @@ def stage_finish(exchange: Path, results: Path, args: argparse.Namespace, manife
         "experiment_id": manifest.get("experiment_id"), "eval_split": args.eval_split,
         "conditions": list(SELF_CONDITIONS if self_only else SELF_CONDITIONS + EXTERNAL_CONDITIONS),
         "teachers": [] if self_only else teachers,
+        "datasets_with_teacher": [] if self_only else sorted(ensinados),
         "arms": sorted({f"{c}@{t}" if t else c
                         for model in sorted(models + done) for c, t in target_cells(model)}),
         # Pares que a grade pede e que este finish não pôde gerar por falta de
