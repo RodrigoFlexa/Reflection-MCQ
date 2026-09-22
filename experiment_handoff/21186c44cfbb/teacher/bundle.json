@@ -1,7 +1,7 @@
 {
   "experiment_id": "21186c44cfbb",
   "stage": "teacher",
-  "git_commit": "f686f83b66e49266e7f388f7384acf0af48eccf4",
+  "git_commit": "601ef2ee288e5110e4a75ed62d0550c3fa564c7f",
   "format": 1,
   "files": [
     {
@@ -13,6 +13,14 @@
       "sha256": "b610c5712126bffa3e782d37f8b14dcf462f5c995433cf988eaf8e620815d938"
     },
     {
+      "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/deepseek-r1-8b.jsonl",
+      "sha256": "6738e32482c4f255f011370ea03580eb9ba29c5582e443cb0aa861b31d2a27ad"
+    },
+    {
+      "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/llama3.1-8b.jsonl",
+      "sha256": "2565fad491ff3c35a593bef1707e9ad826915feacacdbd2176e18ee6be2fe2d1"
+    },
+    {
       "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/llama3.2-3b.jsonl",
       "sha256": "d48cc5b91c5429ba5793cbd7a063ff0d912e5fb1ccad489bbfc99ffe1fa35179"
     },
@@ -21,19 +29,36 @@
       "sha256": "75aa56cb551d029b2e21f16b424e0a10ca68d43cd66f61d5b20b0174ead05dd6"
     },
     {
+      "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/ministral-3-8b.jsonl",
+      "sha256": "22bade4f695983892d4cc65ed01ec3411346aafa09d073489bac06975467175f"
+    },
+    {
+      "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/phi2.jsonl",
+      "sha256": "1db92d770582ff8b0d422caa0046db3b2a61f8a603ba9a82648edb064b91aae0"
+    },
+    {
       "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/qwen2.5-3b.jsonl",
       "sha256": "46ff9e82861e4009bc742e9e920064cf651b73f29b3fae8ef81ab7cf6ade7b8f"
     },
     {
+      "path": "experiment_exchange/21186c44cfbb/teacher/gpt-5-4-petrobras/student_reflections/qwen2.5-7b.jsonl",
+      "sha256": "644bfe877bd175bb5cc30b77cf922033eddfae16071497f87875a1522225e28e"
+    },
+    {
       "path": "experiment_exchange/21186c44cfbb/teacher_receipt.json",
-      "sha256": "2a2ca7c574c47d150e5027ff4b8043b37a219f9ab84f579fca1e1dcb20545579"
+      "sha256": "88a4ee9307d37222c3429e74d66d19d3729363d0652033b5f19d1a9046a1bfb0"
     }
   ],
   "parts": [
     {
       "name": "payload.part0000",
-      "sha256": "8115cb01eda7784717df1c12b4467ec7f362ab0bacd2a22ad5ae0c61e85cb750",
-      "bytes": 10656520
+      "sha256": "de6d75ecfdde0ebe8e11e843d2ef5fb01f0aa9c22087fc1c05920e03626b5dd4",
+      "bytes": 20971520
+    },
+    {
+      "name": "payload.part0001",
+      "sha256": "751b6466a104ff6a4309c53544b8a043bf372948e54e01714f75446cc1db9c87",
+      "bytes": 3268159
     }
   ]
 }
