@@ -1,0 +1,43 @@
+{
+  "experiment_id": "1f84f440d6e7",
+  "stage": "teacher",
+  "git_commit": "15553485a1a8f52a0754f68ad561053999b863c7",
+  "format": 1,
+  "files": [
+    {
+      "path": "experiment_exchange/1f84f440d6e7/manifest.json",
+      "sha256": "e2b6c829a075de448909be09a701e42bcca6797304cdae44fa0c270029337af6"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/deepseek-r1-1.5b.jsonl",
+      "sha256": "929b3168004a4e8e54bbf6265f1fc5043d836240c5af153d716c3bd2e59b0e1d"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/llama3.2-3b.jsonl",
+      "sha256": "274f588ab1cb91f68ff3a9fd33b7b7111e8bd1f645357d1614d5503799d4d22a"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/ministral-3-3b.jsonl",
+      "sha256": "232e6cabcb5a1a83d6d30d3dbe2b243e13684f7aa4890199bbb928819db6012f"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/phi2.jsonl",
+      "sha256": "0c9802ebb3e0b9019cf5db05cce183ab6c63696c37436dc1755fef0e410404b0"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/qwen2.5-3b.jsonl",
+      "sha256": "8bd2ccee13e96ede5ae4f1634782416d3b7142b7dc09fae196c902833f710f74"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher_receipt.json",
+      "sha256": "a377ce49bd1f1dba4311f91134e17006eac40530d7d3f63cc70495b6d62d8e42"
+    }
+  ],
+  "parts": [
+    {
+      "name": "payload.part0000",
+      "sha256": "b7df6af41484260b9a9981e77ee3d99f9fa6eef5bd62de311d1c3a3e5c11a71f",
+      "bytes": 11469733
+    }
+  ]
+}
