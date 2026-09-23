@@ -1,7 +1,7 @@
 {
   "experiment_id": "1f84f440d6e7",
   "stage": "teacher",
-  "git_commit": "7fd5dd378d5d20689f9fabfae3be395fe9d86835",
+  "git_commit": "e239f65f91993706dbd6240c5edb185763c00500",
   "format": 1,
   "files": [
     {
@@ -13,12 +13,24 @@
       "sha256": "929b3168004a4e8e54bbf6265f1fc5043d836240c5af153d716c3bd2e59b0e1d"
     },
     {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/deepseek-r1-8b.jsonl",
+      "sha256": "070bf2edfc485a8c8697ffb14a5c65eefa125627cb9aec9da45a684bf3aab770"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/llama3.1-8b.jsonl",
+      "sha256": "65658b1a1db21a6218993f49bc33e7d053b0a84a42b2ea12e62155f565eda378"
+    },
+    {
       "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/llama3.2-3b.jsonl",
       "sha256": "274f588ab1cb91f68ff3a9fd33b7b7111e8bd1f645357d1614d5503799d4d22a"
     },
     {
       "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/ministral-3-3b.jsonl",
       "sha256": "232e6cabcb5a1a83d6d30d3dbe2b243e13684f7aa4890199bbb928819db6012f"
+    },
+    {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/ministral-3-8b.jsonl",
+      "sha256": "e60364bdad2ab62c85bbddf5f46ad0e78dd8b5317b1f756802c8fde89176344f"
     },
     {
       "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/phi2.jsonl",
@@ -29,15 +41,24 @@
       "sha256": "8bd2ccee13e96ede5ae4f1634782416d3b7142b7dc09fae196c902833f710f74"
     },
     {
+      "path": "experiment_exchange/1f84f440d6e7/teacher/gpt-5-4-petrobras/student_reflections/qwen2.5-7b.jsonl",
+      "sha256": "0934feec9ccdcb3165b91bf5abc00fe579151bb6b6d1e3bd1c4f32479a3509c4"
+    },
+    {
       "path": "experiment_exchange/1f84f440d6e7/teacher_receipt.json",
-      "sha256": "a377ce49bd1f1dba4311f91134e17006eac40530d7d3f63cc70495b6d62d8e42"
+      "sha256": "2e8c1659da8a5006d4e34732ad71f77f425dde73e6fbaee394602981d58b608a"
     }
   ],
   "parts": [
     {
       "name": "payload.part0000",
-      "sha256": "b7df6af41484260b9a9981e77ee3d99f9fa6eef5bd62de311d1c3a3e5c11a71f",
-      "bytes": 11469733
+      "sha256": "27f7ce3ed4923cb03f1b013cd58eb889d3eba73417719d2f11779e2ddccb5e8d",
+      "bytes": 20971520
+    },
+    {
+      "name": "payload.part0001",
+      "sha256": "c5d32c6f1ee203b8dbf4d5c2bc305116bd8a89bdc3f88cf36f1d8be61804e111",
+      "bytes": 124889
     }
   ]
 }
